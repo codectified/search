@@ -13,3 +13,7 @@ data/
 /narrator_hub_analysis.md
 /narrator_stats.md
 /arabic_matn_embeddings.json
+/arabic_cluster_centroids.json
+/arabic_cluster_map.json
+/arabic_cluster_report.md
+/matn_boundaries.json

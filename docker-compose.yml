@@ -32,8 +32,10 @@ services:
       - xpack.security.enabled=true
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
       - cluster.routing.allocation.disk.threshold_enabled=false
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
     volumes:
       - ./config/synonyms.txt:/usr/share/elasticsearch/config/synonyms.txt
+      - es-data:/usr/share/elasticsearch/data
       - es-logs:/usr/share/elasticsearch/logs
     env_file:
       - .env
@@ -80,5 +82,6 @@ networks:
         - subnet: 172.31.250.0/24
 
 volumes:
+  es-data:
   es-logs:
 
