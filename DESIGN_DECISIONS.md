@@ -27,6 +27,28 @@ On the graph — proposed nomenclature for approval:
 
 ---
 
+## 2026-05-28 — Cluster comparison: v2 (mixed isnad) vs v3 (clean matn)
+
+**Setup:** Both runs used k=150 MiniBatchKMeans on the same 131,728 hadiths. The only difference is the vectors: v2 used full arabicText for the 30k untagged Sunan hadiths; v3 re-embedded those 30k using regex-extracted matn.
+
+| Metric | v2 | v3 | Interpretation |
+|---|---|---|---|
+| Avg cohesion | 0.668 | 0.652 | ↓ slightly — isnad shared phrases provided false cohesion in v2 |
+| Centroid pairs > 0.93 | 38 | **12** | ↓ 68% — near-duplicate over-splitting mostly resolved |
+| Centroid pairs > 0.85 | 347 | 233 | ↓ 33% |
+| Max centroid pair similarity | 0.975 | 0.952 | Former Sunan super-cluster dissolved |
+| Centroid pairs > 0.75 | 1,835 | 2,105 | ↑ mild overlap — clusters now span wider content space |
+
+**v2 problem (now fixed):** Clusters 14/49/107/34/95/25 all had centroids 0.94–0.97 similar to each other — k-means was fragmenting one topic into 6 clusters because the shared isnad text (`حَدَّثَنَا`, `عَنْ`, transmission vocabulary) pulled same-topic hadiths into slightly different vector positions depending on which isnad chain they used.
+
+**v3 result:** Cross-collection mixing is working. Example: v3 cluster 76 (size 1,828, cohesion 0.667) = nasai(270) + ibnabishayba(258) + muslim(221) + tirmidhi + abudawud — 43% editorial tags, 56% regex-extracted. Same topic content from both primary Sunan and secondary collections now clustering together.
+
+**Why lower cohesion is correct:** In v2, isnad shared phrases created false within-cluster similarity — hadiths in the same cluster because they used the same transmitters, not because they were about the same thing. In v3, cohesion reflects actual content similarity. A cluster of 0.652 cohesion with genuine content agreement is more useful than a cluster of 0.668 held together by transmission vocabulary.
+
+**Centroid pairs for retrieval:** Pairs > 0.93 should be merged at query time — if a query matches centroid A, also search cluster B if sim(A,B) > 0.93. The 12 remaining pairs at this threshold are safe to treat as super-clusters. This is preferable to reducing k, which would make clusters too coarse.
+
+---
+
 ## 2026-05-28 — Corpus state: what is clean vs. mixed (as of v2)
 
 **Full corpus:** 131,728 Arabic hadiths (ArabicHadithTable) + 44,895 English hadiths (HadithTable, translations). Together ~176k but they share URNs — English rows are translations of Arabic rows, not separate hadiths.

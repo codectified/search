@@ -22,9 +22,9 @@ from collections import Counter
 
 K = 150
 VECTORS_FILE = "/code/arabic_matn_embeddings.json"
-MAP_OUT     = "/code/arabic_cluster_map.json"
-CENTS_OUT   = "/code/arabic_cluster_centroids.json"
-REPORT_OUT  = "/code/arabic_cluster_report.md"
+MAP_OUT     = "/code/arabic_cluster_map_v3.json"
+CENTS_OUT   = "/code/arabic_cluster_centroids_v3.json"
+REPORT_OUT  = "/code/arabic_cluster_report_v3.md"
 
 # ── Load vectors ───────────────────────────────────────────────────────────────
 print(f"Loading vectors from {VECTORS_FILE}...")
@@ -32,9 +32,10 @@ t0 = time.time()
 with open(VECTORS_FILE) as f:
     data = json.load(f)
 
-urns       = list(data.keys())
-vectors    = np.array([data[u]["vector"] for u in urns], dtype=np.float32)
-had_tags   = [data[u]["had_matn_tag"] for u in urns]
+urns        = list(data.keys())
+vectors     = np.array([data[u]["vector"] for u in urns], dtype=np.float32)
+had_tags    = [data[u]["had_matn_tag"] for u in urns]
+v3_clean    = [data[u].get("v3_clean", False) for u in urns]
 collections = [data[u]["collection"] for u in urns]
 print(f"  {len(urns):,} vectors loaded, shape {vectors.shape} ({time.time()-t0:.1f}s)")
 
@@ -82,25 +83,34 @@ print(f"Saved centroids: {CENTS_OUT}")
 # ── Build report ───────────────────────────────────────────────────────────────
 # Per-cluster collection distribution
 cluster_collections = [[] for _ in range(K)]
-cluster_tagged = [0] * K
+cluster_tagged  = [0] * K
+cluster_v3clean = [0] * K
 for i, lbl in enumerate(labels):
     cluster_collections[lbl].append(collections[i])
     if had_tags[i]:
         cluster_tagged[lbl] += 1
+    if v3_clean[i]:
+        cluster_v3clean[lbl] += 1
+
+tagged_total  = sum(had_tags)
+v3clean_total = sum(v3_clean)
+mixed_total   = len(urns) - tagged_total - v3clean_total
 
 lines = [
-    "# v2 Arabic Matn Cluster Report",
+    "# v3 Arabic Matn Cluster Report",
     f"\nModel: OpenAI text-embedding-3-small (1536-dim)  \nk={K}, MiniBatchKMeans, L2-normalized  \nCorpus: {len(urns):,} hadiths\n",
-    "| Cluster | Size | Cohesion | Tagged% | Top Collections |",
-    "|---|---|---|---|---|",
+    f"Vector quality: {tagged_total:,} editorial tags | {v3clean_total:,} regex-extracted (v3) | {mixed_total:,} full-text (selections/unresolved)\n",
+    "| Cluster | Size | Cohesion | EdTag% | V3% | Top Collections |",
+    "|---|---|---|---|---|---|",
 ]
 for k_idx in sorted(range(K), key=lambda x: -counts[x]):
     sz = counts[k_idx]
     coh = cohesion[k_idx]
     tag_pct = 100 * cluster_tagged[k_idx] / sz if sz else 0
+    v3_pct  = 100 * cluster_v3clean[k_idx] / sz if sz else 0
     top_cols = Counter(cluster_collections[k_idx]).most_common(3)
     top_str = ", ".join(f"{c}({n})" for c, n in top_cols)
-    lines.append(f"| {k_idx} | {sz} | {coh:.3f} | {tag_pct:.0f}% | {top_str} |")
+    lines.append(f"| {k_idx} | {sz} | {coh:.3f} | {tag_pct:.0f}% | {v3_pct:.0f}% | {top_str} |")
 
 with open(REPORT_OUT, "w") as f:
     f.write("\n".join(lines))
