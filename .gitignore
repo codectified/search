@@ -2,4 +2,13 @@
 .env
 __pycache__
 data/
-db_structure_report.md
+# Root-level container artifacts (scripts write here inside Docker, copy to test results & reports/)
+/db_structure_report.md
+/book_centroids.json
+/book_centroids.md
+/cluster_centroids.json
+/cluster_map.json
+/cluster_report.md
+/cross_collection_duplicates.md
+/narrator_hub_analysis.md
+/narrator_stats.md

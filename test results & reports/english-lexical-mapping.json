@@ -1,0 +1,77 @@
+{
+  "english-lexical-1779026203": {
+    "mappings": {
+      "properties": {
+        "arabicGrade": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "arabicText": {
+          "type": "text",
+          "analyzer": "custom_arabic"
+        },
+        "collection": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "contentHash": {
+          "type": "keyword",
+          "index": false
+        },
+        "grade": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "hadithNumber": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "hadithText": {
+          "type": "text",
+          "fields": {
+            "trigram": {
+              "type": "text",
+              "analyzer": "trigram"
+            }
+          },
+          "analyzer": "synonym"
+        },
+        "lang": {
+          "type": "text",
+          "index": false
+        },
+        "matchingArabicURN": {
+          "type": "text",
+          "index": false
+        },
+        "matchingEnglishURN": {
+          "type": "long"
+        },
+        "urn": {
+          "type": "text",
+          "index": false
+        }
+      }
+    }
+  }
+}
