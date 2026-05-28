@@ -3,6 +3,28 @@
 Significant architectural decisions, their reasoning, and trade-offs.
 Add new entries at the top.
 
+On the graph — proposed nomenclature for approval:
+
+  Node labels:
+  - Narrator — individual narrator (links to Narrators table)
+  - Hadith — individual narration, carries both Arabic matn and English text as properties
+  - Collection — Bukhari, Muslim, etc.
+  - Book — Kitab al-Salat, etc.
+  - Chapter — Bab
+  - SemanticCluster — data-driven topic group (our k-means output)
+  - TopicConcept — scholar-defined abstract node (you define these: Worship, Legal, Ethics…)
+
+  Relationship types:
+  - (Narrator)-[:NARRATED_FROM]->(Narrator) — student learned from teacher
+  - (Narrator)-[:APPEARS_IN {role, position}]->(Hadith) — narrator is in this chain
+  - (Hadith)-[:IN_COLLECTION]->(Collection)
+  - (Hadith)-[:IN_BOOK]->(Book)
+  - (Hadith)-[:IN_CHAPTER]->(Chapter)
+  - (Hadith)-[:SIMILAR_TO {score}]->(Hadith) — cross-collection near-duplicate
+  - (Hadith)-[:IN_CLUSTER]->(SemanticCluster)
+  - (Book)-[:CATEGORIZED_AS]->(TopicConcept)
+  - (TopicConcept)-[:SUBCONCEPT_OF]->(TopicConcept) — hierarchy within concepts
+
 ---
 
 ## 2026-05-28 — Arabic matn tag coverage is editorial, not random

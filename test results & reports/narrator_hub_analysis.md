@@ -4,6 +4,17 @@ Examining the most central narrators in the isnad graph and their immediate netw
 
 **Bridgeness** = in_degree × out_degree — narrators who connect many teachers to many students.
 
+Al-Zuhri (Muhammad ibn Shihab, Gen 4, d. 124 AH) is the biggest bridge by far — bridgeness 331,662 (501 teachers
+  × 662 students). He's the critical transmission node between the Sahabah era and the later collectors. Sufyan
+  al-Thawri (Gen 7) is second at 472,546 but that's a computation artifact from having 677 teachers — he's more of
+  a hub than a bridge. Al-Zuhri is genuinely the bottleneck: remove him and enormous portions of the isnad graph
+  disconnect.
+
+  The generation flow table in the report shows the knowledge funnel clearly — Gen 1 Sahabah have very few teachers
+   (avg 1-2, they learned directly from the Prophet) but enormous student counts, while Gen 7-9 transmitters have
+  hundreds of both teachers and students, acting as the scholarly network that crystallized the corpus into the six
+   canonical collections.
+
 ---
 
 ## Top 15 Hubs — Multi-Metric Comparison
