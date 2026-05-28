@@ -27,6 +27,26 @@ On the graph — proposed nomenclature for approval:
 
 ---
 
+## 2026-05-28 — Corpus state: what is clean vs. mixed (as of v2)
+
+**Full corpus:** 131,728 Arabic hadiths (ArabicHadithTable) + 44,895 English hadiths (HadithTable, translations). Together ~176k but they share URNs — English rows are translations of Arabic rows, not separate hadiths.
+
+**Vector quality breakdown by collection:**
+
+| State | Collections | Count | English? | Notes |
+|---|---|---|---|---|
+| **Clean** — matn-only vector | ibnabishayba, abdurrazzaq, hakim, ibnhibban, daraqutni, darimi, ibnkhuzayma | ~83k | None | `[matn]` tag present, embedded clean |
+| **Mostly clean** | bukhari | 7,277 | All | 97% tagged (7,023); 254 untagged |
+| **Problematic** — isnad noise in vector | muslim, nasai, abudawud, ibnmajah, tirmidhi | 26,901 | All | 0% tagged; regex matn in text field but vector = full text |
+| **Problematic** | ahmad, adab, shamail, malik | ~5k | Most | 0% tagged |
+| **Acceptable** — no real isnad | mishkat, riyadussalihin, bulugh, hisn, forty, virtues | ~10k | Most | Selection books, content starts directly |
+
+**The critical gap:** The 5 major Sunan collections (Muslim, Nasai, Abu Dawud, Ibn Majah, Tirmidhi) = 26,901 hadiths — the most-searched collections on sunnah.com, all with English translations, all with 0% matn tagging. These have the dirtiest v2 vectors.
+
+**What v3 requires:** Re-embed the ~30k untagged Sunan hadiths using `matn_boundaries.json` (regex-extracted matn). Cost: ~$0.03. This would make the multilingual index clean across the full corpus.
+
+---
+
 ## 2026-05-28 — Arabic matn tag coverage is editorial, not random
 
 **Finding:** The 67%/33% matn tag split follows strict collection lines, not random coverage:
