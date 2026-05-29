@@ -128,11 +128,18 @@ EMBEDDING_MODELS = {
         },
     },
     "arabic-openai": {
-        "label": "text-embedding-3-small (Arabic, centroid-filtered)",
+        "label": "text-embedding-3-small (Arabic matn, cross-lingual)",
         "index": ARABIC_OPENAI_INDEX,
         "enabled": _OPENAI_ENABLED,
         "multilingual": True,
-        "custom_knn": True,  # bypasses ES inference pipeline; we embed + kNN directly
+        "custom_knn": True,
+    },
+    "english-openai": {
+        "label": "text-embedding-3-small (English text)",
+        "index": "english-openai",
+        "enabled": _OPENAI_ENABLED,
+        "multilingual": False,
+        "custom_knn": True,
     },
 }
 
@@ -559,6 +566,8 @@ def search(language):
         })
         if model_key == "arabic-openai":
             return _arabic_openai_search(query, filters)
+        if model_key == "english-openai":
+            return _english_openai_search(query, filters)
         return _semantic_search(search_index, query, filters)
 
     # Lexical path
@@ -607,6 +616,61 @@ def _top_arabic_clusters(query_vec, n=_TOP_N_CLUSTERS):
     """Return the n cluster IDs whose centroids are closest to query_vec."""
     scores = _ARABIC_CENTROIDS @ query_vec  # (75,) cosine sims via dot on unit vectors
     return np.argsort(scores)[::-1][:n].tolist()
+
+
+def _english_openai_search(query, filters):
+    size = int(request.args.get("size", 10))
+    dedup = not _is_truthy(request.args.get("show_dupes", "0"))  # collapse dup groups by default
+
+    t0 = time.perf_counter()
+    query_vec = _embed_arabic_query(query)   # same model, reuse helper
+    embed_ms = round((time.perf_counter() - t0) * 1000, 1)
+
+    # Always exclude chain-reference hadiths; optionally collapse duplicates
+    base_filters = [{"term": {"isChainRef": False}}] + filters
+    if dedup:
+        # Prefer canonical (dupGroup=0) — fetch extra to compensate, then trim
+        fetch_size = size * 3
+    else:
+        fetch_size = size
+
+    knn_filter = {"bool": {"must": base_filters}} if len(base_filters) > 1 else base_filters[0]
+
+    try:
+        result = es_client.options(request_timeout=30).search(
+            index="english-openai",
+            knn={
+                "field": "embedding",
+                "query_vector": query_vec.tolist(),
+                "k": fetch_size,
+                "num_candidates": min(fetch_size * 20, 1000),
+                "filter": knn_filter,
+            },
+            size=fetch_size,
+            _source={"excludes": ["embedding"]},
+        )
+    except BadRequestError as e:
+        return malformed_query_response(e)
+
+    hits = result.body["hits"]["hits"]
+
+    if dedup:
+        # Keep only the highest-scoring hadith per dupGroup; pass through singletons (dupGroup=0)
+        seen_groups: set[int] = set()
+        deduped = []
+        for h in hits:
+            gid = h["_source"].get("dupGroup", 0)
+            if gid == 0 or gid not in seen_groups:
+                deduped.append(h)
+                if gid != 0:
+                    seen_groups.add(gid)
+            if len(deduped) == size:
+                break
+        result.body["hits"]["hits"] = deduped
+        result.body["hits"]["total"]["value"] = len(deduped)
+
+    result.body["_meta"] = {"embed_ms": embed_ms, "dedup": dedup}
+    return jsonify(result.body)
 
 
 def _arabic_openai_search(query, filters):
