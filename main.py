@@ -123,6 +123,38 @@ COLLECTION_BOOSTS = [
     ("riyadussalihin", 2.5),
 ]
 
+_COLLECTION_BOOST_MAP = {k: v for k, v in COLLECTION_BOOSTS}
+
+# chain-ref filter: exclude hadiths that are pure isnad references with no matn.
+# must_not:true (not term:false) so docs without the field still pass through.
+_CHAIN_REF_FILTER = {"bool": {"must_not": {"term": {"isChainRef": True}}}}
+
+
+def _dedup_hits(hits, size):
+    """Collapse duplicate groups, choosing the best representative per group.
+
+    Within each dupGroup, prefer the member from the most authoritative collection
+    (using COLLECTION_BOOSTS); use raw ES score as tiebreaker. Singletons
+    (dupGroup=0) are kept as-is. Final list is re-sorted by ES score and trimmed
+    to `size`.
+    """
+    groups = {}    # gid -> best hit so far
+    singletons = []
+
+    for h in hits:
+        gid = h["_source"].get("dupGroup", 0)
+        if gid == 0:
+            singletons.append(h)
+        else:
+            coll = h["_source"].get("collection", "")
+            key = (_COLLECTION_BOOST_MAP.get(coll, 1.0), h["_score"])
+            if gid not in groups or key > groups[gid][1]:
+                groups[gid] = (h, key)
+
+    merged = singletons + [h for h, _ in groups.values()]
+    merged.sort(key=lambda h: h["_score"], reverse=True)
+    return merged[:size]
+
 
 @app.errorhandler(Exception)
 def _handle_unexpected(exc):
@@ -517,6 +549,8 @@ def search(language):
             "request_id": getattr(g, "request_id", None),
             "mode": mode, "model": model_key, "query": query,
         })
+        if model_key == "mxbai":
+            return _mxbai_search(search_index, query, filters)
         return _semantic_search(search_index, query, filters)
 
     # Lexical path
@@ -535,6 +569,32 @@ def search(language):
             result = es_client.search(query=build_lexical("simple_query_string"), **kwargs)
     except BadRequestError as e:
         return malformed_query_response(e)
+    return jsonify(result.body)
+
+
+def _mxbai_search(search_index, query, filters):
+    size = int(request.args.get("size", 10))
+    dedup = not _is_truthy(request.args.get("show_dupes", "0"))
+    fetch_size = size * 3 if dedup else size
+
+    all_filters = [_CHAIN_REF_FILTER] + filters
+
+    try:
+        result = es_client.options(request_timeout=130).search(
+            index=search_index,
+            size=fetch_size,
+            query=build_semantic_query(query, all_filters),
+            _source={"excludes": [SEMANTIC_FIELD]},
+        )
+    except BadRequestError as e:
+        return malformed_query_response(e)
+
+    if dedup:
+        deduped = _dedup_hits(result.body["hits"]["hits"], size)
+        result.body["hits"]["hits"] = deduped
+        result.body["hits"]["total"]["value"] = len(deduped)
+
+    result.body["_meta"] = {"dedup": dedup}
     return jsonify(result.body)
 
 
