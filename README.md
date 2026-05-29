@@ -4,6 +4,65 @@ Flask + Elasticsearch search service for sunnah.com. Supports lexical (BM25) and
 
 ---
 
+## Semantic search filters (mxbai)
+
+The mxbai semantic search path (`_mxbai_search`) applies two filters by default that are not active in lexical mode.
+
+### Chain-reference filter
+
+~1,574 hadiths (~3.2% of the index) are **chain-reference entries** — they contain no actual hadith text (matn). They exist because Sahih Muslim records multiple transmission chains for the same hadith; each variant beyond the first looks like:
+
+> *"This hadith has been narrated through another chain of transmitters..."*
+
+These have no meaningful content, so they should never appear in search results. The filter is:
+
+```json
+{ "bool": { "must_not": { "term": { "isChainRef": true } } } }
+```
+
+**Why `must_not: true` rather than `term: false`?**
+The `isChainRef` field is only stored on documents that were explicitly flagged. Documents without the field at all (the majority) don't have a stored `false` — they simply have no value. A `term: false` filter would exclude all of those. `must_not: true` correctly passes through both `false` docs and docs where the field is absent.
+
+### Duplicate deduplication
+
+~6,405 hadiths (13.2%) belong to a **duplicate group** — the same matn narrated through different chains, or the same hadith appearing across multiple collections. Each group has a shared `dupGroup` integer ID (the smallest URN in the group).
+
+By default, results are deduplicated: only the **most authoritative** representative of each group is shown.
+
+**How the representative is chosen (`_dedup_hits`):**
+
+1. Fetch `size × 3` results from ES (to have enough candidates after collapsing groups).
+2. Walk all fetched hits. For each `dupGroup`, keep the hit with the highest `(collection_boost, score)` pair — collection authority first, vector similarity as tiebreaker:
+
+   | Collection | Boost |
+   |---|---|
+   | Bukhari | 5.0 |
+   | Muslim | 4.8 |
+   | Nawawi 40 | 3.3 |
+   | Nasai | 3.5 |
+   | Abu Dawud | 3.0 |
+   | *(others)* | 1.0–2.5 |
+
+3. Singletons (`dupGroup=0`) pass through unchanged.
+4. Merge group representatives + singletons, re-sort by raw ES score, return top `size`.
+
+This means if the same hadith appears in both Bukhari and a weaker collection, the Bukhari version is always shown — even if the weaker collection's version had a marginally higher vector similarity score.
+
+**To bypass deduplication** (useful for inspection):
+```
+/english/search?q=...&mode=semantic&model=mxbai&show_dupes=1
+```
+
+### Size and HNSW traversal depth
+
+The ES `semantic_text` field uses **HNSW approximate nearest-neighbor** internally. Requesting a larger `size` forces the HNSW graph walker to explore more of the graph, which can surface hadiths that a smaller traversal would miss.
+
+Because dedup fetches `size × 3` candidates before collapsing, a `size=10` request actually searches over 30 candidates, while `size=20` searches over 60. The result sets can differ meaningfully — hadiths ranked 11–30 in the HNSW traversal at `size=10` may include better matches than the last few results at smaller sizes.
+
+**Practical implication:** if you want to ensure high-quality top-10 results, passing `size=20` or `size=30` and letting dedup trim to 10 gives the HNSW graph more room to find the best candidates.
+
+---
+
 ## Architecture
 
 ```
@@ -185,6 +244,18 @@ Mode is passed as a query parameter:
 | `GET /index?password=...` | Build/rebuild ES indexes from MySQL |
 | `GET /index/status` | Doc counts for all indexes |
 
+### Search query parameters
+
+| Parameter | Values | Default | Description |
+|---|---|---|---|
+| `q` | string | — | Search query |
+| `mode` | `lexical`, `semantic` | `lexical` | Search mode |
+| `model` | `mxbai` | — | Which semantic model (required when `mode=semantic`) |
+| `size` | integer | 10 | Number of results to return |
+| `show_dupes` | `0`, `1` | `0` | When `1`, bypass dedup and return all dup-group members unfiltered |
+| `collection` | collection slug | — | Filter to a specific collection |
+| `grade` | grade string | — | Filter by hadith grade |
+
 ---
 
 ## Docker Compose files
@@ -217,3 +288,15 @@ The script runs inside the container because ES is not exposed to the host — i
 Edit `QUERIES` in `tests/batch_search.py` to change which queries are tested.
 
 **Note:** always use commas between query strings in the list. Python silently concatenates adjacent string literals without a comma, producing wrong queries with no error.
+
+### Filter/dedup/size comparison report
+
+`tests/mxbai_filter_report.py` runs a deeper comparison across three dimensions:
+- **Chain-ref filter ON vs OFF** — shows how bare isnad hadiths pollute results without filtering
+- **Dedup ON vs OFF** — shows which dup-group members get collapsed and which representative wins
+- **Size effect** — shows how `size=5/10/20/50` changes which hadiths appear in the top-10
+
+```bash
+docker exec search-web-1 python3 /code/tests/mxbai_filter_report.py
+docker cp search-web-1:"/code/test results & reports/mxbai_filter_report.md" "tests/mxbai_filter_report.md"
+```
