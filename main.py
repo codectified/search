@@ -74,32 +74,52 @@ def _is_truthy(value):
     return (value or "").lower() in ("1", "true", "yes")
 
 
-# ── Arabic OpenAI centroid search ─────────────────────────────────────────────
+# ── OpenAI centroid search (Arabic + English) ─────────────────────────────────
 
 _OPENAI_ENABLED = _is_truthy(os.environ.get("OPENAI_ENABLED"))
 _openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY")) if _OPENAI_ENABLED else None
 
-ARABIC_OPENAI_INDEX = "arabic-openai"
-_ARABIC_EMBED_MODEL = "text-embedding-3-small"
-_CENTROIDS_PATH = "/code/arabic_cluster_centroids_final.json"
-_TOP_N_CLUSTERS = 2  # top centroids to pre-filter; 2 × ~1,756 avg ≈ 3,500 docs vs 131k
+ARABIC_OPENAI_INDEX      = "arabic-openai"
+_ARABIC_EMBED_MODEL      = "text-embedding-3-small"
+_ARABIC_CENTROIDS_PATH            = "/code/arabic_cluster_centroids_final.json"
+# Centroids computed over the ~48k translated-only Arabic hadiths (englishURN > 0).
+# Eliminates cluster pollution from Arabic-only collections (ibnabishayba, etc.).
+_ARABIC_TRANSLATED_CENTROIDS_PATH = "/code/arabic_translated_cluster_centroids.json"
+_ENGLISH_CENTROIDS_PATH           = "/code/english_cluster_centroids.json"
+_TOP_N_CLUSTERS                   = 2  # 2 × ~649 avg ≈ 1,300 docs vs 48k
 
-# Shape: (75, 1536), L2-normalized — loaded once at startup, None if file absent.
-_ARABIC_CENTROIDS = None
+# Shape: (k, 1536), L2-normalized — loaded once at startup, None if file absent.
+_ARABIC_CENTROIDS            = None
+_ARABIC_TRANSLATED_CENTROIDS = None
+_ENGLISH_CENTROIDS           = None
+
+
+def _load_centroids(path, label):
+    if not os.path.exists(path):
+        access_log.warning("centroids_missing", extra={"path": path})
+        return None
+    with open(path) as f:
+        raw = json.load(f)
+    mat   = np.array(raw, dtype=np.float32)
+    norms = np.linalg.norm(mat, axis=1, keepdims=True)
+    mat   = mat / np.maximum(norms, 1e-9)
+    access_log.info("centroids_loaded", extra={"label": label, "n_clusters": len(mat)})
+    return mat
+
 
 def _load_arabic_centroids():
-    global _ARABIC_CENTROIDS
-    if not os.path.exists(_CENTROIDS_PATH):
-        access_log.warning("arabic_centroids_missing", extra={"path": _CENTROIDS_PATH})
-        return
-    with open(_CENTROIDS_PATH) as f:
-        raw = json.load(f)  # list of 75 × 1536 floats
-    mat = np.array(raw, dtype=np.float32)
-    norms = np.linalg.norm(mat, axis=1, keepdims=True)
-    _ARABIC_CENTROIDS = mat / np.maximum(norms, 1e-9)
-    access_log.info("arabic_centroids_loaded", extra={"n_clusters": len(_ARABIC_CENTROIDS)})
+    global _ARABIC_CENTROIDS, _ARABIC_TRANSLATED_CENTROIDS
+    _ARABIC_CENTROIDS            = _load_centroids(_ARABIC_CENTROIDS_PATH, "arabic-all")
+    _ARABIC_TRANSLATED_CENTROIDS = _load_centroids(_ARABIC_TRANSLATED_CENTROIDS_PATH, "arabic-translated")
+
+
+def _load_english_centroids():
+    global _ENGLISH_CENTROIDS
+    _ENGLISH_CENTROIDS = _load_centroids(_ENGLISH_CENTROIDS_PATH, "english")
+
 
 _load_arabic_centroids()
+_load_english_centroids()
 
 
 # Pure lexical index — no embeddings, fast to rebuild.
@@ -166,6 +186,38 @@ COLLECTION_BOOSTS = [
     ("nawawi40", 3.3),
     ("riyadussalihin", 2.5),
 ]
+
+_COLLECTION_BOOST_MAP = {k: v for k, v in COLLECTION_BOOSTS}
+
+# chain-ref filter: exclude hadiths that are pure isnad references with no matn.
+# must_not:true (not term:false) so docs without the field still pass through.
+_CHAIN_REF_FILTER = {"bool": {"must_not": {"term": {"isChainRef": True}}}}
+
+
+def _dedup_hits(hits, size):
+    """Collapse duplicate groups, choosing the best representative per group.
+
+    Within each dupGroup, prefer the member from the most authoritative collection
+    (using COLLECTION_BOOSTS); use raw ES score as tiebreaker. Singletons
+    (dupGroup=0) are kept as-is. Final list is re-sorted by ES score and trimmed
+    to `size`.
+    """
+    groups = {}    # gid -> best hit so far
+    singletons = []
+
+    for h in hits:
+        gid = h["_source"].get("dupGroup", 0)
+        if gid == 0:
+            singletons.append(h)
+        else:
+            coll = h["_source"].get("collection", "")
+            key = (_COLLECTION_BOOST_MAP.get(coll, 1.0), h["_score"])
+            if gid not in groups or key > groups[gid][1]:
+                groups[gid] = (h, key)
+
+    merged = singletons + [h for h, _ in groups.values()]
+    merged.sort(key=lambda h: h["_score"], reverse=True)
+    return merged[:size]
 
 
 @app.errorhandler(Exception)
@@ -568,6 +620,8 @@ def search(language):
             return _arabic_openai_search(query, filters)
         if model_key == "english-openai":
             return _english_openai_search(query, filters)
+        if model_key == "mxbai":
+            return _mxbai_search(search_index, query, filters)
         return _semantic_search(search_index, query, filters)
 
     # Lexical path
@@ -612,29 +666,61 @@ def _embed_arabic_query(query):
     return vec / norm if norm > 0 else vec
 
 
-def _top_arabic_clusters(query_vec, n=_TOP_N_CLUSTERS):
+def _top_clusters(centroids, query_vec, n=_TOP_N_CLUSTERS):
     """Return the n cluster IDs whose centroids are closest to query_vec."""
-    scores = _ARABIC_CENTROIDS @ query_vec  # (75,) cosine sims via dot on unit vectors
+    scores = centroids @ query_vec  # cosine sims via dot on unit vectors
     return np.argsort(scores)[::-1][:n].tolist()
 
 
-def _english_openai_search(query, filters):
+def _top_arabic_clusters(query_vec, n=_TOP_N_CLUSTERS):
+    # Prefer translated-only centroids: avoids routing to Arabic-only collection clusters.
+    # Falls back to all-hadith centroids if translated file not yet generated.
+    cents = _ARABIC_TRANSLATED_CENTROIDS if _ARABIC_TRANSLATED_CENTROIDS is not None else _ARABIC_CENTROIDS
+    return _top_clusters(cents, query_vec, n)
+
+
+def _top_english_clusters(query_vec, n=_TOP_N_CLUSTERS):
+    return _top_clusters(_ENGLISH_CENTROIDS, query_vec, n)
+
+
+def _mxbai_search(search_index, query, filters):
     size = int(request.args.get("size", 10))
-    dedup = not _is_truthy(request.args.get("show_dupes", "0"))  # collapse dup groups by default
+    dedup = not _is_truthy(request.args.get("show_dupes", "0"))
+    fetch_size = size * 3 if dedup else size
 
-    t0 = time.perf_counter()
-    query_vec = _embed_arabic_query(query)   # same model, reuse helper
-    embed_ms = round((time.perf_counter() - t0) * 1000, 1)
+    all_filters = [_CHAIN_REF_FILTER] + filters
 
-    # Always exclude chain-reference hadiths; optionally collapse duplicates
-    base_filters = [{"term": {"isChainRef": False}}] + filters
+    try:
+        result = es_client.options(request_timeout=130).search(
+            index=search_index,
+            size=fetch_size,
+            query=build_semantic_query(query, all_filters),
+            _source={"excludes": [SEMANTIC_FIELD]},
+        )
+    except BadRequestError as e:
+        return malformed_query_response(e)
+
     if dedup:
-        # Prefer canonical (dupGroup=0) — fetch extra to compensate, then trim
-        fetch_size = size * 3
-    else:
-        fetch_size = size
+        deduped = _dedup_hits(result.body["hits"]["hits"], size)
+        result.body["hits"]["hits"] = deduped
+        result.body["hits"]["total"]["value"] = len(deduped)
 
-    knn_filter = {"bool": {"must": base_filters}} if len(base_filters) > 1 else base_filters[0]
+    result.body["_meta"] = {"dedup": dedup}
+    return jsonify(result.body)
+
+
+def _english_openai_search(query, filters):
+    size  = int(request.args.get("size", 10))
+    dedup = not _is_truthy(request.args.get("show_dupes", "0"))
+
+    t0        = time.perf_counter()
+    query_vec = _embed_arabic_query(query)   # same model (text-embedding-3-small)
+    embed_ms  = round((time.perf_counter() - t0) * 1000, 1)
+
+    # Full HNSW over 48k English docs — no centroid pre-filter needed at this scale.
+    fetch_size   = size * 3 if dedup else size
+    base_filters = [_CHAIN_REF_FILTER] + filters
+    knn_filter   = {"bool": {"must": base_filters}} if len(base_filters) > 1 else base_filters[0]
 
     try:
         result = es_client.options(request_timeout=30).search(
@@ -652,20 +738,8 @@ def _english_openai_search(query, filters):
     except BadRequestError as e:
         return malformed_query_response(e)
 
-    hits = result.body["hits"]["hits"]
-
     if dedup:
-        # Keep only the highest-scoring hadith per dupGroup; pass through singletons (dupGroup=0)
-        seen_groups: set[int] = set()
-        deduped = []
-        for h in hits:
-            gid = h["_source"].get("dupGroup", 0)
-            if gid == 0 or gid not in seen_groups:
-                deduped.append(h)
-                if gid != 0:
-                    seen_groups.add(gid)
-            if len(deduped) == size:
-                break
+        deduped = _dedup_hits(result.body["hits"]["hits"], size)
         result.body["hits"]["hits"] = deduped
         result.body["hits"]["total"]["value"] = len(deduped)
 
@@ -674,20 +748,22 @@ def _english_openai_search(query, filters):
 
 
 def _arabic_openai_search(query, filters):
-    if _ARABIC_CENTROIDS is None:
+    if _ARABIC_CENTROIDS is None and _ARABIC_TRANSLATED_CENTROIDS is None:
         return jsonify({"error": "arabic centroid index not loaded"}), 503
 
     size = int(request.args.get("size", 10))
-    t0 = time.perf_counter()
-    query_vec = _embed_arabic_query(query)
+    t0   = time.perf_counter()
+    query_vec   = _embed_arabic_query(query)
     cluster_ids = _top_arabic_clusters(query_vec)
-    embed_ms = round((time.perf_counter() - t0) * 1000, 1)
+    embed_ms    = round((time.perf_counter() - t0) * 1000, 1)
 
-    # Cluster pre-filter + any user filters (collection, grade) combined
-    cluster_filter = {"terms": {"clusterIdFinal": cluster_ids}}
-    knn_filter = (
-        {"bool": {"must": [cluster_filter] + filters}} if filters else cluster_filter
-    )
+    # Use clusterIdTranslated when available (translated-only centroids); else fall back.
+    cluster_field  = "clusterIdTranslated" if _ARABIC_TRANSLATED_CENTROIDS is not None else "clusterIdFinal"
+    cluster_filter = {"terms": {cluster_field: cluster_ids}}
+    # Only return hadiths with an English translation.
+    translated_filter = {"exists": {"field": "englishText"}}
+    all_filters = [cluster_filter, translated_filter] + filters
+    knn_filter  = {"bool": {"must": all_filters}}
 
     try:
         result = es_client.options(request_timeout=30).search(
@@ -706,7 +782,11 @@ def _arabic_openai_search(query, filters):
         return malformed_query_response(e)
 
     body = result.body
-    body["_meta"] = {"clusters": cluster_ids, "embed_ms": embed_ms}
+    body["_meta"] = {
+        "clusters": cluster_ids,
+        "cluster_field": cluster_field,
+        "embed_ms": embed_ms,
+    }
     return jsonify(body)
 
 
