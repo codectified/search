@@ -10,6 +10,8 @@ import os
 from dotenv import load_dotenv
 import json
 
+import numpy as np
+from openai import OpenAI
 from elasticsearch import Elasticsearch, helpers, BadRequestError, NotFoundError
 from pythonjsonlogger import jsonlogger
 
@@ -72,6 +74,34 @@ def _is_truthy(value):
     return (value or "").lower() in ("1", "true", "yes")
 
 
+# ── Arabic OpenAI centroid search ─────────────────────────────────────────────
+
+_OPENAI_ENABLED = _is_truthy(os.environ.get("OPENAI_ENABLED"))
+_openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY")) if _OPENAI_ENABLED else None
+
+ARABIC_OPENAI_INDEX = "arabic-openai"
+_ARABIC_EMBED_MODEL = "text-embedding-3-small"
+_CENTROIDS_PATH = "/code/arabic_cluster_centroids_final.json"
+_TOP_N_CLUSTERS = 2  # top centroids to pre-filter; 2 × ~1,756 avg ≈ 3,500 docs vs 131k
+
+# Shape: (75, 1536), L2-normalized — loaded once at startup, None if file absent.
+_ARABIC_CENTROIDS = None
+
+def _load_arabic_centroids():
+    global _ARABIC_CENTROIDS
+    if not os.path.exists(_CENTROIDS_PATH):
+        access_log.warning("arabic_centroids_missing", extra={"path": _CENTROIDS_PATH})
+        return
+    with open(_CENTROIDS_PATH) as f:
+        raw = json.load(f)  # list of 75 × 1536 floats
+    mat = np.array(raw, dtype=np.float32)
+    norms = np.linalg.norm(mat, axis=1, keepdims=True)
+    _ARABIC_CENTROIDS = mat / np.maximum(norms, 1e-9)
+    access_log.info("arabic_centroids_loaded", extra={"n_clusters": len(_ARABIC_CENTROIDS)})
+
+_load_arabic_centroids()
+
+
 # Pure lexical index — no embeddings, fast to rebuild.
 LEXICAL_INDEX = "english-lexical"
 
@@ -96,6 +126,13 @@ EMBEDDING_MODELS = {
             "model_id": "mxbai-embed-large",
             "similarity": "cosine",
         },
+    },
+    "arabic-openai": {
+        "label": "text-embedding-3-small (Arabic, centroid-filtered)",
+        "index": ARABIC_OPENAI_INDEX,
+        "enabled": _OPENAI_ENABLED,
+        "multilingual": True,
+        "custom_knn": True,  # bypasses ES inference pipeline; we embed + kNN directly
     },
 }
 
@@ -393,6 +430,9 @@ def index():
         else _ENABLED_MODELS
     )
     for model_key, model in models_to_index.items():
+        if model.get("custom_knn"):
+            results[model_key] = {"skipped": "pre-built index, use test scripts to index"}
+            continue
         _ensure_inference_endpoint(model)
         if model.get("multilingual"):
             # Full corpus: every Arabic doc embeds Arabic text, every English doc embeds English.
@@ -517,6 +557,8 @@ def search(language):
             "request_id": getattr(g, "request_id", None),
             "mode": mode, "model": model_key, "query": query,
         })
+        if model_key == "arabic-openai":
+            return _arabic_openai_search(query, filters)
         return _semantic_search(search_index, query, filters)
 
     # Lexical path
@@ -551,6 +593,57 @@ def _semantic_search(search_index, query, filters):
     except BadRequestError as e:
         return malformed_query_response(e)
     return jsonify(result.body)
+
+
+def _embed_arabic_query(query):
+    """Embed query with text-embedding-3-small and L2-normalize."""
+    resp = _openai_client.embeddings.create(model=_ARABIC_EMBED_MODEL, input=query)
+    vec = np.array(resp.data[0].embedding, dtype=np.float32)
+    norm = np.linalg.norm(vec)
+    return vec / norm if norm > 0 else vec
+
+
+def _top_arabic_clusters(query_vec, n=_TOP_N_CLUSTERS):
+    """Return the n cluster IDs whose centroids are closest to query_vec."""
+    scores = _ARABIC_CENTROIDS @ query_vec  # (75,) cosine sims via dot on unit vectors
+    return np.argsort(scores)[::-1][:n].tolist()
+
+
+def _arabic_openai_search(query, filters):
+    if _ARABIC_CENTROIDS is None:
+        return jsonify({"error": "arabic centroid index not loaded"}), 503
+
+    size = int(request.args.get("size", 10))
+    t0 = time.perf_counter()
+    query_vec = _embed_arabic_query(query)
+    cluster_ids = _top_arabic_clusters(query_vec)
+    embed_ms = round((time.perf_counter() - t0) * 1000, 1)
+
+    # Cluster pre-filter + any user filters (collection, grade) combined
+    cluster_filter = {"terms": {"clusterIdFinal": cluster_ids}}
+    knn_filter = (
+        {"bool": {"must": [cluster_filter] + filters}} if filters else cluster_filter
+    )
+
+    try:
+        result = es_client.options(request_timeout=30).search(
+            index=ARABIC_OPENAI_INDEX,
+            knn={
+                "field": "embedding",
+                "query_vector": query_vec.tolist(),
+                "k": size,
+                "num_candidates": min(size * 20, 500),
+                "filter": knn_filter,
+            },
+            size=size,
+            _source={"excludes": ["embedding"]},
+        )
+    except BadRequestError as e:
+        return malformed_query_response(e)
+
+    body = result.body
+    body["_meta"] = {"clusters": cluster_ids, "embed_ms": embed_ms}
+    return jsonify(body)
 
 
 if __name__ == "__main__":
