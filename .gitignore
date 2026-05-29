@@ -20,3 +20,7 @@ data/
 /arabic_cluster_centroids_v3.json
 /arabic_cluster_map_v3.json
 /arabic_cluster_report_v3.md
+/arabic_cluster_centroids_final.json
+/arabic_cluster_map_final.json
+/arabic_cluster_report_final.md
+/k_sweep_report.md

@@ -27,6 +27,33 @@ On the graph — proposed nomenclature for approval:
 
 ---
 
+## 2026-05-28 — k=75 chosen as final cluster count
+
+**k-sweep results** (v3 vectors, 131,728 hadiths, MiniBatchKMeans, random_state=42):
+
+| k | Pairs>0.93 | Max sim | Cohesion | Median size |
+|---|---|---|---|---|
+| 50 | 2 | 0.936 | 0.624 | 2,531 |
+| **75** | **2** | **0.932** | **0.638** | **1,635** |
+| 100 | 7 | 0.947 | 0.639 | 1,158 |
+| 125 | 4 | 0.966 | 0.648 | 1,007 |
+| 150 | 12 | 0.952 | 0.652 | 872 |
+| 175 | 9 | 0.955 | 0.661 | 770 |
+| 200 | 9 | 0.951 | 0.665 | 673 |
+
+**Finding:** The floor is 2 pairs above 0.93 — both k=50 and k=75 hit this floor. Those 2 pairs are irreducible: genuinely adjacent topics (e.g. related prayer sub-topics) that no k separates. From k=100 upward the count spikes to 7-12, meaning real over-splitting.
+
+**Decision: k=75.** Rationale:
+- Same pairs>0.93 as k=50 (the floor) — no benefit going lower
+- Cohesion 0.638 — solid, well above the 0.60 floor
+- Median cluster size 1,635 — large enough for meaningful two-stage pre-filtering
+- Max centroid similarity 0.932 — the 2 close pairs are just barely above threshold, not the 0.975 crisis from v2
+- Two-stage search speedup: top 2 centroids → ~3,270 docs vs 131k = **40x** reduction in search space
+
+**Final artifacts:** `arabic_cluster_map_final.json`, `arabic_cluster_centroids_final.json`, `arabic_cluster_report_final.md`; `clusterIdFinal` field on all ES docs in `arabic-openai`.
+
+---
+
 ## 2026-05-28 — Cluster comparison: v2 (mixed isnad) vs v3 (clean matn)
 
 **Setup:** Both runs used k=150 MiniBatchKMeans on the same 131,728 hadiths. The only difference is the vectors: v2 used full arabicText for the 30k untagged Sunan hadiths; v3 re-embedded those 30k using regex-extracted matn.
