@@ -73,6 +73,11 @@ source_fields.append("lang")
 es_query = ({"query": {"exists": {"field": cluster_field}}}
             if cluster_field else {"query": {"match_all": {}}})
 
+# For size/cohesion plots we want all docs; for UMAP we only need N_UMAP.
+# Fetch up to MAX_FETCH docs; UMAP sub-samples from these.
+# Keeps transfer small for large indexes (131k × 1536-dim is ~800MB of JSON).
+MAX_FETCH = max(N_UMAP * 3, 20_000)
+
 for hit in es_scan(es, index=ES_INDEX,
         query=es_query,
         _source=source_fields, size=500):
@@ -84,6 +89,9 @@ for hit in es_scan(es, index=ES_INDEX,
     if cluster_field:
         labels_stored.append(hit["_source"].get(cluster_field, -1))
     langs.append(hit["_source"].get("lang", "?"))
+    if len(ids) >= MAX_FETCH:
+        print(f"  Reached MAX_FETCH={MAX_FETCH:,} — stopping scan early")
+        break
 
 X = np.array(X, dtype=np.float32)
 X /= np.maximum(np.linalg.norm(X, axis=1, keepdims=True), 1e-9)
