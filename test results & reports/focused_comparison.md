@@ -14,22 +14,22 @@ Three semantic models tested head-to-head.
 
 **Overlaps:** arabic ∩ english = 0 | arabic ∩ mxbai = 0 | english ∩ mxbai = 0
 
-### arabic-openai (wall=432ms | embed=412.6ms | clusters=[67, 50])
+### arabic-openai (wall=1254ms | embed=1136.8ms | clusters=[27, 74])
 
 | # | Score | Hadith | Text |
 |---|---|---|---|
-| 1 | 0.693 | `nasai 2966` | Ibn Umar said: "When the Messenger of Allah arrived in Makkah he circumambulated the House seven times, then he prayed t |
-| 2 | 0.689 | `bukhari 4752` | Narrated Ibn Abi Mulaika: I heard `Aisha reciting: "When you invented a lie (and carry it) on your tongues." (24.15) |
-| 3 | 0.681 | `ahmad 37` | It was narrated from Muhammad bin Jubair bin Mut'im that 'Uthman said: I wish that I had asked the Messenger of Allah (ﷺ |
-| 4 | 0.680 | `muslim 2307 c` | This hadith has been transmitted on the authority of Anas with a slight variation of wording. |
-| 5 | 0.680 | `adab 489` | Abu'd-Duha said: "Masruq and Shutayr ibn Shakal met in the mosque. The people sitting in circles in the mosque moved tow |
-| 6 | 0.678 | `muslim 1452 c` | Ahadith like this is transmitted by 'A'isha through another chain of narrators. |
-| 7 | 0.678 | `muslim 555 b` | Sa'd b. Yazid Abu Mas'ama reported: I said to Anas like (that mentioned above). |
-| 8 | 0.675 | `bukhari 2628` | Narrated Aiman: I went to `Aisha and she was wearing a coarse dress costing five Dirhams. `Aisha said, "Look up and see  |
-| 9 | 0.671 | `bukhari 1641, 1642` | Narrated Muhammad bin `Abdur-Rahman bin Nawfal Al-Qurashi: I asked `Urwa bin Az-Zubair (regarding the Hajj of the Prophe |
-| 10 | 0.670 | `bukhari 1983` | Narrated Mutarrif from `Imran Ibn Husain: That the Prophet asked him (Imran) or asked a man and `Imran was listening, "O |
+| 1 | 0.689 | `bukhari 4752` | Narrated Ibn Abi Mulaika: I heard `Aisha reciting: "When you invented a lie (and carry it) on your tongues." (24.15) |
+| 2 | 0.679 | `muslim 1452 c` | Ahadith like this is transmitted by 'A'isha through another chain of narrators. |
+| 3 | 0.675 | `bukhari 2628` | Narrated Aiman: I went to `Aisha and she was wearing a coarse dress costing five Dirhams. `Aisha said, "Look up and see  |
+| 4 | 0.671 | `bukhari 1641, 1642` | Narrated Muhammad bin `Abdur-Rahman bin Nawfal Al-Qurashi: I asked `Urwa bin Az-Zubair (regarding the Hajj of the Prophe |
+| 5 | 0.669 | `muslim 738 e` | It is reported on the authority of 'A'isha that the prayer of Allah's Messenger (may peace be upon him) in the night con |
+| 6 | 0.668 | `bukhari 4872` | Narrated `Abdullah bin Masud: The Prophet used to recite: "Fahal-min-Maddakir (then is there any that will receive admon |
+| 7 | 0.667 | `abudawud 1341` | Abu Salamah b. 'Abd al-Rahman asked 'Aishah, the wife of the Prophet (saws): How did the Messenger of Allah (saws) pray  |
+| 8 | 0.665 | `tirmidhi 588` | Sa'eed bin Abi Hind narrated from some of the companions of Ikrimah: "The Prophet would glance during Salat" and he ment |
+| 9 | 0.665 | `tirmidhi 1839` | Narrated Jabir: That the Prophet (saws) said: "What an excellent condiment vinegar is." |
+| 10 | 0.665 | `muslim 1479 d` | Ibn Abbas (Allah be pleased with them) is reported to have said: I intended to ask Umar about those two ladies who had p |
 
-### english-openai (wall=197ms | embed=179.0ms | full-index)
+### english-openai (wall=731ms | embed=635.6ms | full-index)
 
 | # | Score | Hadith | Text |
 |---|---|---|---|
@@ -44,7 +44,7 @@ Three semantic models tested head-to-head.
 | 9 | 0.772 | `mishkat 3224` | ‘A’isha told that when Sauda became old she said, “Messenger of God, I appoint to ‘A'isha the day you visit me” (Cf. the |
 | 10 | 0.770 | `abudawud 4880` | Narrated Aisha, Ummul Mu'minin: Ibn Awn said: I asked about the meaning of intisar (revenge) in the Qur'anic verse: "But |
 
-### mxbai (wall=579ms | full-index)
+### mxbai (wall=1286ms | full-index)
 
 | # | Score | Hadith | Text |
 |---|---|---|---|
@@ -65,22 +65,22 @@ Three semantic models tested head-to-head.
 
 **Overlaps:** arabic ∩ english = 0 | arabic ∩ mxbai = 0 | english ∩ mxbai = 2
 
-### arabic-openai (wall=372ms | embed=350.4ms | clusters=[74, 29])
+### arabic-openai (wall=436ms | embed=419.6ms | clusters=[70, 64])
 
 | # | Score | Hadith | Text |
 |---|---|---|---|
 | 1 | 0.655 | `ibnmajah 1977` | It was narrated from Ibn 'Abbas that: the Prophet said: "The best of you is the one who is best to his wife, and I am th |
-| 2 | 0.648 | `nasai 1130` | It was narrated that 'Aishah said: "I noticed the Messenger of Allah (SAW) was missing one night and I found him prostra |
-| 3 | 0.647 | `abudawud 879` | ‘A’ishah said; one night I missed the Messenger of Allah (may peace be upon him) and when I sought him on the spot of pr |
-| 4 | 0.647 | `nasai 169` | It was narrated from Abu Hurairah that 'Aishah said: "I noticed the Prophet (PBUH) was not there one night, so I started |
-| 5 | 0.639 | `ahmad 957` | It was narrated from ‘Ali (رضي الله عنه) that The Messenger of Allah (ﷺ) used to say at the end of his Witr: `O Allah, I |
-| 6 | 0.637 | `abudawud 5230` | Narrated AbuUmamah: The Messenger of Allah (saws) came out to us leaning on a stick. We stood up to show respect to him. |
-| 7 | 0.637 | `ahmad 751` | It was narrated from `Ali (رضي الله عنه) that The Prophet (ﷺ) used to say at the end of his Witr `O Allah, I seek refuge |
-| 8 | 0.636 | `nasai 813` | It was narrated from Anas that the Prophet (saws) used to say: "Make your rows straight, make your rows straight, make y |
-| 9 | 0.635 | `ahmad 1295` | It was narrated from ‘Ali (رضي الله عنه) that The Prophet (ﷺ) used to say at the end of his Witr. “O Allah, I seek refug |
-| 10 | 0.635 | `adab 942` | Abu Hurayra reported that the Prophet, may Allah bless him and grant him peace, said, "When one of you yawns, he should  |
+| 2 | 0.648 | `abudawud 879` | ‘A’ishah said; one night I missed the Messenger of Allah (may peace be upon him) and when I sought him on the spot of pr |
+| 3 | 0.647 | `nasai 169` | It was narrated from Abu Hurairah that 'Aishah said: "I noticed the Prophet (PBUH) was not there one night, so I started |
+| 4 | 0.645 | `nasai 1130` | It was narrated that 'Aishah said: "I noticed the Messenger of Allah (SAW) was missing one night and I found him prostra |
+| 5 | 0.640 | `muslim 19 b` | The above hadith has been mentioned with a different chain with a slightly different wording at the beginning, then foll |
+| 6 | 0.636 | `nasai 813` | It was narrated from Anas that the Prophet (saws) used to say: "Make your rows straight, make your rows straight, make y |
+| 7 | 0.635 | `adab 942` | Abu Hurayra reported that the Prophet, may Allah bless him and grant him peace, said, "When one of you yawns, he should  |
+| 8 | 0.635 | `muslim 632 b` | Abu Huraira reported Allah's Messenger (may peace be upon him) as saying: Angels take turns among you by night and by da |
+| 9 | 0.633 | `ahmad 1398` | It was narrated from Moosa bin Talhah, from his father, that The Prophet (ﷺ) said: “Let one of you put something in fron |
+| 10 | 0.633 | `ibnmajah 161` | It was narrated that Abu Hurairah said: "The Messenger of Allah said: 'Do not revile my Companions, for by The One in Wh |
 
-### english-openai (wall=197ms | embed=170.8ms | full-index)
+### english-openai (wall=458ms | embed=417.7ms | full-index)
 
 | # | Score | Hadith | Text |
 |---|---|---|---|
@@ -95,7 +95,7 @@ Three semantic models tested head-to-head.
 | 9 ✓ | 0.658 | `tirmidhi 2513` | Abu Hurairah narrated that the Messenger of Allah (s.a.w) said: "Look to one who is lower than you, and do not look to o |
 | 10 | 0.656 | `bukhari 619` | Narrated Abu Huraira: Allah's Apostle said, "Not to wish to be the like of except the like of two men: a man whom Allah  |
 
-### mxbai (wall=83ms | full-index)
+### mxbai (wall=86ms | full-index)
 
 | # | Score | Hadith | Text |
 |---|---|---|---|
@@ -116,9 +116,9 @@ Three semantic models tested head-to-head.
 
 | Query | Model | Top score | Top result | Clusters/Filter |
 |---|---|---|---|---|
-| aisha | arabic-openai | 0.693 | `nasai 2966` — Ibn Umar said: "When the Messenger of Allah arrived in Makkah he circu | [67, 50] |
+| aisha | arabic-openai | 0.689 | `bukhari 4752` — Narrated Ibn Abi Mulaika: I heard `Aisha reciting: "When you invented  | [27, 74] |
 | aisha | english-openai | 0.785 | `bukhari 251` — Narrated 'Aisha: A woman from the tribe of Bani Asad was sitting with  | full-HNSW |
 | aisha | mxbai | 0.850 | `bukhari 3894` — Narrated Aisha: The Prophet engaged me when I was a girl of six (years | full-HNSW |
-| comparing yourself to others | arabic-openai | 0.655 | `ibnmajah 1977` — It was narrated from Ibn 'Abbas that: the Prophet said: "The best of y | [74, 29] |
+| comparing yourself to others | arabic-openai | 0.655 | `ibnmajah 1977` — It was narrated from Ibn 'Abbas that: the Prophet said: "The best of y | [70, 64] |
 | comparing yourself to others | english-openai | 0.688 | `adab 328` — Ibn 'Abbas said, "When you want to mention your companion's faults, re | full-HNSW |
 | comparing yourself to others | mxbai | 0.815 | `forty 18` — The felicitous person takes lessons from (the actions of) others. | full-HNSW |
