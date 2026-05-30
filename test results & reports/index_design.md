@@ -16,7 +16,7 @@
 | `english-openai` | OpenAI `text-embedding-3-small` | 1536 | 48,703 | `englishMatn` (isnad-stripped) | ✅ live |
 | `arabic-openai` | OpenAI `text-embedding-3-small` | 1536 | 131,728 | `arabicMatn` (Arabic matn) | ✅ live |
 | `english-openai-large` | OpenAI `text-embedding-3-large` | 3072 | 48,703 | `englishMatn` (isnad-stripped) | ✅ live |
-| `arabic-openai-large` | OpenAI `text-embedding-3-large` | 3072 | 123,800 | `arabicMatn` | ⚠️ partial (quota, 94%) |
+| `arabic-openai-large` | OpenAI `text-embedding-3-large` | 3072 | 131,728 | `arabicMatn` | ✅ complete |
 | `multilingual-e5` | `intfloat/multilingual-e5-large` | 1024 | ~28k | shared corpus (see §3) | 🔄 indexing (~14h) |
 | `bge-m3` | `BAAI/bge-m3` | 1024 | 0 | shared corpus | ⏳ not started |
 | `qwen3-embed` | `Qwen/Qwen3-Embedding` | TBD | 0 | shared corpus | ⏳ not started |
@@ -247,7 +247,7 @@ Output: `test results & reports/focused_comparison.md`
 | Run `cluster_new_models.py multilingual-e5` | E5 indexing finishing (~14h) |
 | Deploy E5 centroids, test E5 search | Above |
 | Arabic OpenAI Large: index remaining ~8k docs | OpenAI API credit top-up |
-| Run `cluster_new_models.py arabic-openai-large` | Above |
+| Run `cluster_new_models.py arabic-openai-large` | Ready — run now |
 | Start BGE-M3 indexing | Decision: worth ~17h? |
 | Start Qwen3 indexing | Decision: worth ~17h? |
 | Regenerate focused_comparison.md with all working models | All above |

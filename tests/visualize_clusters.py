@@ -40,19 +40,26 @@ es = Elasticsearch("http://172.31.250.10:9200",
 
 # ── Which cluster field does this index use? ──────────────────────────────────
 CLUSTER_FIELD_MAP = {
-    "arabic-openai":       "clusterIdTranslated",
-    "english-openai":      None,    # no clustering
-    "english-mxbai":       None,    # no clustering
-    "english-openai-large": "clusterIdLarge",
-    "arabic-openai-large": "clusterIdLarge",
-    "multilingual-e5":     "clusterIdShared",
-    "bge-m3":              "clusterIdShared",
-    "qwen3-embed":         "clusterIdShared",
+    "arabic-openai":            "clusterIdTranslated",   # translated-only (production)
+    "arabic-openai-all":        "clusterIdFinal",        # all Arabic hadiths (pass --all flag)
+    "english-openai":           "clusterIdFinal",        # English matn-only (48k)
+    "english-mxbai":            None,                    # no clustering
+    "english-openai-large":     "clusterIdLarge",
+    "arabic-openai-large":      "clusterIdLarge",
+    "multilingual-e5":          "clusterIdShared",
+    "bge-m3":                   "clusterIdShared",
+    "qwen3-embed":              "clusterIdShared",
+}
+# When index alias ends in -all, use the real index name but alternate field
+INDEX_ALIAS = {
+    "arabic-openai-all": "arabic-openai",
 }
 cluster_field = CLUSTER_FIELD_MAP.get(INDEX, "clusterIdShared")
+# Resolve alias (e.g. arabic-openai-all → real index arabic-openai)
+ES_INDEX = INDEX_ALIAS.get(INDEX, INDEX)
 
 # ── Fetch embeddings (+ cluster labels if available) ──────────────────────────
-print(f"Fetching embeddings from {INDEX}...")
+print(f"Fetching embeddings from {ES_INDEX} (field: {cluster_field})...")
 t0 = time.time()
 ids, X, labels_stored, langs = [], [], [], []
 
@@ -61,8 +68,13 @@ if cluster_field:
     source_fields.append(cluster_field)
 source_fields.append("lang")
 
-for hit in es_scan(es, index=INDEX,
-        query={"query": {"match_all": {}}},
+# Filter to docs that actually have the cluster field populated.
+# Avoids fetching docs with no label (e.g. Arabic-only hadiths lack clusterIdTranslated).
+es_query = ({"query": {"exists": {"field": cluster_field}}}
+            if cluster_field else {"query": {"match_all": {}}})
+
+for hit in es_scan(es, index=ES_INDEX,
+        query=es_query,
         _source=source_fields, size=500):
     emb = hit["_source"].get("embedding")
     if not emb:
