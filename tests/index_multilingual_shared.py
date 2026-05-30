@@ -45,7 +45,7 @@ MODEL_PASSAGE_PREFIX = {
     "Qwen/Qwen3-Embedding":           "",          # Qwen3 uses task instructions, handled separately
 }
 
-BATCH_SIZE = 64     # conservative — sentence-transformers CPU batching
+BATCH_SIZE = 256    # ONNX backend saturates well at 256; larger gives diminishing returns
 MAP_FILE   = "/code/english_matn_map.json"
 CKPT_DIR   = "/code"
 
@@ -65,10 +65,24 @@ def get_model_name():
 def load_model(model_name):
     from sentence_transformers import SentenceTransformer
     print(f"Loading model: {model_name}")
-    kwargs = {"trust_remote_code": True}
-    model = SentenceTransformer(model_name, **kwargs)
+    # Prefer INT8 ONNX → FP32 ONNX → PyTorch (fastest to slowest on CPU)
+    onnx_candidates = [
+        "onnx/model_qint8_avx512_vnni.onnx",
+        "onnx/model_qint8_arm64.onnx",
+        "onnx/model.onnx",
+    ]
+    for onnx_file in onnx_candidates:
+        try:
+            model = SentenceTransformer(model_name, backend="onnx",
+                model_kwargs={"file_name": onnx_file}, trust_remote_code=True)
+            dim = model.get_sentence_embedding_dimension()
+            print(f"  ONNX backend ({onnx_file.split('/')[-1]}) | dim={dim}")
+            return model, dim
+        except Exception as e:
+            print(f"  {onnx_file.split('/')[-1]} unavailable: {e}")
+    model = SentenceTransformer(model_name, trust_remote_code=True)
     dim = model.get_sentence_embedding_dimension()
-    print(f"  Embedding dimension: {dim}")
+    print(f"  PyTorch backend | dim={dim}")
     return model, dim
 
 
@@ -241,6 +255,12 @@ def run(model_name):
     if not todo:
         print("Nothing to do — index is complete")
         return
+
+    # Warmup: first ONNX inference call triggers JIT compilation (~60s cold).
+    # Running it before the timed loop keeps the rate estimate clean.
+    print("Warming up model...")
+    _ = encode(st_model, model_name, [todo[0]["text"]])
+    print("  Warmup done")
 
     # Embed and index
     t0 = indexed = es_errs = 0
