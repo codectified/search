@@ -45,7 +45,7 @@ MODEL_PASSAGE_PREFIX = {
     "Qwen/Qwen3-Embedding":           "",          # Qwen3 uses task instructions, handled separately
 }
 
-BATCH_SIZE = 256    # ONNX backend saturates well at 256; larger gives diminishing returns
+BATCH_SIZE = 64     # matches the benchmark batch size at which INT8 ONNX hits ~55 docs/s
 MAP_FILE   = "/code/english_matn_map.json"
 CKPT_DIR   = "/code"
 
@@ -256,10 +256,11 @@ def run(model_name):
         print("Nothing to do — index is complete")
         return
 
-    # Warmup: first ONNX inference call triggers JIT compilation (~60s cold).
-    # Running it before the timed loop keeps the rate estimate clean.
+    # Warmup: ONNX JIT-compiles a separate plan per batch size.
+    # Warm up at the actual BATCH_SIZE so the first real batch runs at full speed.
     print("Warming up model...")
-    _ = encode(st_model, model_name, [todo[0]["text"]])
+    warmup_texts = [todo[0]["text"]] * min(BATCH_SIZE, len(todo))
+    _ = encode(st_model, model_name, warmup_texts)
     print("  Warmup done")
 
     # Embed and index
