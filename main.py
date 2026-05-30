@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import sys
+import threading
 import time
 import uuid
 from flask import Flask, request, jsonify, g
@@ -88,10 +89,22 @@ _ARABIC_TRANSLATED_CENTROIDS_PATH = "/code/arabic_translated_cluster_centroids.j
 _ENGLISH_CENTROIDS_PATH           = "/code/english_cluster_centroids.json"
 _TOP_N_CLUSTERS                   = 2  # 2 × ~649 avg ≈ 1,300 docs vs 48k
 
+# ── New model centroid paths ───────────────────────────────────────────────────
+# Keyed by model key — centroids for each shared/large index.
+# Files are written by tests/cluster_new_models.py after indexing completes.
+_NEW_MODEL_CENTROID_PATHS = {
+    "english-openai-large": "/code/english-openai-large_centroids.json",
+    "arabic-openai-large":  "/code/arabic-openai-large_centroids.json",
+    "multilingual-e5":      "/code/multilingual-e5_centroids.json",
+    "bge-m3":               "/code/bge-m3_centroids.json",
+    "qwen3-embed":          "/code/qwen3-embed_centroids.json",
+}
+
 # Shape: (k, 1536), L2-normalized — loaded once at startup, None if file absent.
 _ARABIC_CENTROIDS            = None
 _ARABIC_TRANSLATED_CENTROIDS = None
 _ENGLISH_CENTROIDS           = None
+_NEW_MODEL_CENTROIDS         = {}    # {model_key: np.ndarray | None}
 
 
 def _load_centroids(path, label):
@@ -118,8 +131,59 @@ def _load_english_centroids():
     _ENGLISH_CENTROIDS = _load_centroids(_ENGLISH_CENTROIDS_PATH, "english")
 
 
+def _load_new_model_centroids():
+    global _NEW_MODEL_CENTROIDS
+    for key, path in _NEW_MODEL_CENTROID_PATHS.items():
+        _NEW_MODEL_CENTROIDS[key] = _load_centroids(path, key)
+
+
 _load_arabic_centroids()
 _load_english_centroids()
+_load_new_model_centroids()
+
+# ── Sentence-transformers lazy loading ────────────────────────────────────────
+# Models are loaded on first request to avoid startup memory pressure.
+# /tmp/stpkg is the install target used by the indexing scripts.
+_ST_MODELS: dict = {}
+_ST_LOCK = threading.Lock()
+_OPENAI_LARGE_MODEL = "text-embedding-3-large"
+
+
+def _get_st_model(model_key):
+    if model_key in _ST_MODELS:
+        return _ST_MODELS[model_key]
+    with _ST_LOCK:
+        if model_key in _ST_MODELS:
+            return _ST_MODELS[model_key]
+        sys.path.insert(0, "/tmp/stpkg")
+        os.environ.setdefault("HF_HOME", "/tmp/hf_cache")
+        from sentence_transformers import SentenceTransformer  # noqa: PLC0415
+        embed_model = EMBEDDING_MODELS[model_key]["embed_model"]
+        st = SentenceTransformer(embed_model, trust_remote_code=True)
+        _ST_MODELS[model_key] = st
+        return st
+
+
+def _embed_with_st(model_key, query):
+    """Embed a single query string using a sentence-transformers model."""
+    model_cfg = EMBEDDING_MODELS[model_key]
+    prefix = model_cfg.get("query_prefix", "")
+    embed_model_name = model_cfg["embed_model"]
+    st = _get_st_model(model_key)
+    text = prefix + query
+    if "Qwen3" in embed_model_name or "qwen3" in embed_model_name.lower():
+        vec = st.encode([text], normalize_embeddings=True, prompt_name="query")[0]
+    else:
+        vec = st.encode([text], normalize_embeddings=True)[0]
+    return np.array(vec, dtype=np.float32)
+
+
+def _embed_openai_large(query):
+    """Embed query with text-embedding-3-large and L2-normalize."""
+    resp = _openai_client.embeddings.create(model=_OPENAI_LARGE_MODEL, input=query)
+    vec = np.array(resp.data[0].embedding, dtype=np.float32)
+    norm = np.linalg.norm(vec)
+    return vec / norm if norm > 0 else vec
 
 
 # Pure lexical index — no embeddings, fast to rebuild.
@@ -160,6 +224,48 @@ EMBEDDING_MODELS = {
         "enabled": _OPENAI_ENABLED,
         "multilingual": False,
         "custom_knn": True,
+    },
+    # ── New models ─────────────────────────────────────────────────────────────
+    "english-openai-large": {
+        "label": "text-embedding-3-large (English matn)",
+        "index": "english-openai-large",
+        "enabled": _OPENAI_ENABLED,
+        "multilingual": False,
+        "custom_knn": True,
+    },
+    "arabic-openai-large": {
+        "label": "text-embedding-3-large (Arabic matn)",
+        "index": "arabic-openai-large",
+        "enabled": _OPENAI_ENABLED,
+        "multilingual": True,
+        "custom_knn": True,
+    },
+    "multilingual-e5": {
+        "label": "multilingual-e5-large (shared English+Arabic)",
+        "index": "multilingual-e5",
+        "enabled": True,
+        "multilingual": True,
+        "custom_knn": True,
+        "embed_model": "intfloat/multilingual-e5-large",
+        "query_prefix": "query: ",
+    },
+    "bge-m3": {
+        "label": "BGE-M3 (shared English+Arabic)",
+        "index": "bge-m3",
+        "enabled": True,
+        "multilingual": True,
+        "custom_knn": True,
+        "embed_model": "BAAI/bge-m3",
+        "query_prefix": "",
+    },
+    "qwen3-embed": {
+        "label": "Qwen3-Embedding (shared English+Arabic)",
+        "index": "qwen3-embed",
+        "enabled": True,
+        "multilingual": True,
+        "custom_knn": True,
+        "embed_model": "Qwen/Qwen3-Embedding",
+        "query_prefix": "",
     },
 }
 
@@ -620,6 +726,12 @@ def search(language):
             return _arabic_openai_search(query, filters)
         if model_key == "english-openai":
             return _english_openai_search(query, filters)
+        if model_key == "english-openai-large":
+            return _english_openai_large_search(query, filters)
+        if model_key == "arabic-openai-large":
+            return _arabic_openai_large_search(query, filters)
+        if model_key in ("multilingual-e5", "bge-m3", "qwen3-embed"):
+            return _multilingual_shared_search(model_key, query, filters)
         if model_key == "mxbai":
             return _mxbai_search(search_index, query, filters)
         return _semantic_search(search_index, query, filters)
@@ -788,6 +900,137 @@ def _arabic_openai_search(query, filters):
         "embed_ms": embed_ms,
     }
     return jsonify(body)
+
+
+def _english_openai_large_search(query, filters):
+    size  = int(request.args.get("size", 10))
+    dedup = not _is_truthy(request.args.get("show_dupes", "0"))
+
+    t0        = time.perf_counter()
+    query_vec = _embed_openai_large(query)
+    embed_ms  = round((time.perf_counter() - t0) * 1000, 1)
+
+    fetch_size   = size * 3 if dedup else size
+    base_filters = [_CHAIN_REF_FILTER] + filters
+    knn_filter   = {"bool": {"must": base_filters}} if len(base_filters) > 1 else base_filters[0]
+
+    cents = _NEW_MODEL_CENTROIDS.get("english-openai-large")
+    if cents is not None:
+        cluster_ids    = _top_clusters(cents, query_vec)
+        cluster_filter = {"terms": {"clusterIdLarge": cluster_ids}}
+        knn_filter     = {"bool": {"must": [cluster_filter] + base_filters}}
+
+    try:
+        result = es_client.options(request_timeout=30).search(
+            index="english-openai-large",
+            knn={
+                "field": "embedding",
+                "query_vector": query_vec.tolist(),
+                "k": fetch_size,
+                "num_candidates": min(fetch_size * 20, 1000),
+                "filter": knn_filter,
+            },
+            size=fetch_size,
+            _source={"excludes": ["embedding"]},
+        )
+    except NotFoundError:
+        return jsonify({"error": "english-openai-large index not found — not yet indexed"}), 404
+    except BadRequestError as e:
+        return malformed_query_response(e)
+
+    if dedup:
+        deduped = _dedup_hits(result.body["hits"]["hits"], size)
+        result.body["hits"]["hits"] = deduped
+        result.body["hits"]["total"]["value"] = len(deduped)
+
+    result.body["_meta"] = {"embed_ms": embed_ms, "dedup": dedup}
+    return jsonify(result.body)
+
+
+def _arabic_openai_large_search(query, filters):
+    cents = _NEW_MODEL_CENTROIDS.get("arabic-openai-large")
+    if cents is None:
+        return jsonify({"error": "arabic-openai-large centroid index not loaded"}), 503
+
+    size = int(request.args.get("size", 10))
+    t0   = time.perf_counter()
+    query_vec   = _embed_openai_large(query)
+    cluster_ids = _top_clusters(cents, query_vec)
+    embed_ms    = round((time.perf_counter() - t0) * 1000, 1)
+
+    cluster_filter    = {"terms": {"clusterIdLarge": cluster_ids}}
+    translated_filter = {"exists": {"field": "englishText"}}
+    all_filters       = [cluster_filter, translated_filter, _CHAIN_REF_FILTER] + filters
+    knn_filter        = {"bool": {"must": all_filters}}
+
+    try:
+        result = es_client.options(request_timeout=30).search(
+            index="arabic-openai-large",
+            knn={
+                "field": "embedding",
+                "query_vector": query_vec.tolist(),
+                "k": size,
+                "num_candidates": min(size * 20, 500),
+                "filter": knn_filter,
+            },
+            size=size,
+            _source={"excludes": ["embedding"]},
+        )
+    except NotFoundError:
+        return jsonify({"error": "arabic-openai-large index not found — not yet indexed"}), 404
+    except BadRequestError as e:
+        return malformed_query_response(e)
+
+    body = result.body
+    body["_meta"] = {"clusters": cluster_ids, "embed_ms": embed_ms}
+    return jsonify(body)
+
+
+def _multilingual_shared_search(model_key, query, filters):
+    size  = int(request.args.get("size", 10))
+    dedup = not _is_truthy(request.args.get("show_dupes", "0"))
+
+    t0        = time.perf_counter()
+    query_vec = _embed_with_st(model_key, query)
+    embed_ms  = round((time.perf_counter() - t0) * 1000, 1)
+
+    fetch_size   = size * 3 if dedup else size
+    base_filters = [_CHAIN_REF_FILTER] + filters
+
+    cents = _NEW_MODEL_CENTROIDS.get(model_key)
+    if cents is not None:
+        cluster_ids    = _top_clusters(cents, query_vec)
+        cluster_filter = {"terms": {"clusterIdShared": cluster_ids}}
+        knn_filter     = {"bool": {"must": [cluster_filter] + base_filters}}
+    else:
+        knn_filter = {"bool": {"must": base_filters}} if len(base_filters) > 1 else base_filters[0]
+
+    index_name = EMBEDDING_MODELS[model_key]["index"]
+    try:
+        result = es_client.options(request_timeout=60).search(
+            index=index_name,
+            knn={
+                "field": "embedding",
+                "query_vector": query_vec.tolist(),
+                "k": fetch_size,
+                "num_candidates": min(fetch_size * 20, 1000),
+                "filter": knn_filter,
+            },
+            size=fetch_size,
+            _source={"excludes": ["embedding"]},
+        )
+    except NotFoundError:
+        return jsonify({"error": f"{index_name} index not found — not yet indexed"}), 404
+    except BadRequestError as e:
+        return malformed_query_response(e)
+
+    if dedup:
+        deduped = _dedup_hits(result.body["hits"]["hits"], size)
+        result.body["hits"]["hits"] = deduped
+        result.body["hits"]["total"]["value"] = len(deduped)
+
+    result.body["_meta"] = {"embed_ms": embed_ms, "dedup": dedup, "model": model_key}
+    return jsonify(result.body)
 
 
 if __name__ == "__main__":

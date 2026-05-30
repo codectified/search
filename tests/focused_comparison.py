@@ -3,19 +3,24 @@ Focused side-by-side comparison for the two priority queries:
   - "aisha"
   - "comparing yourself to others"
 
-Three semantic models compared:
-  - mxbai          (English matn vectors, full HNSW, chain-ref + dedup ON)
-  - english-openai (English matn vectors, full HNSW, chain-ref + dedup ON)
-  - arabic-openai  (Arabic matn vectors, translated centroids k=75, englishText filter)
+Eight semantic models compared — split into two groups:
+
+  English-side (embed English matn):
+    mxbai, english-openai, english-openai-large
+
+  Multilingual / Arabic-side:
+    arabic-openai, arabic-openai-large,
+    multilingual-e5, bge-m3, qwen3-embed
 
 Report format:
-  - Table with RANK as rows, MODEL as columns — perpendicular dimensions
+  - Two tables per query (English-side / Multilingual-side)
+  - RANK as rows, MODEL as columns
   - Each cell: reference + score, full English text, Arabic text
-  - Metadata (collection, number, score, clusters) in each cell
+  - Filters and dedup applied consistently
 
 Filters:
-  - Chain-ref filter ON for all models (applied client-side for arabic-openai)
-  - Dedup ON for all models (when filtered results reduce top-N, pool is extended)
+  - Chain-ref filter ON for all models
+  - Dedup ON for all models
 
 Writes: /code/test results & reports/focused_comparison.md
 
@@ -35,15 +40,34 @@ ES_HOST = "http://172.31.250.10:9200"
 es = Elasticsearch(ES_HOST, basic_auth=("elastic", os.environ["ELASTIC_PASSWORD"]),
                    request_timeout=60)
 
-QUERIES  = ["aisha", "comparing yourself to others"]
-MODELS   = ["mxbai", "english-openai", "arabic-openai"]
-N        = 10   # valid results to show per model
-FETCH    = 50   # fetch pool — large enough that N survive filtering/dedup
+QUERIES = ["aisha", "comparing yourself to others"]
+
+# English-side models (embed English matn, look up Arabic from arabic-openai)
+EN_MODELS  = ["mxbai", "english-openai", "english-openai-large"]
+# Multilingual / Arabic-side models
+ML_MODELS  = ["arabic-openai", "arabic-openai-large",
+               "multilingual-e5", "bge-m3", "qwen3-embed"]
+
+ALL_MODELS = EN_MODELS + ML_MODELS
+
+N      = 10   # valid results to show per model
+FETCH  = 50   # fetch pool — large enough that N survive filtering/dedup
 
 COLLECTION_BOOSTS = {
     "bukhari": 5.0, "muslim": 4.8, "nasai": 3.5, "abudawud": 3.0,
     "tirmidhi": 2.5, "ibnmajah": 2.0, "malik": 2.5, "ahmad": 2.5,
     "darimi": 2.0, "mishkat": 2.5, "nawawi40": 3.3, "riyadussalihin": 2.5,
+}
+
+MODEL_LABEL = {
+    "mxbai":               "Mixedbread",
+    "english-openai":      "English OpenAI (small)",
+    "english-openai-large": "English OpenAI (large)",
+    "arabic-openai":       "Arabic OpenAI (small)",
+    "arabic-openai-large": "Arabic OpenAI (large)",
+    "multilingual-e5":     "E5 Multilingual",
+    "bge-m3":              "BGE-M3",
+    "qwen3-embed":         "Qwen3-Embed",
 }
 
 
@@ -63,7 +87,7 @@ def search_api(model, query, size):
            + "&mode=semantic"
            + "&size="   + str(size))
     t0 = time.perf_counter()
-    with urllib.request.urlopen(url, timeout=60) as r:
+    with urllib.request.urlopen(url, timeout=120) as r:
         body = json.loads(r.read())
     wall_ms = round((time.perf_counter() - t0) * 1000)
     hits = body.get("hits", {}).get("hits", [])
@@ -116,18 +140,11 @@ all_results = {}
 
 for q in QUERIES:
     all_results[q] = {}
-    for model in MODELS:
+    for model in ALL_MODELS:
         try:
             hits, meta, wall_ms = search_api(model, q, FETCH)
-
-            # Apply chain-ref filter (mxbai/english-openai handle internally,
-            # but arabic-openai may not — belt-and-suspenders)
             hits = chain_filter(hits)
-
-            # Apply dedup (mxbai/english-openai already deduped by API,
-            # but arabic-openai doesn't dedup — apply here for consistency)
             hits = dedup_hits(hits, N, COLLECTION_BOOSTS)
-
             all_results[q][model] = {
                 "hits": hits[:N],
                 "meta": meta,
@@ -140,12 +157,13 @@ for q in QUERIES:
             print(f"  ERROR [{model}] '{q}': {e}")
 
 
-# ── Prefetch Arabic text for all non-arabic-openai results ────────────────────
-print("Fetching Arabic text for mxbai and english-openai results...")
+# ── Prefetch Arabic text for English-side models ───────────────────────────────
+# arabic-side / multilingual models store arabicMatn directly in the source doc.
+print("Fetching Arabic text for English-side model results...")
 arabic_text_cache = {}
 
 for q in QUERIES:
-    for model in ["mxbai", "english-openai"]:
+    for model in EN_MODELS:
         for h in all_results[q][model]["hits"]:
             s   = h["_source"]
             key = (s.get("collection", ""), str(s.get("hadithNumber", "")))
@@ -157,21 +175,74 @@ for q in QUERIES:
 lines = []
 W = lines.append
 
-MODEL_LABEL = {
-    "mxbai":          "Mixedbread",
-    "english-openai": "English OpenAI",
-    "arabic-openai":  "Arabic OpenAI",
-}
+# Models whose Arabic text comes from source doc directly
+ARABIC_IN_SOURCE = set(ML_MODELS)
+
+
+def build_cell(model, rank, q):
+    r    = all_results[q][model]
+    hits = r["hits"]
+
+    if r["error"]:
+        return f"*ERROR: {r['error'][:80]}*"
+    if rank - 1 >= len(hits):
+        return "—"
+
+    h = hits[rank - 1]
+    s = h["_source"]
+
+    coll    = s.get("collection", "")
+    num     = s.get("hadithNumber", "")
+    score   = h["_score"]
+    dup_grp = s.get("dupGroup") or ""
+
+    ref_line = f"**`{coll} {num}`** &nbsp; {score:.4f}"
+    if dup_grp:
+        ref_line += f" · dup:{dup_grp}"
+
+    en_text = cell_safe(strip_html(s.get("hadithText") or s.get("englishText") or
+                                   s.get("englishMatn") or ""))
+
+    if model in ARABIC_IN_SOURCE:
+        ar_raw = strip_html(s.get("arabicMatn") or s.get("arabicText") or "")
+    else:
+        ar_raw = arabic_text_cache.get((coll, str(num)), "")
+    ar_text = cell_safe(ar_raw)
+
+    parts = [ref_line]
+    if en_text:
+        parts.append(en_text)
+    if ar_text:
+        parts.append(f"*{ar_text}*")
+
+    return "<br><br>".join(parts)
+
+
+def build_table(models, q):
+    W("| Rank | " + " | ".join(MODEL_LABEL[m] for m in models) + " |")
+    W("|:---:|" + "|".join("---" for _ in models) + "|")
+    for rank in range(1, N + 1):
+        cells = [f"**{rank}**"] + [build_cell(m, rank, q) for m in models]
+        W("| " + " | ".join(cells) + " |")
+    W("")
+
 
 W("# Focused Comparison")
 W("")
 W("Queries: **\"aisha\"** · **\"comparing yourself to others\"**")
 W("")
+W("## Models and filters")
+W("")
 W("| Model | Corpus | Search method | Chain-ref filter | Dedup | Pool → results |")
 W("|---|---|---|---|---|---|")
-W(f"| **Mixedbread** | English matn (48,703) | Full HNSW | API (has `isChainRef` field) | API | {FETCH} → {N} |")
-W(f"| **English OpenAI** | English matn (48,703) | Full HNSW | API (has `isChainRef` field) | API | {FETCH} → {N} |")
-W(f"| **Arabic OpenAI** | Arabic matn (44,896 translated) | Centroid k=75 → HNSW | API (backfilled `isChainRef` field) | Client-side | {FETCH} → {N} |")
+W(f"| **Mixedbread** | English matn (48,703) | Full HNSW | API | API | {FETCH} → {N} |")
+W(f"| **English OpenAI (small)** | English matn (48,703) | Full HNSW | API | API | {FETCH} → {N} |")
+W(f"| **English OpenAI (large)** | English matn (48,703) | Full HNSW / centroid if ready | API | API | {FETCH} → {N} |")
+W(f"| **Arabic OpenAI (small)** | Arabic matn, translated 44,896 | Centroid k=75 → HNSW | API | Client-side | {FETCH} → {N} |")
+W(f"| **Arabic OpenAI (large)** | Arabic matn, 131,728 | Centroid → HNSW | API | Client-side | {FETCH} → {N} |")
+W(f"| **E5 Multilingual** | Shared EN+AR corpus 180,430 | Centroid → HNSW | API | API | {FETCH} → {N} |")
+W(f"| **BGE-M3** | Shared EN+AR corpus 180,430 | Centroid → HNSW | API | API | {FETCH} → {N} |")
+W(f"| **Qwen3-Embed** | Shared EN+AR corpus 180,430 | Centroid → HNSW | API | API | {FETCH} → {N} |")
 W("")
 W("---")
 W("")
@@ -180,68 +251,26 @@ for q in QUERIES:
     W(f"# Query: \"{q}\"")
     W("")
 
-    lat_parts = [f"**{MODEL_LABEL[m]}** {all_results[q][m]['wall_ms']}ms" for m in MODELS]
-    ar_meta   = all_results[q]["arabic-openai"]["meta"]
-    clusters  = ar_meta.get("clusters", "")
+    # Latency row
+    lat_parts = [f"**{MODEL_LABEL[m]}** {all_results[q][m]['wall_ms']}ms"
+                 for m in ALL_MODELS if not all_results[q][m]["error"]]
     W("**Latency:** " + " · ".join(lat_parts) + "  ")
-    if clusters:
-        W(f"**Arabic OpenAI clusters selected:** {clusters}  ")
+
+    # Cluster info for centroid models
+    for m in ["arabic-openai", "arabic-openai-large", "multilingual-e5", "bge-m3", "qwen3-embed"]:
+        clusters = all_results[q][m]["meta"].get("clusters")
+        if clusters:
+            W(f"**{MODEL_LABEL[m]} clusters:** {clusters}  ")
     W("")
 
-    # Table header: Rank | Model1 | Model2 | Model3
-    W("| Rank | " + " | ".join(MODEL_LABEL[m] for m in MODELS) + " |")
-    W("|:---:|" + "|".join("---" for _ in MODELS) + "|")
-
-    for rank in range(1, N + 1):
-        cells = [f"**{rank}**"]
-
-        for model in MODELS:
-            r    = all_results[q][model]
-            hits = r["hits"]
-            meta = r["meta"]
-
-            if r["error"]:
-                cells.append(f"*ERROR: {r['error'][:60]}*")
-                continue
-
-            if rank - 1 >= len(hits):
-                cells.append("—")
-                continue
-
-            h = hits[rank - 1]
-            s = h["_source"]
-
-            coll    = s.get("collection", "")
-            num     = s.get("hadithNumber", "")
-            score   = h["_score"]
-            dup_grp = s.get("dupGroup") or ""
-
-            # Reference + score line
-            ref_line = f"**`{coll} {num}`** &nbsp; {score:.4f}"
-            if dup_grp:
-                ref_line += f" · dup-rep:{dup_grp}"
-
-            # English text (full, pipe-safe)
-            en_text = cell_safe(strip_html(s.get("hadithText") or s.get("englishText") or ""))
-
-            # Arabic text
-            if model == "arabic-openai":
-                ar_raw = strip_html(s.get("arabicMatn") or s.get("arabicText") or "")
-            else:
-                ar_raw = arabic_text_cache.get((coll, str(num)), "")
-            ar_text = cell_safe(ar_raw)
-
-            parts = [ref_line]
-            if en_text:
-                parts.append(en_text)
-            if ar_text:
-                parts.append(f"*{ar_text}*")
-
-            cells.append("<br><br>".join(parts))
-
-        W("| " + " | ".join(cells) + " |")
-
+    W("## English-side models")
     W("")
+    build_table(EN_MODELS, q)
+
+    W("## Multilingual / Arabic-side models")
+    W("")
+    build_table(ML_MODELS, q)
+
     W("---")
     W("")
 
