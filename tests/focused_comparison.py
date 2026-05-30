@@ -171,7 +171,7 @@ W("| Model | Corpus | Search method | Chain-ref filter | Dedup | Pool → result
 W("|---|---|---|---|---|---|")
 W(f"| **Mixedbread** | English matn (48,703) | Full HNSW | API (has `isChainRef` field) | API | {FETCH} → {N} |")
 W(f"| **English OpenAI** | English matn (48,703) | Full HNSW | API (has `isChainRef` field) | API | {FETCH} → {N} |")
-W(f"| **Arabic OpenAI** | Arabic matn (44,896 translated) | Centroid k=75 → HNSW | Client-side (no `isChainRef` in index) | Client-side | {FETCH} → {N} |")
+W(f"| **Arabic OpenAI** | Arabic matn (44,896 translated) | Centroid k=75 → HNSW | API (backfilled `isChainRef` field) | Client-side | {FETCH} → {N} |")
 W("")
 W("---")
 W("")

@@ -762,7 +762,7 @@ def _arabic_openai_search(query, filters):
     cluster_filter = {"terms": {cluster_field: cluster_ids}}
     # Only return hadiths with an English translation.
     translated_filter = {"exists": {"field": "englishText"}}
-    all_filters = [cluster_filter, translated_filter] + filters
+    all_filters = [cluster_filter, translated_filter, _CHAIN_REF_FILTER] + filters
     knn_filter  = {"bool": {"must": all_filters}}
 
     try:
