@@ -9,13 +9,12 @@ Three semantic models compared:
   - arabic-openai  (Arabic matn vectors, translated centroids k=75, englishText filter)
 
 Report format:
-  - Grouped by RANK (not by model) for direct side-by-side evaluation
-  - English text primary, Arabic text secondary
-  - Full hadith text (no artificial truncation)
-  - Metadata (collection, number, score, clusters) on header line
+  - Table with RANK as rows, MODEL as columns — perpendicular dimensions
+  - Each cell: reference + score, full English text, Arabic text
+  - Metadata (collection, number, score, clusters) in each cell
 
 Filters:
-  - Chain-ref filter ON for all models
+  - Chain-ref filter ON for all models (applied client-side for arabic-openai)
   - Dedup ON for all models (when filtered results reduce top-N, pool is extended)
 
 Writes: /code/test results & reports/focused_comparison.md
@@ -50,6 +49,11 @@ COLLECTION_BOOSTS = {
 
 def strip_html(t):
     return re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', t or '')).strip()
+
+
+def cell_safe(t):
+    """Escape pipe characters and replace newlines for use in a markdown table cell."""
+    return t.replace("|", "\\|").replace("\n", " ")
 
 
 def search_api(model, query, size):
@@ -153,42 +157,43 @@ for q in QUERIES:
 lines = []
 W = lines.append
 
-W("# Focused Comparison — Rank-by-Rank")
-W("")
-W("Queries: **\"aisha\"** · **\"comparing yourself to others\"**  ")
-W("Filters: chain-ref ON · dedup ON · extended pool to maintain N=10 valid results per model  ")
-W("")
-W("| Model | Corpus | Method | Filters |")
-W("|---|---|---|---|")
-W("| **mxbai** | English matn | Full HNSW (48,703 docs) | chain-ref + dedup |")
-W("| **english-openai** | English matn | Full HNSW (48,703 docs) | chain-ref + dedup |")
-W("| **arabic-openai** | Arabic matn | Translated centroids k=75 (44,896 docs) | englishText + dedup |")
-W("")
-W("---")
-W("")
-
 MODEL_LABEL = {
     "mxbai":          "Mixedbread",
     "english-openai": "English OpenAI",
     "arabic-openai":  "Arabic OpenAI",
 }
 
+W("# Focused Comparison")
+W("")
+W("Queries: **\"aisha\"** · **\"comparing yourself to others\"**")
+W("")
+W("| Model | Corpus | Search method | Chain-ref filter | Dedup | Pool → results |")
+W("|---|---|---|---|---|---|")
+W(f"| **Mixedbread** | English matn (48,703) | Full HNSW | API (has `isChainRef` field) | API | {FETCH} → {N} |")
+W(f"| **English OpenAI** | English matn (48,703) | Full HNSW | API (has `isChainRef` field) | API | {FETCH} → {N} |")
+W(f"| **Arabic OpenAI** | Arabic matn (44,896 translated) | Centroid k=75 → HNSW | Client-side (no `isChainRef` in index) | Client-side | {FETCH} → {N} |")
+W("")
+W("---")
+W("")
+
 for q in QUERIES:
     W(f"# Query: \"{q}\"")
     W("")
 
-    # Latency summary
-    latencies = []
-    for model in MODELS:
-        r = all_results[q][model]
-        latencies.append(f"**{MODEL_LABEL[model]}** {r['wall_ms']}ms")
-    W("**Latency:** " + " · ".join(latencies))
+    lat_parts = [f"**{MODEL_LABEL[m]}** {all_results[q][m]['wall_ms']}ms" for m in MODELS]
+    ar_meta   = all_results[q]["arabic-openai"]["meta"]
+    clusters  = ar_meta.get("clusters", "")
+    W("**Latency:** " + " · ".join(lat_parts) + "  ")
+    if clusters:
+        W(f"**Arabic OpenAI clusters selected:** {clusters}  ")
     W("")
 
-    # Rank-by-rank
+    # Table header: Rank | Model1 | Model2 | Model3
+    W("| Rank | " + " | ".join(MODEL_LABEL[m] for m in MODELS) + " |")
+    W("|:---:|" + "|".join("---" for _ in MODELS) + "|")
+
     for rank in range(1, N + 1):
-        W(f"## Rank {rank}")
-        W("")
+        cells = [f"**{rank}**"]
 
         for model in MODELS:
             r    = all_results[q][model]
@@ -196,79 +201,51 @@ for q in QUERIES:
             meta = r["meta"]
 
             if r["error"]:
-                W(f"### {MODEL_LABEL[model]}")
-                W(f"> ERROR: {r['error']}")
-                W("")
+                cells.append(f"*ERROR: {r['error'][:60]}*")
                 continue
 
             if rank - 1 >= len(hits):
-                W(f"### {MODEL_LABEL[model]}")
-                W("> *(no result at this rank)*")
-                W("")
+                cells.append("—")
                 continue
 
             h = hits[rank - 1]
             s = h["_source"]
 
-            coll     = s.get("collection", "")
-            num      = s.get("hadithNumber", "")
-            score    = h["_score"]
-            dup_grp  = s.get("dupGroup") or ""
-            clusters = meta.get("clusters", "")
-            cluster_str = f" · clusters: {clusters}" if clusters else ""
-            dup_str     = f" · dup-rep: {dup_grp}" if dup_grp else ""
+            coll    = s.get("collection", "")
+            num     = s.get("hadithNumber", "")
+            score   = h["_score"]
+            dup_grp = s.get("dupGroup") or ""
 
-            # Header line: model name + metadata
-            W(f"### {MODEL_LABEL[model]} &nbsp;&nbsp; `{coll} {num}` &nbsp; score: {score:.4f}{cluster_str}{dup_str}")
-            W("")
+            # Reference + score line
+            ref_line = f"**`{coll} {num}`** &nbsp; {score:.4f}"
+            if dup_grp:
+                ref_line += f" · dup-rep:{dup_grp}"
 
-            # English text (primary)
-            en_text = strip_html(s.get("hadithText") or s.get("englishText") or "")
-            if en_text:
-                W(en_text)
-                W("")
+            # English text (full, pipe-safe)
+            en_text = cell_safe(strip_html(s.get("hadithText") or s.get("englishText") or ""))
 
-            # Arabic text (secondary)
+            # Arabic text
             if model == "arabic-openai":
-                ar_text = strip_html(s.get("arabicMatn") or s.get("arabicText") or "")
+                ar_raw = strip_html(s.get("arabicMatn") or s.get("arabicText") or "")
             else:
-                key     = (coll, str(num))
-                ar_text = arabic_text_cache.get(key, "")
+                ar_raw = arabic_text_cache.get((coll, str(num)), "")
+            ar_text = cell_safe(ar_raw)
 
+            parts = [ref_line]
+            if en_text:
+                parts.append(en_text)
             if ar_text:
-                W(f"**Arabic:** {ar_text}")
-                W("")
+                parts.append(f"*{ar_text}*")
 
-        W("---")
-        W("")
+            cells.append("<br><br>".join(parts))
+
+        W("| " + " | ".join(cells) + " |")
 
     W("")
-
-# ── Summary table ──────────────────────────────────────────────────────────────
-W("# Summary — Top-3 per Query")
-W("")
-for q in QUERIES:
-    W(f"## \"{q}\"")
-    W("")
-    W(f"| Rank | {' | '.join(MODEL_LABEL[m] for m in MODELS)} |")
-    W(f"|---|{'|'.join('---' for _ in MODELS)}|")
-    for rank in range(1, 4):
-        row = [f"**{rank}**"]
-        for model in MODELS:
-            hits = all_results[q][model]["hits"]
-            if rank - 1 < len(hits):
-                h = hits[rank - 1]
-                s = h["_source"]
-                ref  = f"{s.get('collection','')} {s.get('hadithNumber','')}"
-                text = strip_html(s.get("hadithText") or s.get("englishText", ""))[:80]
-                row.append(f"`{ref}` {text}")
-            else:
-                row.append("—")
-        W("| " + " | ".join(row) + " |")
+    W("---")
     W("")
 
-W("---")
-W(f"*Generated by `tests/focused_comparison.py`*")
+W(f"*Generated by `tests/focused_comparison.py` · pool={FETCH} · N={N}*")
 
 # ── Write report ───────────────────────────────────────────────────────────────
 os.makedirs(os.path.dirname(REPORT), exist_ok=True)
