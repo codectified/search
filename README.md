@@ -4,13 +4,30 @@ Flask + Elasticsearch search service for sunnah.com. Supports lexical (BM25) and
 
 ---
 
+## Query routing
+
+Every query is classified before dispatch. The client-specified `mode` is overridden when the query shape makes the intent unambiguous:
+
+| Query shape | Route | Example |
+|---|---|---|
+| Wrapped in double quotes | Lexical phrase (`match_phrase`) | `"angel of death"` |
+| Collection slug + number | Direct reference lookup (`term` filter) | `bukhari 1`, `muslim 100a` |
+| Multi-word Arabic | Arabic BM25 (`match` with `custom_arabic` analyzer) | `الصلاة في المسجد` |
+| Everything else | Client `mode` (`semantic` or `lexical`) | `prayer at night` |
+
+Phrase and reference routes always fire regardless of `mode`. Single Arabic words fall through to the client mode (semantic by default).
+
+The `_meta` field in every response indicates which path was taken: `reference`, `lexical_phrase`, `lexical_arabic`, or absent for semantic/standard BM25.
+
+---
+
 ## Semantic search filters (mxbai)
 
 The mxbai semantic search path (`_mxbai_search`) applies two filters by default that are not active in lexical mode.
 
 ### Chain-reference filter
 
-~1,574 hadiths (~3.2% of the index) are **chain-reference entries** — they contain no actual hadith text (matn). They exist because Sahih Muslim records multiple transmission chains for the same hadith; each variant beyond the first looks like:
+Some hadiths are **chain-reference entries** — they contain no actual hadith text (matn). They exist because Sahih Muslim records multiple transmission chains for the same hadith; each variant beyond the first looks like:
 
 > *"This hadith has been narrated through another chain of transmitters..."*
 
@@ -25,7 +42,7 @@ The `isChainRef` field is only stored on documents that were explicitly flagged.
 
 ### Duplicate deduplication
 
-~6,405 hadiths (13.2%) belong to a **duplicate group** — the same matn narrated through different chains, or the same hadith appearing across multiple collections. Each group has a shared `dupGroup` integer ID (the smallest URN in the group).
+~12,471 hadiths (~25.6%) belong to a **duplicate group** — the same matn narrated through different chains, or the same hadith appearing across multiple collections. Each group has a shared `dupGroup` integer ID (the smallest URN in the group).
 
 By default, results are deduplicated: only the **most authoritative** representative of each group is shown.
 
@@ -43,7 +60,7 @@ By default, results are deduplicated: only the **most authoritative** representa
    | Abu Dawud | 3.0 |
    | *(others)* | 1.0–2.5 |
 
-3. Singletons (`dupGroup=0`) pass through unchanged.
+3. Singletons (no `dupGroup`) pass through unchanged.
 4. Merge group representatives + singletons, re-sort by raw ES score, return top `size`.
 
 This means if the same hadith appears in both Bukhari and a weaker collection, the Bukhari version is always shown — even if the weaker collection's version had a marginally higher vector similarity score.
@@ -69,15 +86,25 @@ Because dedup fetches `size × 3` candidates before collapsing, a `size=10` requ
 Browser / PHP website
         │
         ▼
-  Flask API (this repo) ──► Elasticsearch
-                                  │
-                      ┌───────────┴───────────┐
-                      │  english-lexical       │  BM25, no embeddings
-                      │  english-mxbai         │  mxbai-embed-large via Ollama
-                      └───────────────────────┘
+  Flask API (this repo)
+        │
+        ├── query router (_route_query)
+        │       ├── reference lookup  → english-mxbai (term filter)
+        │       ├── phrase search     → english-mxbai (match_phrase)
+        │       ├── Arabic BM25       → english-mxbai (custom_arabic analyzer)
+        │       ├── semantic          → english-mxbai (mxbai kNN)
+        │       └── standard BM25     → english-mxbai (cross_fields)
+        │
+        └── Elasticsearch
+                └── english-mxbai   — single index for all search paths
+                                       text fields: hadithText, arabicText
+                                       vector field: semantic_text (mxbai-embed-large, 1024-dim)
+                                       embeds: englishMatn (isnad-stripped body)
 
   Ollama (runs on host, port 11434) — serves mxbai-embed-large
 ```
+
+`english-mxbai` serves all query types. BM25 paths use `hadithText` and `arabicText` as standard text fields; the semantic path uses the `semantic_text` ES inference field backed by mxbai-embed-large.
 
 Each index name in ES is an **alias** (e.g. `english-mxbai`) pointing to a timestamped backing index. Reindexing builds a new backing index and atomically swaps the alias — the live index keeps serving traffic during the rebuild.
 
@@ -182,19 +209,53 @@ ollama pull mxbai-embed-large
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-### 4. Build the indexes
+### 4. Get the index onto prod
 
-The prod stack is exposed on **port 7650**:
+The `english-mxbai` index holds ~49k hadiths with pre-computed 1024-dim vectors. Building it from scratch requires Ollama running on the prod host and takes several hours on a t3.medium. There are two faster alternatives:
 
-```
-http://<server>:7650/index?password=<INDEXING_PASSWORD>
+#### Option A — ES snapshot restore (preferred if transferring from another server)
+
+Copies the raw Lucene segments — no re-embedding, no backfill scripts needed. The pre-computed inference chunks travel with the snapshot.
+
+```bash
+# On the source server (dev/staging):
+# 1. Register a filesystem snapshot repository
+curl -X PUT "http://localhost:9200/_snapshot/my_backup" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"fs","settings":{"location":"/usr/share/elasticsearch/snapshots"}}'
+
+# 2. Take the snapshot
+curl -X PUT "http://localhost:9200/_snapshot/my_backup/english-mxbai-snap?wait_for_completion=true" \
+  -d '{"indices":"english-mxbai"}'
+
+# 3. Copy snapshot files to prod (path must match the repo location in docker-compose.prod.yml)
+rsync -avz /path/to/es-snapshots/ prod-server:/path/to/es-snapshots/
+
+# On prod:
+# 4. Register the same repo path, then restore
+curl -X PUT "http://localhost:9200/_snapshot/my_backup"  \
+  -d '{"type":"fs","settings":{"location":"/usr/share/elasticsearch/snapshots"}}'
+curl -X POST "http://localhost:9200/_snapshot/my_backup/english-mxbai-snap/_restore"
 ```
 
-To index only one at a time:
-```
+After restore all index fields (`englishMatn`, `gradeNorm`, `dupGroup`, `isChainRef`) are already populated — no further steps needed.
+
+#### Option B — Fresh index from MySQL + backfill + dedup
+
+Use this if you are doing a clean production install without access to another server's data.
+
+```bash
+# 1. Build the index (embeds ~49k hadiths via Ollama — slow on t3.medium)
 http://<server>:7650/index?password=<INDEXING_PASSWORD>&model=mxbai
-http://<server>:7650/index?password=<INDEXING_PASSWORD>&model=lexical
+
+# 2. Compute duplicate groups using the mxbai vectors (runs in ~2-3 min)
+docker exec search-web-1 python3 /code/tests/dedup_mxbai.py
+
+# 3. Backfill gradeNorm, englishMatn, isChainRef (self-contained, no external deps)
+docker exec search-web-1 python3 /code/tests/backfill_prod_fields.py
 ```
+
+`backfill_prod_fields.py` is safe to re-run — it skips docs where fields are already set.
 
 Check index status:
 ```
@@ -254,7 +315,8 @@ Mode is passed as a query parameter:
 | `size` | integer | 10 | Number of results to return |
 | `show_dupes` | `0`, `1` | `0` | When `1`, bypass dedup and return all dup-group members unfiltered |
 | `collection` | collection slug | — | Filter to a specific collection |
-| `grade` | grade string | — | Filter by hadith grade |
+| `gradeNorm` | `Sahih`, `Hasan`, `Da'if`, `Maudu'`, `Uncategorized` | — | Filter by normalised grade (preferred) |
+| `grade` | grade string | — | Filter by raw grade field (legacy fallback) |
 
 ---
 
