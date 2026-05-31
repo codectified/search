@@ -150,17 +150,51 @@ ollama pull mxbai-embed-large
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-### 4. Build the indexes
+### 4. Get the index onto prod
 
-The prod stack is exposed on **port 7650**. Builds both lexical and semantic by default:
+The `english-mxbai` index holds ~49k hadiths with pre-computed 1024-dim vectors. Two options:
 
+#### Option A — ES snapshot restore (preferred when migrating from another server)
+
+Copies raw Lucene segments — no re-embedding required. All fields (`englishMatn`, `gradeNorm`, `dupGroup`, `isChainRef`) travel with the snapshot.
+
+```bash
+# On source server — register a filesystem repo and take the snapshot
+curl -X PUT "http://localhost:9200/_snapshot/backup" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"fs","settings":{"location":"/usr/share/elasticsearch/snapshots"}}'
+
+curl -X PUT "http://localhost:9200/_snapshot/backup/english-mxbai-snap?wait_for_completion=true" \
+  -d '{"indices":"english-mxbai"}'
+
+# Copy snapshot files to prod server (path must match the repo location in docker-compose.prod.yml)
+rsync -avz /path/to/es-snapshots/ prod-server:/path/to/es-snapshots/
+
+# On prod — register the same repo path and restore
+curl -X PUT "http://localhost:9200/_snapshot/backup" \
+  -d '{"type":"fs","settings":{"location":"/usr/share/elasticsearch/snapshots"}}'
+curl -X POST "http://localhost:9200/_snapshot/backup/english-mxbai-snap/_restore"
 ```
-http://<server>:7650/index?password=<INDEXING_PASSWORD>
+
+#### Option B — Fresh index from MySQL
+
+Use this for a clean prod install with no source server to copy from.
+
+```bash
+# 1. Build the index (embeds ~49k hadiths via Ollama — slow on CPU-only instances)
+http://<server>:7650/index?password=<INDEXING_PASSWORD>&targets=mxbai
+
+# 2. Compute duplicate groups from the mxbai vectors (~2-3 min)
+docker exec search-web-1 python3 /code/tests/dedup_mxbai.py
+
+# 3. Backfill gradeNorm, englishMatn, isChainRef (self-contained, no external deps)
+docker exec search-web-1 python3 /code/tests/backfill_prod_fields.py
 ```
 
-Add `&targets=lexical` or `&targets=mxbai` to build a subset.
+Scripts in `tests/` are safe to re-run — they skip docs where the target fields are already set.
 
-Check index status:
+#### Both options: check index status
+
 ```
 http://<server>:7650/index/status
 ```
@@ -301,6 +335,18 @@ Mode is passed as a query parameter:
 **Why Elasticsearch has a fixed IP** (`172.31.250.10`): at high request rates, Docker's embedded DNS resolver becomes a bottleneck and throws `EAI_AGAIN` errors. Hardcoding the IP in `/etc/hosts` via `extra_hosts` makes every lookup instant.
 
 **Observability services** (`es-exporter`, `alloy`) ship ES metrics and logs to Grafana Cloud. They require Grafana Cloud credentials in `.env` — if you don't have them, these services will fail to connect but won't break the rest of the stack.
+
+---
+
+## Migration scripts
+
+| Script | Purpose |
+|---|---|
+| `tests/transfer_index_to_prod.py` | Stream `english-mxbai` from one ES to another, preserving pre-computed vectors. Requires direct network connectivity between the two instances. |
+| `tests/dedup_mxbai.py` | Compute `dupGroup` from mxbai vectors using union-find cosine similarity (threshold 0.93). Writes `dupGroup` back via parallel `es.update()`. |
+| `tests/backfill_prod_fields.py` | Backfill `gradeNorm`, `englishMatn`, and `isChainRef` from fields already on the index. No external files or other indexes required. |
+
+All three scripts connect to ES at `$ES_HOST` (default `http://172.31.250.10:9200`) using `$ELASTIC_PASSWORD`. Run inside the prod container.
 
 ---
 
