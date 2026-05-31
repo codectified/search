@@ -10,16 +10,25 @@ Flask + Elasticsearch search service for sunnah.com. Supports lexical (BM25) and
 Browser / PHP website
         │
         ▼
-  Flask API (this repo) ──► Elasticsearch
-                                  │
-                      ┌───────────┴───────────┐
-                      │  english-lexical       │  BM25, no embeddings
-                      │  english-mxbai         │  mxbai-embed-large vectors
-                      └───────────────────────┘
+  Flask API (this repo)
+        │
+        ├── query router (_route_query)
+        │       ├── "quoted query"    → match_phrase   ─┐
+        │       ├── collection + num  → term filter     ├─ english-mxbai
+        │       ├── multi-word Arabic → Arabic BM25     │   (text fields)
+        │       ├── standard BM25    → cross_fields    ─┘
+        │       └── mode=semantic    → kNN             ── english-mxbai
+        │                                                  (semantic_text)
+        └── Elasticsearch
+                └── english-mxbai  — single index for all paths
+                        text fields:  hadithText, arabicText
+                        vector field: semantic_text (mxbai-embed-large, 1024-dim)
 
   Ollama (host, port 11434) — embeds search queries
   HF Dedicated Endpoint (optional) — embeds documents at index time
 ```
+
+`english-mxbai` serves all query types. BM25 paths use `hadithText` and `arabicText` as standard text fields; the semantic path uses the `semantic_text` ES inference field. A separate `english-lexical` index is no longer required.
 
 Each index name in ES is an **alias** (e.g. `english-mxbai`) pointing to a timestamped backing index. Reindexing builds a new backing index and atomically swaps the alias — the live index keeps serving traffic during the rebuild.
 
@@ -211,6 +220,47 @@ Locally, the `searchdb` service in `docker-compose.yml` provisions this DB and
 creates the table from `searchdb/01-search_metrics.sql` on first start — no setup
 needed beyond `docker compose up`. In prod, searchdb is an externally-managed DB
 (like the hadith MySQL); just point the `searchdb_*` env vars at it.
+
+---
+
+## Corpus normalization fields
+
+Three fields on `english-mxbai` clean up search results without requiring a re-index:
+
+### `isChainRef` (boolean)
+
+Some hadiths — especially in Sahih Muslim — are pure narrator-chain entries: they record an alternate transmission path for a hadith that already appears elsewhere, with no hadith body of their own. These are flagged `isChainRef: true` and excluded from all search paths by default.
+
+The filter uses `must_not: {term: {isChainRef: true}}` rather than `term: false` because the field is only stored on flagged docs. Docs without the field (the vast majority) must pass through, not be excluded.
+
+### `dupGroup` (integer)
+
+The same matn sometimes appears across multiple collections or with minor textual variants. Docs belonging to a duplicate group share a `dupGroup` id (the smallest URN in the group). Singletons have no `dupGroup` field.
+
+In semantic search results, groups are collapsed to a single representative — the member from the most authoritative collection (using `COLLECTION_BOOSTS` as the ranking key, raw score as tiebreaker). Pass `?show_dupes=1` to bypass deduplication and see all group members.
+
+Dedup count is approximate: isnad stripping used to compute the vectors is not 100% accurate for all collections, so a small number of groups may be wrong (false positives or false negatives).
+
+### `gradeNorm` (keyword)
+
+Normalised hadith grade across five buckets: `Sahih`, `Hasan`, `Da'if`, `Maudu'`, `Uncategorized`. Filter results by passing `?gradeNorm=Sahih` (preferred over the legacy `?grade=` raw field, which varies in spelling across sources).
+
+---
+
+## Query routing
+
+Every incoming query is classified before dispatch. Some query shapes override the client-supplied `mode`:
+
+| Query shape | Route | Example |
+|---|---|---|
+| Wrapped in double quotes | Lexical phrase (`match_phrase`) | `"angel of death"` |
+| Collection slug + number | Direct reference lookup (`term` filter) | `bukhari 1`, `muslim 100a` |
+| Multi-word Arabic | Arabic BM25 (`match` + `custom_arabic` analyzer) | `الصلاة في المسجد` |
+| Everything else | Client `mode` (semantic or lexical) | `prayer at night` |
+
+Quoted and reference patterns always fire regardless of `mode`. Single Arabic words fall through to the requested mode (semantic by default).
+
+Every response includes a `_meta.route` field naming the path taken: `"reference"`, `"lexical_phrase"`, `"lexical_arabic"`, or `"semantic"`. Standard BM25 responses omit `_meta` (unchanged path).
 
 ---
 
