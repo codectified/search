@@ -223,6 +223,30 @@ needed beyond `docker compose up`. In prod, searchdb is an externally-managed DB
 
 ---
 
+## Corpus normalization fields
+
+Three fields on `english-mxbai` clean up search results without requiring a re-index:
+
+### `isChainRef` (boolean)
+
+Some hadiths — especially in Sahih Muslim — are pure narrator-chain entries: they record an alternate transmission path for a hadith that already appears elsewhere, with no hadith body of their own. These are flagged `isChainRef: true` and excluded from all search paths by default.
+
+The filter uses `must_not: {term: {isChainRef: true}}` rather than `term: false` because the field is only stored on flagged docs. Docs without the field (the vast majority) must pass through, not be excluded.
+
+### `dupGroup` (integer)
+
+The same matn sometimes appears across multiple collections or with minor textual variants. Docs belonging to a duplicate group share a `dupGroup` id (the smallest URN in the group). Singletons have no `dupGroup` field.
+
+In semantic search results, groups are collapsed to a single representative — the member from the most authoritative collection (using `COLLECTION_BOOSTS` as the ranking key, raw score as tiebreaker). Pass `?show_dupes=1` to bypass deduplication and see all group members.
+
+Dedup count is approximate: isnad stripping used to compute the vectors is not 100% accurate for all collections, so a small number of groups may be wrong (false positives or false negatives).
+
+### `gradeNorm` (keyword)
+
+Normalised hadith grade across five buckets: `Sahih`, `Hasan`, `Da'if`, `Maudu'`, `Uncategorized`. Filter results by passing `?gradeNorm=Sahih` (preferred over the legacy `?grade=` raw field, which varies in spelling across sources).
+
+---
+
 ## Query routing
 
 Every incoming query is classified before dispatch. Some query shapes override the client-supplied `mode`:
