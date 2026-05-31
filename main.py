@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import random
+import re
 import socket
 import sys
 import threading
@@ -95,7 +96,7 @@ def _int_env(name, default):
 
 
 # Pure lexical index — no embeddings, fast to rebuild.
-LEXICAL_INDEX = "english-lexical"
+LEXICAL_INDEX = "english-mxbai"
 
 # Each model gets its own ES index so you can index and switch independently.
 # The semantic field is always called "semantic_text" inside each model's index.
@@ -1186,6 +1187,50 @@ def build_semantic_query(query, filter_clauses):
     }
 
 
+_ARABIC_RE = re.compile(r"[؀-ۿ]")
+
+_COLLECTION_SLUGS = {
+    "bukhari", "muslim", "nasai", "abudawud", "tirmidhi", "ibnmajah",
+    "malik", "ahmad", "nawawi40", "nawawi", "forty", "riyadussalihin",
+    "mishkat", "darimi", "ibnhibban", "baghawi", "adab", "shamail",
+}
+_REF_RE = re.compile(
+    r"^(?P<coll>" + "|".join(_COLLECTION_SLUGS) + r")\s+(?P<num>\d+[a-z]?)$",
+    re.IGNORECASE,
+)
+
+
+def _route_query(query, mode):
+    """Classify the query and return (route, variant, extra).
+
+    route   — "reference" | "lexical" | mode (passes through for semantic/lexical)
+    variant — None | "phrase" | "arabic"
+    extra   — dict with parsed values, e.g. {"collection": ..., "number": ...}
+
+    Rules (applied in order; reference and phrase always override mode):
+      1. Quoted → lexical phrase search
+      2. Collection + number → direct hadith reference lookup
+      3. Multi-word Arabic → lexical BM25 on arabicText
+      4. Otherwise → mode as requested
+    """
+    q = query.strip()
+
+    if len(q) >= 3 and q[0] == '"' and q[-1] == '"':
+        return "lexical", "phrase", {"phrase_text": q[1:-1]}
+
+    m = _REF_RE.match(q)
+    if m:
+        return "reference", None, {
+            "collection": m.group("coll").lower(),
+            "number": m.group("num"),
+        }
+
+    if _ARABIC_RE.search(q) and len(q.split()) >= 2:
+        return "lexical", "arabic", {}
+
+    return mode, None, {}
+
+
 def get_filter_from_args(args):
     filters = []
     if collection := args.getlist("collection"):
@@ -1229,8 +1274,30 @@ def search(language):
     query = _truncate_query(request.args.get("q"))
     filters = get_filter_from_args(request.args)
     mode = _resolve_mode(request.args)
+    size = int(request.args.get("size", 10))
 
-    if mode == SearchMode.SEMANTIC:
+    route, variant, extra = _route_query(query, mode)
+
+    # ── Reference lookup: collection slug + hadith number ─────────────────────
+    if route == "reference":
+        ref_filters = [
+            {"term": {"collection": extra["collection"]}},
+            {"term": {"hadithNumber": extra["number"]}},
+        ] + filters
+        try:
+            result = es_client.search(
+                index=LEXICAL_INDEX,
+                size=10,
+                query={"bool": {"filter": ref_filters}},
+                _source={"excludes": [SEMANTIC_FIELD]},
+            )
+        except (BadRequestError, NotFoundError) as e:
+            return malformed_query_response(e)
+        result.body["_meta"] = {"route": "reference"}
+        return jsonify(result.body)
+
+    # ── Semantic path ──────────────────────────────────────────────────────────
+    if route == SearchMode.SEMANTIC:
         model_key, err = _resolve_model_key(request.args)
         if err:
             return jsonify({"error": err}), 400
@@ -1246,7 +1313,53 @@ def search(language):
         )
         return _semantic_search(model["index"], query, filters)
 
-    # Lexical path
+    # ── Lexical paths ──────────────────────────────────────────────────────────
+
+    # Phrase search: quoted query → match_phrase on hadithText + arabicText
+    if variant == "phrase":
+        phrase = extra["phrase_text"]
+        try:
+            result = es_client.search(
+                index=LEXICAL_INDEX,
+                size=size,
+                query={"bool": {
+                    "filter": filters,
+                    "should": [
+                        {"match_phrase": {"hadithText": phrase}},
+                        {"match_phrase": {"arabicText": phrase}},
+                    ],
+                    "minimum_should_match": 1,
+                }},
+                _source={"excludes": [SEMANTIC_FIELD]},
+                highlight={"number_of_fragments": 0, "fields": {"*": {}}},
+            )
+        except (BadRequestError, NotFoundError) as e:
+            return malformed_query_response(e)
+        result.body["_meta"] = {"route": "lexical_phrase"}
+        return jsonify(result.body)
+
+    # Arabic BM25: multi-word Arabic → match on arabicText with Arabic analyzer
+    if variant == "arabic":
+        try:
+            result = es_client.search(
+                index=LEXICAL_INDEX,
+                size=size,
+                query={"bool": {
+                    "filter": filters,
+                    "must": [{"match": {"arabicText": {
+                        "query": query,
+                        "analyzer": "custom_arabic",
+                    }}}],
+                }},
+                _source={"excludes": [SEMANTIC_FIELD]},
+                highlight={"number_of_fragments": 0, "fields": {"arabicText": {}}},
+            )
+        except (BadRequestError, NotFoundError) as e:
+            return malformed_query_response(e)
+        result.body["_meta"] = {"route": "lexical_arabic"}
+        return jsonify(result.body)
+
+    # Standard BM25: cross-field search with collection boosts
     fields = ["hadithNumber^2", "hadithText", "arabicText", "collection^2"]
 
     def build_lexical(query_type):
@@ -1268,7 +1381,7 @@ def search(language):
     kwargs = {
         "index": LEXICAL_INDEX,
         "from_": request.args.get("from", 0),
-        "size": request.args.get("size", 10),
+        "size": size,
         "_source": {"excludes": [SEMANTIC_FIELD]},
         "highlight": {"number_of_fragments": 0, "fields": {"*": {}}},
         "suggest": get_suggest_block(query),
@@ -1289,7 +1402,7 @@ def search(language):
         query,
         filters,
         request.args.get("from", 0),
-        request.args.get("size", 10),
+        size,
         result.body,
         lexical_ms,
     )
