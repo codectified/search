@@ -85,9 +85,21 @@ def strip_html(t):
     return re.sub(r'\s+', ' ', t).strip()
 
 
-def cell_safe(t):
-    """Escape pipe characters and replace newlines for use in a markdown table cell."""
-    return t.replace("|", "\\|").replace("\n", " ")
+def html_escape(t):
+    return t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def extract_isnad_prefix(full_text, clean_matn):
+    """Return the isnad prefix that was stripped, or empty string."""
+    full  = (full_text or "").strip()
+    matn  = (clean_matn or "").strip()
+    if not full or not matn or full == matn:
+        return ""
+    probe = matn[:60]
+    idx   = full.find(probe)
+    if idx > 5:
+        return full[:idx].strip()
+    return ""
 
 
 def search_api(model, query, size):
@@ -146,17 +158,39 @@ def get_arabic_text(collection, hadith_number):
     return ""
 
 
-def get_english_matn(english_urn):
-    """Look up englishMatn from english-mxbai by englishURN (for Arabic-side results)."""
-    if not english_urn:
-        return ""
+def get_english_text_by_id(doc_id):
+    """Look up englishMatn + hadithText from english-mxbai by _id.
+    Used for models whose source docs don't store text (english-openai-large).
+    Returns (matn, full_text).
+    """
     try:
-        doc_id = f"en:{english_urn}"
-        r = es.get(index="english-mxbai", id=doc_id, _source=["englishMatn"])
-        return strip_html(r["_source"].get("englishMatn") or "")
+        r = es.get(index="english-mxbai", id=doc_id,
+                   _source=["englishMatn", "hadithText"])
+        s = r["_source"]
+        return (strip_html(s.get("englishMatn") or ""),
+                strip_html(s.get("hadithText") or ""))
     except Exception:
         pass
-    return ""
+    return ("", "")
+
+
+def get_english_text_by_urn(english_urn):
+    """Look up englishMatn + hadithText from english-mxbai by englishURN.
+    Used for Arabic-side model results.
+    Returns (matn, full_text).
+    """
+    if not english_urn:
+        return ("", "")
+    try:
+        doc_id = f"en:{english_urn}"
+        r = es.get(index="english-mxbai", id=doc_id,
+                   _source=["englishMatn", "hadithText"])
+        s = r["_source"]
+        return (strip_html(s.get("englishMatn") or ""),
+                strip_html(s.get("hadithText") or ""))
+    except Exception:
+        pass
+    return ("", "")
 
 
 # ── Fetch all results ──────────────────────────────────────────────────────────
@@ -182,10 +216,9 @@ for q in QUERIES:
             print(f"  ERROR [{model}] '{q}': {e}")
 
 
-# ── Prefetch Arabic text for English-side models ───────────────────────────────
-# arabic-side / multilingual models store arabicMatn directly in the source doc.
+# ── Prefetch Arabic text for English-side models ──────────────────────────────
 print("Fetching Arabic text for English-side model results...")
-arabic_text_cache = {}
+arabic_text_cache = {}   # {(coll, num): ar_text}
 
 for q in QUERIES:
     for model in EN_MODELS:
@@ -195,85 +228,125 @@ for q in QUERIES:
             if key not in arabic_text_cache:
                 arabic_text_cache[key] = get_arabic_text(*key)
 
-# ── Prefetch clean English matn for Arabic-side models ────────────────────────
-# Arabic-side indexes store englishText (full, with isnad). We look up clean
-# englishMatn from english-mxbai via the englishURN cross-reference.
-print("Fetching clean English matn for Arabic-side model results...")
-english_matn_cache = {}   # {english_urn: matn_text}
+# ── Prefetch English text for models without text in source ───────────────────
+# english-openai-large docs store no text — look up by _id from english-mxbai.
+# Arabic-side models have englishText (full) but need englishMatn for clean display.
+print("Fetching English text for sparse/Arabic-side model results...")
+english_by_id  = {}    # {doc_id: (matn, full_text)} — for english-openai-large
+english_by_urn = {}    # {urn:    (matn, full_text)} — for ML_MODELS
+
+TEXT_SPARSE_MODELS = {"english-openai-large"}
 
 for q in QUERIES:
-    for model in ML_MODELS:
+    for model in ALL_MODELS:
         for h in all_results[q][model]["hits"]:
-            s   = h["_source"]
-            urn = s.get("englishURN") or s.get("urn")
-            if urn and urn not in english_matn_cache:
-                english_matn_cache[urn] = get_english_matn(urn)
+            s      = h["_source"]
+            doc_id = h["_id"]
+            urn    = s.get("englishURN") or s.get("urn")
+
+            if model in TEXT_SPARSE_MODELS and doc_id not in english_by_id:
+                english_by_id[doc_id] = get_english_text_by_id(doc_id)
+
+            if model in set(ML_MODELS) and urn and urn not in english_by_urn:
+                english_by_urn[urn] = get_english_text_by_urn(urn)
 
 
 # ── Build report ───────────────────────────────────────────────────────────────
 lines = []
 W = lines.append
 
-# Models whose Arabic text comes from source doc directly
 ARABIC_IN_SOURCE = set(ML_MODELS)
 
 
-def build_cell(model, rank, q):
+def resolve_english(model, h):
+    """Return (matn, full_text) for a hit, regardless of model type."""
+    s      = h["_source"]
+    doc_id = h["_id"]
+    urn    = s.get("englishURN") or s.get("urn")
+
+    if model in TEXT_SPARSE_MODELS:
+        return english_by_id.get(doc_id, ("", ""))
+    elif model in ARABIC_IN_SOURCE:
+        matn, full = english_by_urn.get(urn, ("", ""))
+        if not full:
+            full = strip_html(s.get("englishText") or "")
+        return (matn, full)
+    elif model == "english-lexical":
+        full = strip_html(s.get("hadithText") or s.get("englishText") or "")
+        return (full, full)   # no clean matn for lexical; show full as-is
+    else:
+        matn = strip_html(s.get("englishMatn") or "")
+        full = strip_html(s.get("hadithText") or s.get("englishText") or matn)
+        return (matn, full)
+
+
+def build_html_cell(model, rank, q):
     r    = all_results[q][model]
     hits = r["hits"]
 
     if r["error"]:
-        return f"*ERROR: {r['error'][:80]}*"
+        return f"<em>ERROR: {html_escape(r['error'][:80])}</em>"
     if rank - 1 >= len(hits):
-        return "—"
+        return "<em>—</em>"
 
-    h = hits[rank - 1]
-    s = h["_source"]
-
+    h       = hits[rank - 1]
+    s       = h["_source"]
     coll    = s.get("collection", "")
     num     = s.get("hadithNumber", "")
     score   = h["_score"]
     dup_grp = s.get("dupGroup") or ""
 
-    ref_line = f"**`{coll} {num}`** &nbsp; {score:.4f}"
+    ref = f"<strong>{html_escape(str(coll))} {html_escape(str(num))}</strong>&nbsp; {score:.4f}"
     if dup_grp:
-        ref_line += f" · dup:{dup_grp}"
+        ref += f" <small>· dup:{dup_grp}</small>"
 
-    # English text: use clean matn where available, look it up for Arabic-side models
-    if model == "english-lexical":
-        en_raw = strip_html(s.get("hadithText") or s.get("englishText") or "")
-    elif model in ARABIC_IN_SOURCE:
-        # Arabic-side indexes store englishText (with isnad). Look up clean matn.
-        urn = s.get("englishURN") or s.get("urn")
-        en_raw = english_matn_cache.get(urn) or strip_html(s.get("englishText") or "")
-    else:
-        en_raw = strip_html(s.get("englishMatn") or s.get("hadithText")
-                            or s.get("englishText") or "")
-    en_text = cell_safe(en_raw)
+    matn, full = resolve_english(model, h)
 
+    parts = [ref]
+
+    # Isnad prefix (what the parser stripped)
+    if model != "english-lexical":
+        isnad = extract_isnad_prefix(full, matn)
+        if isnad:
+            parts.append(f'<em><small>⛓ {html_escape(isnad[:300])}</small></em>')
+
+    # Clean matn (or full text for lexical)
+    if matn:
+        parts.append(html_escape(matn[:600]))
+    elif full:
+        parts.append(html_escape(full[:600]))
+
+    # Arabic text
     if model in ARABIC_IN_SOURCE:
-        ar_raw = strip_html(s.get("arabicMatn") or s.get("arabicText") or "")
+        ar = strip_html(s.get("arabicMatn") or s.get("arabicText") or "")
     else:
-        ar_raw = arabic_text_cache.get((coll, str(num)), "")
-
-    parts = [ref_line]
-    if en_text:
-        parts.append(en_text)
-    if ar_raw:
-        # Larger Arabic text via nested <big> tags (works across markdown renderers)
-        ar_display = ar_raw.replace("|", "\\|").replace("\n", " ")
-        parts.append(f'<big><big><span dir="rtl" lang="ar">{ar_display}</span></big></big>')
+        ar = arabic_text_cache.get((coll, str(num)), "")
+    if ar:
+        parts.append(f'<span dir="rtl" lang="ar"><big>{html_escape(ar[:400])}</big></span>')
 
     return "<br><br>".join(parts)
 
 
-def build_table(models, q):
-    W("| Rank | " + " | ".join(MODEL_LABEL[m] for m in models) + " |")
-    W("|:---:|" + "|".join("---" for _ in models) + "|")
+def build_html_table(models, q):
+    n      = len(models)
+    rank_w = 4
+    col_w  = (100 - rank_w) // n
+
+    W('<table width="100%"><thead><tr>')
+    W(f'<th width="{rank_w}%">#</th>')
+    for m in models:
+        W(f'<th width="{col_w}%">{html_escape(MODEL_LABEL[m])}</th>')
+    W('</tr></thead><tbody>')
+
     for rank in range(1, N + 1):
-        cells = [f"**{rank}**"] + [build_cell(m, rank, q) for m in models]
-        W("| " + " | ".join(cells) + " |")
-    W("")
+        W('<tr>')
+        W(f'<td align="center" valign="top"><strong>{rank}</strong></td>')
+        for m in models:
+            W(f'<td valign="top">{build_html_cell(m, rank, q)}</td>')
+        W('</tr>')
+
+    W('</tbody></table>')
+    W('')
 
 
 W("# Focused Comparison")
@@ -318,15 +391,15 @@ for q in QUERIES:
 
     W("## BM25 · Mixedbread")
     W("")
-    build_table(MXBAI_MODELS, q)
+    build_html_table(MXBAI_MODELS, q)
 
     W("## English OpenAI")
     W("")
-    build_table(EN_OPENAI_MODELS, q)
+    build_html_table(EN_OPENAI_MODELS, q)
 
     W("## Arabic / Multilingual OpenAI")
     W("")
-    build_table(ML_MODELS, q)
+    build_html_table(ML_MODELS, q)
 
     W("---")
     W("")
