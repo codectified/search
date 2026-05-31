@@ -186,8 +186,8 @@ def _embed_openai_large(query):
     return vec / norm if norm > 0 else vec
 
 
-# Pure lexical index — no embeddings, fast to rebuild.
-LEXICAL_INDEX = "english-lexical"
+# BM25 lexical search uses english-mxbai (has hadithText as full-text field).
+LEXICAL_INDEX = "english-mxbai"
 
 # Each model gets its own ES index so you can index and switch independently.
 # The semantic field is always called "semantic_text" inside each model's index.

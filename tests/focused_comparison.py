@@ -43,7 +43,8 @@ es = Elasticsearch(ES_HOST, basic_auth=("elastic", os.environ["ELASTIC_PASSWORD"
 QUERIES = ["aisha", "comparing yourself to others"]
 
 # English-side models (embed English matn, look up Arabic from arabic-openai)
-EN_MODELS  = ["mxbai", "english-openai", "english-openai-large"]
+# english-lexical = BM25 full-text (hadithText with isnad) — "before" baseline
+EN_MODELS  = ["english-lexical", "mxbai", "english-openai", "english-openai-large"]
 # Multilingual / Arabic-side models
 ML_MODELS  = ["arabic-openai", "arabic-openai-large",
                "multilingual-e5", "bge-m3", "qwen3-embed"]
@@ -60,9 +61,10 @@ COLLECTION_BOOSTS = {
 }
 
 MODEL_LABEL = {
-    "mxbai":               "Mixedbread",
-    "english-openai":      "English OpenAI (small)",
-    "english-openai-large": "English OpenAI (large)",
+    "english-lexical":     "BM25 Lexical (full text)",
+    "mxbai":               "Mixedbread (clean matn)",
+    "english-openai":      "English OpenAI small (clean matn)",
+    "english-openai-large": "English OpenAI large (clean matn)",
     "arabic-openai":       "Arabic OpenAI (small)",
     "arabic-openai-large": "Arabic OpenAI (large)",
     "multilingual-e5":     "E5 Multilingual",
@@ -81,11 +83,13 @@ def cell_safe(t):
 
 
 def search_api(model, query, size):
+    mode = "lexical" if model == "english-lexical" else "semantic"
     url = (BASE + "/en/search"
-           + "?q="     + urllib.parse.quote(query)
-           + "&model="  + model
-           + "&mode=semantic"
-           + "&size="   + str(size))
+           + "?q="    + urllib.parse.quote(query)
+           + "&mode=" + mode
+           + "&size=" + str(size))
+    if mode == "semantic":
+        url += "&model=" + model
     t0 = time.perf_counter()
     with urllib.request.urlopen(url, timeout=120) as r:
         body = json.loads(r.read())
@@ -200,20 +204,26 @@ def build_cell(model, rank, q):
     if dup_grp:
         ref_line += f" · dup:{dup_grp}"
 
-    en_text = cell_safe(strip_html(s.get("hadithText") or s.get("englishText") or
-                                   s.get("englishMatn") or ""))
+    # English text: prefer clean matn for semantic models, full text for lexical
+    if model == "english-lexical":
+        en_raw = strip_html(s.get("hadithText") or s.get("englishText") or "")
+    else:
+        en_raw = strip_html(s.get("englishMatn") or s.get("hadithText")
+                            or s.get("englishText") or "")
+    en_text = cell_safe(en_raw)
 
     if model in ARABIC_IN_SOURCE:
         ar_raw = strip_html(s.get("arabicMatn") or s.get("arabicText") or "")
     else:
         ar_raw = arabic_text_cache.get((coll, str(num)), "")
-    ar_text = cell_safe(ar_raw)
 
     parts = [ref_line]
     if en_text:
         parts.append(en_text)
-    if ar_text:
-        parts.append(f"*{ar_text}*")
+    if ar_raw:
+        # Larger Arabic text via nested <big> tags (works across markdown renderers)
+        ar_display = ar_raw.replace("|", "\\|").replace("\n", " ")
+        parts.append(f'<big><big><span dir="rtl" lang="ar">{ar_display}</span></big></big>')
 
     return "<br><br>".join(parts)
 
@@ -231,18 +241,30 @@ W("# Focused Comparison")
 W("")
 W("Queries: **\"aisha\"** · **\"comparing yourself to others\"**")
 W("")
+W("## Preprocessing note")
+W("")
+W("> **Isnad/matn separation** has already been applied to all English-side semantic indexes.")
+W("> `Mixedbread`, `English OpenAI (small/large)` all embed **`englishMatn`** (isnad-stripped clean text).")
+W("> The **BM25 Lexical** column uses the full `hadithText` including isnad, serving as the")
+W("> pre-cleanup retrieval baseline. A true semantic 'before matn cleanup' column would require")
+W("> re-indexing mxbai with dirty text (~17h); see `tests/matn_quality_report.py` for a")
+W("> qualitative assessment of what the parser stripped from each hadith.")
+W("")
 W("## Models and filters")
 W("")
-W("| Model | Corpus | Search method | Chain-ref filter | Dedup | Pool → results |")
-W("|---|---|---|---|---|---|")
-W(f"| **Mixedbread** | English matn (48,703) | Full HNSW | API | API | {FETCH} → {N} |")
-W(f"| **English OpenAI (small)** | English matn (48,703) | Full HNSW | API | API | {FETCH} → {N} |")
-W(f"| **English OpenAI (large)** | English matn (48,703) | Full HNSW / centroid if ready | API | API | {FETCH} → {N} |")
-W(f"| **Arabic OpenAI (small)** | Arabic matn, translated 44,896 | Centroid k=75 → HNSW | API | Client-side | {FETCH} → {N} |")
-W(f"| **Arabic OpenAI (large)** | Arabic matn, 131,728 | Centroid → HNSW | API | Client-side | {FETCH} → {N} |")
-W(f"| **E5 Multilingual** | Shared EN+AR corpus 180,430 | Centroid → HNSW | API | API | {FETCH} → {N} |")
-W(f"| **BGE-M3** | Shared EN+AR corpus 180,430 | Centroid → HNSW | API | API | {FETCH} → {N} |")
-W(f"| **Qwen3-Embed** | Shared EN+AR corpus 180,430 | Centroid → HNSW | API | API | {FETCH} → {N} |")
+W("| Model | Text embedded | Search method | Isnad stripped | Pool → results |")
+W("|---|---|---|---|---|")
+W(f"| **BM25 Lexical** | Full `hadithText` (48,703) | BM25 full-text | ✗ no | {FETCH} → {N} |")
+W(f"| **Mixedbread (clean matn)** | `englishMatn` (48,703) | Semantic HNSW | ✓ yes | {FETCH} → {N} |")
+W(f"| **English OpenAI small (clean matn)** | `englishMatn` (48,703) | Semantic HNSW | ✓ yes | {FETCH} → {N} |")
+W(f"| **English OpenAI large (clean matn)** | `englishMatn` (48,703) | Semantic HNSW | ✓ yes | {FETCH} → {N} |")
+W(f"| **Arabic OpenAI (small)** | `arabicMatn`, translated 44,896 | Centroid k=75 → HNSW | n/a | {FETCH} → {N} |")
+W(f"| **Arabic OpenAI (large)** | `arabicMatn`, 131,728 | Centroid → HNSW | n/a | {FETCH} → {N} |")
+W(f"| **E5 Multilingual** | Shared EN+AR, 180,430 | Centroid → HNSW | ✓ yes | {FETCH} → {N} |")
+W(f"| **BGE-M3** | Shared EN+AR, 180,430 | Centroid → HNSW | ✓ yes | {FETCH} → {N} |")
+W(f"| **Qwen3-Embed** | Shared EN+AR, 180,430 | Centroid → HNSW | ✓ yes | {FETCH} → {N} |")
+W("")
+W("*Chain-ref filter ON · Dedup ON for all models*")
 W("")
 W("---")
 W("")
