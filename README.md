@@ -15,7 +15,7 @@ Browser / PHP website
         ├── query router (_route_query)
         │       ├── "quoted query"    → match_phrase   ─┐
         │       ├── collection + num  → term filter     ├─ english-mxbai
-        │       ├── multi-word Arabic → Arabic BM25     │   (text fields)
+        │       ├── any Arabic text  → Arabic BM25     │   (text fields)
         │       ├── standard BM25    → cross_fields    ─┘
         │       └── mode=semantic    → kNN             ── english-mxbai
         │                                                  (semantic_text)
@@ -289,7 +289,7 @@ Every incoming query is classified before dispatch. Some query shapes override t
 |---|---|---|
 | Wrapped in double quotes | Lexical phrase (`match_phrase`) | `"angel of death"` |
 | Collection slug + number | Direct reference lookup (`term` filter) | `bukhari 1`, `muslim 100a` |
-| Multi-word Arabic | Arabic BM25 (`match` + `custom_arabic` analyzer) | `الصلاة في المسجد` |
+| Any Arabic (single word or phrase) | Arabic BM25 (`match` + `custom_arabic` analyzer) | `صلاة`, `الصلاة في المسجد` |
 | Everything else | Client `mode` (semantic or lexical) | `prayer at night` |
 
 Quoted and reference patterns always fire regardless of `mode`. Single Arabic words fall through to the requested mode (semantic by default).
