@@ -65,6 +65,8 @@ By default, results are deduplicated: only the **most authoritative** representa
 
 This means if the same hadith appears in both Bukhari and a weaker collection, the Bukhari version is always shown — even if the weaker collection's version had a marginally higher vector similarity score.
 
+**Accuracy caveat:** `dupGroup` is computed from mxbai vectors over `englishMatn`. Because isnad stripping is not 100% accurate for all collections (~14% of hadiths fall back to a weak heuristic or full text), a small number of groups may be wrong — either false positives (dissimilar hadiths grouped together due to shared isnad wording) or false negatives (true duplicates not caught). Treat the count as approximate until a manual validation pass is done.
+
 **To bypass deduplication** (useful for inspection):
 ```
 /english/search?q=...&mode=semantic&model=mxbai&show_dupes=1
@@ -96,15 +98,16 @@ Browser / PHP website
         │       └── standard BM25     → english-mxbai (cross_fields)
         │
         └── Elasticsearch
-                └── english-mxbai   — single index for all search paths
-                                       text fields: hadithText, arabicText
-                                       vector field: semantic_text (mxbai-embed-large, 1024-dim)
-                                       embeds: englishMatn (isnad-stripped body)
+                └── english-mxbai
+                        ├── BM25 paths use: hadithText (English, HTML-stripped)
+                        │                  arabicText (Arabic, custom analyzer)
+                        └── Semantic path uses: semantic_text (mxbai-embed-large, 1024-dim)
+                                                embedded text: englishMatn (isnad-stripped)
 
   Ollama (runs on host, port 11434) — serves mxbai-embed-large
 ```
 
-`english-mxbai` serves all query types. BM25 paths use `hadithText` and `arabicText` as standard text fields; the semantic path uses the `semantic_text` ES inference field backed by mxbai-embed-large.
+All query paths hit the same `english-mxbai` index. BM25 paths query the text fields; the semantic path queries the vector field. The index was intentionally built with both so a separate lexical-only index is not needed.
 
 Each index name in ES is an **alias** (e.g. `english-mxbai`) pointing to a timestamped backing index. Reindexing builds a new backing index and atomically swaps the alias — the live index keeps serving traffic during the rebuild.
 
