@@ -1255,7 +1255,7 @@ def _route_query(query, mode):
             "number": m.group("num"),
         }
 
-    if _ARABIC_RE.search(q) and len(q.split()) >= 2:
+    if _ARABIC_RE.search(q):
         return "lexical", "arabic", {}
 
     return mode, None, {}
