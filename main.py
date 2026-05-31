@@ -1,5 +1,6 @@
 import hashlib
 import logging
+import re
 import sys
 import time
 import uuid
@@ -509,22 +510,20 @@ def _route_query(query, requested_mode):
     variant — None | "phrase" | "arabic"
     extra   — dict with any parsed values (e.g. {"collection": ..., "number": ...})
 
-    Rules (applied in order, client mode=lexical always wins):
-      1. Quoted query          → lexical phrase search
-      2. Collection + number   → direct hadith reference lookup
-      3. Multi-word Arabic     → lexical BM25 on arabicText
-      4. Default               → requested_mode (semantic or lexical)
+    Rules (applied in order; reference and phrase always win over requested_mode):
+      1. Quoted query          → lexical phrase search (overrides mode)
+      2. Collection + number   → direct hadith reference lookup (overrides mode)
+      3. client mode=lexical   → standard BM25
+      4. Multi-word Arabic     → lexical BM25 on arabicText
+      5. Default               → requested_mode (semantic)
     """
-    if requested_mode == "lexical":
-        return "lexical", None, {}
-
     q = query.strip()
 
-    # 1. Quoted → phrase search
+    # 1. Quoted → phrase search (always, regardless of mode)
     if len(q) >= 3 and q[0] == '"' and q[-1] == '"':
         return "lexical", "phrase", {"phrase_text": q[1:-1]}
 
-    # 2. Collection + hadith number → reference lookup
+    # 2. Collection + hadith number → reference lookup (always)
     m = _REF_RE.match(q)
     if m:
         return "reference", None, {
@@ -532,9 +531,13 @@ def _route_query(query, requested_mode):
             "number":     m.group("num"),
         }
 
-    # 3. Multi-word Arabic → lexical Arabic BM25
+    # 3. Multi-word Arabic → lexical Arabic BM25 (overrides mode)
     if _ARABIC_RE.search(q) and len(q.split()) >= 2:
         return "lexical", "arabic", {}
+
+    # 4. Explicit lexical mode → standard BM25
+    if requested_mode == "lexical":
+        return "lexical", None, {}
 
     return requested_mode, None, {}
 
