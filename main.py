@@ -211,6 +211,20 @@ EMBEDDING_MODELS = {
             "similarity": "cosine",
         },
     },
+    "mxbai-dirty": {
+        "label": "mxbai-embed-large (full hadithText with isnad)",
+        "index": "english-mxbai-dirty",
+        "inference_id": "mxbai-embed-large",
+        "enabled": _is_truthy(os.environ.get("MXBAI_ENABLED")),
+        "multilingual": False,
+        "service": "openai",
+        "service_settings": {
+            "api_key": "ollama",
+            "url": f"{_OLLAMA_URL}/v1/embeddings",
+            "model_id": "mxbai-embed-large",
+            "similarity": "cosine",
+        },
+    },
     "arabic-openai": {
         "label": "text-embedding-3-small (Arabic matn, cross-lingual)",
         "index": ARABIC_OPENAI_INDEX,

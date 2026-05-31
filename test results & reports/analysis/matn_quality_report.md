@@ -3,18 +3,31 @@
 *48703 total hadiths · Generated 2026-05-31*
 
 
-## Summary
+## Bottom line
 
-| Tier | Count | % | Meaning |
+| | Count | % |
+|---|---|---|
+| **Originally noisy** (had isnad prefix) | 40756 | 83.7% |
+| — parser **successfully stripped** isnad | 34060 | 69.9% |
+| — parser did **minor/incomplete** cleanup (isnad still embedded) | 6696 | 13.7% |
+| **Already clean** (no isnad detected, text unchanged) | 7947 | 16.3% |
+| | | |
+| **englishMatn is clean** (safe to embed) | **42007** | **86.3%** |
+| **englishMatn is still noisy** (isnad in vectors) | **6696** | **13.7%** |
+
+> 83.7%% of hadiths had isnad noise; the parser removed it for 69.9%%. The remaining 13.8%% still
+> have isnad in their `englishMatn` embeddings. A dirty re-embed of `hadithText` would let us compare
+> clean vs noisy vectors directly at query time.
+
+## Tier breakdown
+
+| Tier | Count | % | What happened |
 |---|---|---|---|
-| **clean** | 34060 | 69.9% | Meaningful isnad prefix stripped (>20 chars, recognizable isnad language) |
-| **minor** | 6427 | 13.2% | Only whitespace/HTML cleanup or trivially short strip |
-| **unchanged** | 7947 | 16.3% | hadithText and englishMatn identical after HTML-stripping |
+| **clean** | 34060 | 69.9% | Was noisy — parser **successfully stripped** isnad prefix (>20 chars) |
+| **unchanged** | 7947 | 16.3% | Was **already clean** — hadithText had no isnad, englishMatn identical |
+| **minor** | 6427 | 13.2% | Was noisy — parser only did whitespace/HTML cleanup, **isnad still present** |
 | **over_strip** | 268 | 0.6% | Matn suspiciously short (<40 chars) — possible over-stripping |
 | **no_matn** | 1 | 0.0% | englishMatn field absent or empty |
-
-**Effective separation rate**: 69.9% of hadiths had meaningful isnad stripped  
-**Dirty remainder** (unchanged + minor + over_strip + no_matn): 30.1%
 
 
 ## Per-Collection Breakdown

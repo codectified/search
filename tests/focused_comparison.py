@@ -44,7 +44,7 @@ QUERIES = ["aisha", "comparing yourself to others"]
 
 # English-side models (embed English matn, look up Arabic from arabic-openai)
 # english-lexical = BM25 full-text (hadithText with isnad) — "before" baseline
-EN_MODELS  = ["english-lexical", "mxbai", "english-openai", "english-openai-large"]
+EN_MODELS  = ["english-lexical", "mxbai-dirty", "mxbai", "english-openai", "english-openai-large"]
 # Multilingual / Arabic-side models
 ML_MODELS  = ["arabic-openai", "arabic-openai-large",
                "multilingual-e5", "bge-m3", "qwen3-embed"]
@@ -62,6 +62,7 @@ COLLECTION_BOOSTS = {
 
 MODEL_LABEL = {
     "english-lexical":     "BM25 Lexical (full text)",
+    "mxbai-dirty":         "Mixedbread (dirty — full hadithText)",
     "mxbai":               "Mixedbread (clean matn)",
     "english-openai":      "English OpenAI small (clean matn)",
     "english-openai-large": "English OpenAI large (clean matn)",
