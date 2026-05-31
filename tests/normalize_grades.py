@@ -13,11 +13,18 @@ Strategy per doc:
 
 Indexes updated: arabic-openai, english-openai, english-mxbai
 
+Facet field: gradeNorm.keyword (auto-created by ES dynamic mapping)
+
+NOTE on english-mxbai: that index has a semantic_text inference field which
+blocks both doc-partial and script bulk updates. Falls back to parallel
+individual es.update() calls (16 threads, ~90s for 48k docs).
+
 Usage (inside container):
     python3 /code/tests/normalize_grades.py [--dry-run]
 """
 import os, sys, json, re, time
-import numpy as np
+from collections import Counter
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import scan as es_scan, bulk as es_bulk
 
@@ -248,7 +255,6 @@ print(f"    DupGroup match:     {forty_stats['dup_match']}")
 print(f"    Uncategorized:      {forty_stats['uncat']}")
 
 # Distribution summary
-from collections import Counter
 mxbai_dist = Counter(d["norm"] for d in mxbai_docs)
 print("\n  english-mxbai gradeNorm distribution:")
 for k, v in sorted(mxbai_dist.items(), key=lambda x: -x[1]):
@@ -347,13 +353,34 @@ def bulk_update(index, docs, norm_key="norm", id_key="id"):
 print("\nPhase 5: writing gradeNorm...")
 t4 = time.time()
 
-ok = bulk_update("english-mxbai", mxbai_docs)
-print(f"  english-mxbai: {ok:,} updated")
-
+# english-openai and arabic-openai: standard bulk update works fine
 ok = bulk_update("english-openai", en_openai_docs)
-print(f"  english-openai: {ok:,} updated")
+print("  english-openai: %d updated" % ok)
 
 ok = bulk_update("arabic-openai", ar_docs)
-print(f"  arabic-openai: {ok:,} updated")
+print("  arabic-openai: %d updated" % ok)
 
-print(f"\nDone. Total time: {time.time()-t0:.0f}s")
+# english-mxbai: semantic_text inference field blocks bulk updates (both doc and
+# script variants). Fall back to parallel individual es.update() calls.
+print("  english-mxbai: using parallel individual updates (semantic_text workaround)...")
+
+def _do_update(args):
+    doc_id, grade_norm = args
+    es.update(index="english-mxbai", id=doc_id,
+              body={"doc": {"gradeNorm": grade_norm}})
+    return 1
+
+mxbai_pairs = [(d["id"], d["norm"]) for d in mxbai_docs]
+done = errs = 0
+with ThreadPoolExecutor(max_workers=16) as pool:
+    futures = {pool.submit(_do_update, p): p for p in mxbai_pairs}
+    for fut in as_completed(futures):
+        try:
+            done += fut.result()
+        except Exception as exc:
+            errs += 1
+            if errs <= 3:
+                print("    Error on %s: %s" % (futures[fut][0], exc))
+print("  english-mxbai: %d updated, %d errors" % (done, errs))
+
+print("\nDone. Total time: %.0fs" % (time.time()-t0))
