@@ -47,6 +47,13 @@ import numpy as np
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import scan as es_scan, bulk
 
+# Must be set before any huggingface_hub / transformers import.
+# Container runs as appuser with no /home/appuser — all HF cache goes to /tmp.
+_HF_CACHE = "/tmp/hf_cache"
+os.environ.setdefault("HF_HOME", _HF_CACHE)
+os.environ.setdefault("HUGGINGFACE_HUB_CACHE", _HF_CACHE)
+os.environ.setdefault("TRANSFORMERS_CACHE", _HF_CACHE)
+
 # ── Config ────────────────────────────────────────────────────────────────────
 
 HF_TOKEN   = os.environ.get("HF_TOKEN", "")
@@ -195,9 +202,10 @@ def st_embed_all(hf_repo, texts, dims, trust_remote_code=False):
     if HF_TOKEN:
         kwargs["token"] = HF_TOKEN
 
+    os.makedirs(_HF_CACHE, exist_ok=True)
     print(f"  Loading {hf_repo} ...")
     try:
-        model = SentenceTransformer(hf_repo, **kwargs)
+        model = SentenceTransformer(hf_repo, cache_folder=_HF_CACHE, **kwargs)
     except Exception as e:
         print(f"  SentenceTransformer load failed: {e}")
         print("  Falling back to raw transformers ...")
@@ -221,7 +229,7 @@ def _transformers_embed_all(hf_repo, texts, dims):
     import torch
     from transformers import AutoTokenizer, AutoModel
 
-    kw = {}
+    kw = {"cache_dir": _HF_CACHE}
     if HF_TOKEN:
         kw["token"] = HF_TOKEN
     tokenizer = AutoTokenizer.from_pretrained(hf_repo, **kw)
@@ -269,16 +277,20 @@ def onnx_embed_all(hf_repo, onnx_file, texts, dims):
     from transformers import AutoTokenizer
     from huggingface_hub import hf_hub_download
 
+    os.makedirs(_HF_CACHE, exist_ok=True)
     print(f"  Downloading {onnx_file} from {hf_repo} ...")
     onnx_path = hf_hub_download(
         hf_repo, filename=onnx_file,
         token=HF_TOKEN or None,
+        cache_dir=_HF_CACHE,
     )
     sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
     input_names = {inp.name for inp in sess.get_inputs()}
 
     print(f"  Loading tokenizer from {hf_repo} ...")
-    tokenizer = AutoTokenizer.from_pretrained(hf_repo, token=HF_TOKEN or None)
+    tokenizer = AutoTokenizer.from_pretrained(
+        hf_repo, token=HF_TOKEN or None, cache_dir=_HF_CACHE
+    )
 
     all_vecs = []
     t0 = time.time()

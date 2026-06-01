@@ -36,6 +36,12 @@ import os, re, json, time, subprocess, sys, urllib.request
 import numpy as np
 from elasticsearch import Elasticsearch
 
+# Must precede any huggingface import — container has no /home/appuser
+_HF_CACHE = "/tmp/hf_cache"
+os.environ.setdefault("HF_HOME", _HF_CACHE)
+os.environ.setdefault("HUGGINGFACE_HUB_CACHE", _HF_CACHE)
+os.environ.setdefault("TRANSFORMERS_CACHE", _HF_CACHE)
+
 HF_TOKEN   = os.environ.get("HF_TOKEN", "")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://host.docker.internal:11434")
 ES_HOST    = "http://172.31.250.10:9200"
@@ -231,7 +237,10 @@ def embed_st(model_def, query):
     from sentence_transformers import SentenceTransformer
     repo = model_def["embed_id"]
     if repo not in _st_cache:
-        kwargs = {"trust_remote_code": model_def.get("trust_remote_code", False)}
+        kwargs = {
+            "trust_remote_code": model_def.get("trust_remote_code", False),
+            "cache_folder": _HF_CACHE,
+        }
         if HF_TOKEN:
             kwargs["token"] = HF_TOKEN
         _st_cache[repo] = SentenceTransformer(repo, **kwargs)
@@ -249,9 +258,12 @@ def embed_onnx(model_def, query):
     ofile = model_def["onnx_file"]
     ckey  = (repo, ofile)
     if ckey not in _onnx_cache:
-        path = hf_hub_download(repo, filename=ofile, token=HF_TOKEN or None)
+        os.makedirs(_HF_CACHE, exist_ok=True)
+        path = hf_hub_download(repo, filename=ofile, token=HF_TOKEN or None,
+                               cache_dir=_HF_CACHE)
         sess = ort.InferenceSession(path, providers=["CPUExecutionProvider"])
-        tok  = AutoTokenizer.from_pretrained(repo, token=HF_TOKEN or None)
+        tok  = AutoTokenizer.from_pretrained(repo, token=HF_TOKEN or None,
+                                             cache_dir=_HF_CACHE)
         _onnx_cache[ckey] = (sess, tok)
 
     sess, tok = _onnx_cache[ckey]
