@@ -201,23 +201,29 @@ def embed_ollama(model_id, query):
 
 
 # Lazy-loaded ST/ONNX state: one model at a time per process
-_st_cache  = {}   # hf_repo → SentenceTransformer instance
-_onnx_cache = {}  # (hf_repo, onnx_file) → (session, tokenizer)
+_st_cache   = {}   # hf_repo → SentenceTransformer instance
+_onnx_cache = {}   # (hf_repo, onnx_file) → (session, tokenizer)
 _st_ready   = False
 _onnx_ready = False
+_PIP_TARGET = "/tmp/pip_extra"
+
+def _pip_install(*packages):
+    os.makedirs(_PIP_TARGET, exist_ok=True)
+    subprocess.run([sys.executable, "-m", "pip", "install", "--no-cache-dir", "-q",
+                    "-t", _PIP_TARGET, *packages], check=True)
+    if _PIP_TARGET not in sys.path:
+        sys.path.insert(0, _PIP_TARGET)
 
 def _ensure_st():
     global _st_ready
     if not _st_ready:
-        subprocess.run([sys.executable, "-m", "pip", "install", "-q",
-                        "sentence-transformers>=3.0", "huggingface_hub"], check=True)
+        _pip_install("sentence-transformers>=3.0", "huggingface_hub")
         _st_ready = True
 
 def _ensure_onnx():
     global _onnx_ready
     if not _onnx_ready:
-        subprocess.run([sys.executable, "-m", "pip", "install", "-q",
-                        "onnxruntime", "transformers", "huggingface_hub"], check=True)
+        _pip_install("onnxruntime", "transformers", "huggingface_hub")
         _onnx_ready = True
 
 def embed_st(model_def, query):

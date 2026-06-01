@@ -165,17 +165,25 @@ def extract_mxbai_vector(source):
 
 # ── sentence_transformers embedding ──────────────────────────────────────────
 
-_st_ready = False
+_PIP_TARGET = "/tmp/pip_extra"
+_st_ready   = False
+
+def _pip_install(*packages):
+    """Install to /tmp/pip_extra — works in containers where /home/appuser is missing."""
+    os.makedirs(_PIP_TARGET, exist_ok=True)
+    subprocess.run(
+        [sys.executable, "-m", "pip", "install", "--no-cache-dir", "-q",
+         "-t", _PIP_TARGET, *packages],
+        check=True
+    )
+    if _PIP_TARGET not in sys.path:
+        sys.path.insert(0, _PIP_TARGET)
 
 def _ensure_st():
     global _st_ready
     if not _st_ready:
         print("  pip install sentence-transformers huggingface_hub ...")
-        subprocess.run(
-            [sys.executable, "-m", "pip", "install", "-q",
-             "sentence-transformers>=3.0", "huggingface_hub"],
-            check=True
-        )
+        _pip_install("sentence-transformers>=3.0", "huggingface_hub")
         _st_ready = True
 
 def st_embed_all(hf_repo, texts, dims, trust_remote_code=False):
@@ -250,11 +258,7 @@ def _ensure_onnx():
     global _onnx_ready
     if not _onnx_ready:
         print("  pip install onnxruntime transformers huggingface_hub ...")
-        subprocess.run(
-            [sys.executable, "-m", "pip", "install", "-q",
-             "onnxruntime", "transformers", "huggingface_hub"],
-            check=True
-        )
+        _pip_install("onnxruntime", "transformers", "huggingface_hub")
         _onnx_ready = True
 
 
