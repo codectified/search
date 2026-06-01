@@ -225,6 +225,53 @@ EMBEDDING_MODELS = {
             "similarity": "cosine",
         },
     },
+    # ── Small models — prod candidates ────────────────────────────────────────
+    # All run through Ollama (same path as mxbai). Pull before indexing:
+    #   ollama pull nomic-embed-text
+    #   ollama pull all-minilm
+    #   ollama pull snowflake-arctic-embed:m
+    "nomic": {
+        "label": "nomic-embed-text (768-dim)",
+        "index": "nomic-embed-text",
+        "inference_id": "nomic-embed-text",
+        "enabled": _is_truthy(os.environ.get("NOMIC_ENABLED")),
+        "multilingual": False,
+        "service": "openai",
+        "service_settings": {
+            "api_key": "ollama",
+            "url": f"{_OLLAMA_URL}/v1/embeddings",
+            "model_id": "nomic-embed-text",
+            "similarity": "cosine",
+        },
+    },
+    "all-minilm": {
+        "label": "all-MiniLM-L6-v2 (384-dim)",
+        "index": "all-minilm",
+        "inference_id": "all-minilm",
+        "enabled": _is_truthy(os.environ.get("MINIML_ENABLED")),
+        "multilingual": False,
+        "service": "openai",
+        "service_settings": {
+            "api_key": "ollama",
+            "url": f"{_OLLAMA_URL}/v1/embeddings",
+            "model_id": "all-minilm",
+            "similarity": "cosine",
+        },
+    },
+    "snowflake-arctic-m": {
+        "label": "snowflake-arctic-embed:m (768-dim)",
+        "index": "snowflake-arctic-m",
+        "inference_id": "snowflake-arctic-embed-m",
+        "enabled": _is_truthy(os.environ.get("SNOWFLAKE_ENABLED")),
+        "multilingual": False,
+        "service": "openai",
+        "service_settings": {
+            "api_key": "ollama",
+            "url": f"{_OLLAMA_URL}/v1/embeddings",
+            "model_id": "snowflake-arctic-embed:m",
+            "similarity": "cosine",
+        },
+    },
     "arabic-openai": {
         "label": "text-embedding-3-small (Arabic matn, cross-lingual)",
         "index": ARABIC_OPENAI_INDEX,
