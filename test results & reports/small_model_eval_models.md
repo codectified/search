@@ -31,7 +31,17 @@ fields — see §4 below.
 | google/embeddinggemma-300m-qat-q4_0-unquantized | `vec_gemma_q4` | 768 | 300M | QAT-trained for INT4; weights in FP32. |
 | mixedbread-ai/mxbai-embed-xsmall-v1 | `vec_mxbai_xs` | 384 | 33M | FP32 baseline for xsmall. |
 
-### 1c. ONNX Runtime — quantized, CPU-executable
+### 1c. Ollama GGUF — quantized, community conversion
+
+| Model | ES Field | Dims | Params | GGUF | Quantization |
+|---|---|---|---|---|---|
+| mxbai-embed-large (mxbai-q4km) | `vec_mxbai_q4km` | 1024 | 335M | `ChristianAzinn/mxbai-embed-large-v1-gguf` | Q4_K_M |
+
+> Q4_K_M = K-quant: mixed precision, ~4.5 bits avg. Attention layers kept at higher precision,
+> feed-forward layers compressed harder. Smarter than naive INT4.
+> Model size: F16 ~1.3GB → Q4_K_M ~153MB.
+
+### 1d. ONNX Runtime — quantized, CPU-executable
 
 | Model | ES Field | Dims | Params | ONNX file | Quantization |
 |---|---|---|---|---|---|

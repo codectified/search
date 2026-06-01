@@ -124,6 +124,15 @@ MODELS = [
         "vec_field": "vec_mxbai_xs",
         "trust_remote_code": False,
     },
+    # ── Ollama GGUF quantized ────────────────────────────────────────────────────
+    {
+        "key":       "mxbai_q4km",
+        "label":     "mxbai-embed-large (Q4_K_M)",
+        "sublabel":  "1024-dim · 335M · Q4_K_M",
+        "embed_fn":  "ollama",
+        "embed_id":  "mxbai-q4km",
+        "vec_field": "vec_mxbai_q4km",
+    },
     # ── ONNX quantized ───────────────────────────────────────────────────────────
     {
         "key":       "mxbai_q",
