@@ -4,21 +4,23 @@ Side-by-side comparison of all 9 embedding model candidates from `small-model-ev
 Queries ES directly — no Flask dependency. For each query, embeds with each model
 and runs kNN against the appropriate dense_vector field.
 
-Models compared:
+Models compared (11 total):
   Ollama (F16 / default quant):
-    mxbai-embed-large       1024-dim  335M params  (prod baseline)
-    nomic-embed-text         768-dim  137M params
-    snowflake-arctic-embed:m 768-dim  110M params
-    all-MiniLM-L6-v2         384-dim   22M params
+    mxbai-embed-large        1024-dim  335M params  (prod baseline)
+    nomic-embed-text          768-dim  137M params
+    snowflake-arctic-embed:m  768-dim  110M params
+    all-MiniLM-L6-v2          384-dim   22M params
 
   sentence_transformers / HF:
-    embeddinggemma-300m      768-dim  300M params
-    embeddinggemma-qat-q8    768-dim  300M params (QAT-Q8, stored in fp32)
-    embeddinggemma-qat-q4    768-dim  300M params (QAT-Q4, stored in fp32)
-    mxbai-embed-xsmall-v1   384-dim   33M params
+    embeddinggemma-300m       768-dim  300M params  (base)
+    embeddinggemma-qat-q8     768-dim  300M params  (QAT-Q8, stored in fp32)
+    embeddinggemma-qat-q4     768-dim  300M params  (QAT-Q4, stored in fp32)
+    mxbai-embed-xsmall-v1     384-dim   33M params  (FP32 baseline)
 
   ONNX quantized:
-    mxbai-embed-large (INT8) 1024-dim  335M params (quantized vs F16 baseline)
+    mxbai-embed-large INT8   1024-dim  335M params  (INT8 vs F16 baseline)
+    mxbai-embed-xsmall INT8   384-dim   33M params  (INT8 — closest CPU analog to FP8)
+    mxbai-embed-xsmall INT4   384-dim   33M params  (INT4 — max compression)
 
 Prerequisites:
   - small-model-eval index built (run tests/build_small_model_eval_index.py first)
@@ -120,11 +122,29 @@ MODELS = [
     {
         "key":       "mxbai_q",
         "label":     "mxbai-embed-large (INT8 ONNX)",
-        "sublabel":  "1024-dim · 335M · quant",
+        "sublabel":  "1024-dim · 335M · INT8",
         "embed_fn":  "onnx",
         "embed_id":  "mixedbread-ai/mxbai-embed-large-v1",
         "onnx_file": "onnx/model_quantized.onnx",
         "vec_field": "vec_mxbai_q",
+    },
+    {
+        "key":       "mxbai_xs_q8",
+        "label":     "mxbai-embed-xsmall (INT8 ONNX)",
+        "sublabel":  "384-dim · 33M · INT8",
+        "embed_fn":  "onnx",
+        "embed_id":  "mixedbread-ai/mxbai-embed-xsmall-v1",
+        "onnx_file": "onnx/model_int8.onnx",
+        "vec_field": "vec_mxbai_xs_q8",
+    },
+    {
+        "key":       "mxbai_xs_q4",
+        "label":     "mxbai-embed-xsmall (INT4 ONNX)",
+        "sublabel":  "384-dim · 33M · INT4",
+        "embed_fn":  "onnx",
+        "embed_id":  "mixedbread-ai/mxbai-embed-xsmall-v1",
+        "onnx_file": "onnx/model_q4.onnx",
+        "vec_field": "vec_mxbai_xs_q4",
     },
 ]
 

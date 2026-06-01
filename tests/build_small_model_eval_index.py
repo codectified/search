@@ -1,23 +1,28 @@
 """
-Builds the `small-model-eval` ES index — 9 candidate embedding models compared
+Builds the `small-model-eval` ES index — 11 candidate embedding models compared
 side-by-side using a single index with one dense_vector field per model.
 
 Vector fields
 ─────────────
 Ollama (from existing index or live embed):
-  vec_mxbai       1024-dim  mxbai-embed-large F16 — extracted from english-mxbai (no re-embed)
-  vec_nomic        768-dim  nomic-embed-text
-  vec_snowflake    768-dim  snowflake-arctic-embed:m
-  vec_miniLM       384-dim  all-MiniLM-L6-v2
+  vec_mxbai        1024-dim  mxbai-embed-large F16 — extracted from english-mxbai (no re-embed)
+  vec_nomic         768-dim  nomic-embed-text
+  vec_snowflake     768-dim  snowflake-arctic-embed:m
+  vec_miniLM        384-dim  all-MiniLM-L6-v2
 
 sentence_transformers (HuggingFace — HF_TOKEN required for Gemma):
-  vec_gemma        768-dim  google/embeddinggemma-300m
-  vec_gemma_q8     768-dim  google/embeddinggemma-300m-qat-q8_0-unquantized
-  vec_gemma_q4     768-dim  google/embeddinggemma-300m-qat-q4_0-unquantized
-  vec_mxbai_xs     384-dim  mixedbread-ai/mxbai-embed-xsmall-v1
+  vec_gemma         768-dim  google/embeddinggemma-300m
+  vec_gemma_q8      768-dim  google/embeddinggemma-300m-qat-q8_0-unquantized
+  vec_gemma_q4      768-dim  google/embeddinggemma-300m-qat-q4_0-unquantized
+  vec_mxbai_xs      384-dim  mixedbread-ai/mxbai-embed-xsmall-v1  (FP32 baseline)
 
 ONNX Runtime (HuggingFace):
-  vec_mxbai_q     1024-dim  mixedbread-ai/mxbai-embed-large-v1  onnx/model_quantized.onnx
+  vec_mxbai_q      1024-dim  mixedbread-ai/mxbai-embed-large-v1   onnx/model_quantized.onnx (INT8)
+  vec_mxbai_xs_q8   384-dim  mixedbread-ai/mxbai-embed-xsmall-v1  onnx/model_int8.onnx      (INT8)
+  vec_mxbai_xs_q4   384-dim  mixedbread-ai/mxbai-embed-xsmall-v1  onnx/model_q4.onnx        (INT4)
+
+Note on FP8: FP8 requires H100-class GPU hardware; CPUs have no native FP8 execution.
+INT8 (Q8_0) is the practical equivalent — same 8-bit width, CPU-executable.
 
 Strategy
 ────────
@@ -78,8 +83,10 @@ ST_MODELS = [
 ]
 
 ONNX_MODELS = [
-    # (key,       hf_repo,                             onnx_file,               dims)
-    ("mxbai_q", "mixedbread-ai/mxbai-embed-large-v1", "onnx/model_quantized.onnx", 1024),
+    # (key,            hf_repo,                              onnx_file,                  dims)
+    ("mxbai_q",     "mixedbread-ai/mxbai-embed-large-v1",  "onnx/model_quantized.onnx", 1024),
+    ("mxbai_xs_q8", "mixedbread-ai/mxbai-embed-xsmall-v1", "onnx/model_int8.onnx",       384),
+    ("mxbai_xs_q4", "mixedbread-ai/mxbai-embed-xsmall-v1", "onnx/model_q4.onnx",         384),
 ]
 
 # ── Index mapping ─────────────────────────────────────────────────────────────
@@ -107,7 +114,9 @@ MAPPINGS = {
         "vec_gemma_q4":   {"type": "dense_vector", "dims": 768,  "index": True, "similarity": "cosine"},
         "vec_mxbai_xs":   {"type": "dense_vector", "dims": 384,  "index": True, "similarity": "cosine"},
         # ── ONNX quantized ───────────────────────────────────────
-        "vec_mxbai_q":    {"type": "dense_vector", "dims": 1024, "index": True, "similarity": "cosine"},
+        "vec_mxbai_q":      {"type": "dense_vector", "dims": 1024, "index": True, "similarity": "cosine"},
+        "vec_mxbai_xs_q8":  {"type": "dense_vector", "dims": 384,  "index": True, "similarity": "cosine"},
+        "vec_mxbai_xs_q4":  {"type": "dense_vector", "dims": 384,  "index": True, "similarity": "cosine"},
     }
 }
 
