@@ -1,57 +1,80 @@
 """
-Side-by-side comparison of small Ollama-backed embedding models vs mxbai.
+Side-by-side comparison of small embedding models from the `small-model-eval` index.
 
-Models:
-  mxbai              mxbai-embed-large (1024-dim)   — current prod baseline
-  nomic              nomic-embed-text  (768-dim)
-  snowflake-arctic-m snowflake-arctic-embed:m (768-dim)
-  all-minilm         all-MiniLM-L6-v2  (384-dim)
+Queries ES directly — no Flask dependency. For each query, embeds with all four
+models via Ollama and runs kNN against the appropriate dense_vector field.
 
-Prerequisites — pull models in Ollama before indexing:
-  ollama pull nomic-embed-text
-  ollama pull snowflake-arctic-embed:m
-  ollama pull all-minilm
+Models compared:
+  mxbai-embed-large   (1024-dim) — prod baseline
+  nomic-embed-text     (768-dim)
+  snowflake-arctic-embed:m  (768-dim)
+  all-MiniLM-L6-v2    (384-dim)
 
-Build indexes:
-  http://localhost:5001/index?password=index123&targets=nomic,all-minilm,snowflake-arctic-m
+Prerequisites:
+  - small-model-eval index built (run tests/build_small_model_eval_index.py first)
+  - Ollama running with all four models pulled
 
 Run inside container:
   docker exec search-web-1 python3 /code/tests/small_model_comparison.py
 
 Output: /code/test results & reports/small_model_comparison.md
 """
-import urllib.request, urllib.parse, json, re, time, os
+import os, re, json, time, urllib.request, numpy as np
 from elasticsearch import Elasticsearch
 
-BASE   = "http://localhost:5000"
-REPORT = "/code/test results & reports/small_model_comparison.md"
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://host.docker.internal:11434")
+ES_HOST    = "http://172.31.250.10:9200"
+EVAL_IDX   = "small-model-eval"
+REPORT     = "/code/test results & reports/small_model_comparison.md"
 
-ES_HOST = "http://172.31.250.10:9200"
 es = Elasticsearch(ES_HOST, basic_auth=("elastic", os.environ["ELASTIC_PASSWORD"]),
                    request_timeout=60)
 
-# ── Queries ───────────────────────────────────────────────────────────────────
-# Chosen to exercise different retrieval challenges:
-#   conceptual/abstract, person-based, ritual/practice, negative framing, short
-QUERIES = [
-    "good character and manners",          # virtue — lots of hadiths, hard to rank well
-    "angels recording deeds",             # specific concept, moderate vocabulary overlap
-    "prayer at night",                    # common ritual query
-    "forgiving someone who wronged you",  # abstract/relational
-    "comparing yourself to others",       # abstract, low keyword overlap with hadiths
-    "aisha",                              # person-based, high recall needed
-    "fasting expiation sins",             # practice + consequence
-    "neighbor rights",                    # social/ethical concept
+# ── Models ────────────────────────────────────────────────────────────────────
+MODELS = [
+    {
+        "key":        "mxbai",
+        "label":      "mxbai-embed-large",
+        "sublabel":   "1024-dim · 335M params",
+        "ollama_id":  "mxbai-embed-large",
+        "vec_field":  "vec_mxbai",
+    },
+    {
+        "key":        "nomic",
+        "label":      "nomic-embed-text",
+        "sublabel":   "768-dim · 137M params",
+        "ollama_id":  "nomic-embed-text",
+        "vec_field":  "vec_nomic",
+    },
+    {
+        "key":        "snowflake",
+        "label":      "snowflake-arctic-embed:m",
+        "sublabel":   "768-dim · 110M params",
+        "ollama_id":  "snowflake-arctic-embed:m",
+        "vec_field":  "vec_snowflake",
+    },
+    {
+        "key":        "miniLM",
+        "label":      "all-MiniLM-L6-v2",
+        "sublabel":   "384-dim · 22M params",
+        "ollama_id":  "all-minilm",
+        "vec_field":  "vec_miniLM",
+    },
 ]
 
-MODELS = ["mxbai", "nomic", "snowflake-arctic-m", "all-minilm"]
-
-MODEL_LABEL = {
-    "mxbai":              "mxbai-embed-large<br><small>1024-dim · 335M params</small>",
-    "nomic":              "nomic-embed-text<br><small>768-dim · 137M params</small>",
-    "snowflake-arctic-m": "snowflake-arctic-embed:m<br><small>768-dim · 110M params</small>",
-    "all-minilm":         "all-MiniLM-L6-v2<br><small>384-dim · 22M params</small>",
-}
+# ── Queries ───────────────────────────────────────────────────────────────────
+# Mix of conceptual, person-based, practice-specific, and abstract —
+# chosen to expose retrieval quality differences between models.
+QUERIES = [
+    "good character and manners",
+    "angels recording deeds",
+    "prayer at night",
+    "forgiving someone who wronged you",
+    "comparing yourself to others",
+    "aisha",
+    "fasting expiation sins",
+    "neighbor rights",
+]
 
 COLLECTION_BOOSTS = {
     "bukhari": 5.0, "muslim": 4.8, "nasai": 3.5, "abudawud": 3.0,
@@ -59,8 +82,8 @@ COLLECTION_BOOSTS = {
     "darimi": 2.0, "mishkat": 2.5, "nawawi40": 3.3, "riyadussalihin": 2.5,
 }
 
-N      = 10   # results to show per model
-FETCH  = 50   # fetch pool before dedup/filter
+N     = 10   # results to display per model
+FETCH = 50   # pool size before dedup/filter
 
 _SHORTCODE = re.compile(r'\[/?(?:quran|narrator|prematn|matn|footnote|hadith)[^\]]*\]')
 
@@ -73,21 +96,45 @@ def html_escape(t):
     return t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def search_api(model, query, size):
-    url = (BASE + "/en/search"
-           + "?q="    + urllib.parse.quote(query)
-           + "&mode=semantic"
-           + "&model=" + model
-           + "&size=" + str(size))
-    t0 = time.perf_counter()
-    with urllib.request.urlopen(url, timeout=120) as r:
+# ── Ollama ────────────────────────────────────────────────────────────────────
+
+def embed_query(ollama_id, query):
+    payload = json.dumps({"model": ollama_id, "input": query}).encode()
+    req = urllib.request.Request(
+        f"{OLLAMA_URL}/v1/embeddings",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req, timeout=30) as r:
         body = json.loads(r.read())
-    wall_ms = round((time.perf_counter() - t0) * 1000)
-    hits = body.get("hits", {}).get("hits", [])
-    return hits, wall_ms
+    vec = np.array(body["data"][0]["embedding"], dtype=np.float32)
+    norm = np.linalg.norm(vec)
+    return (vec / norm).tolist() if norm > 0 else vec.tolist()
 
 
-def dedup_hits(hits, n):
+# ── ES kNN search ─────────────────────────────────────────────────────────────
+
+def knn_search(vec_field, query_vec, size):
+    r = es.search(
+        index=EVAL_IDX,
+        knn={
+            "field":        vec_field,
+            "query_vector": query_vec,
+            "k":            size,
+            "num_candidates": size * 5,
+            "filter": {"bool": {"must_not": {"term": {"isChainRef": True}}}},
+        },
+        size=size,
+        _source=[
+            "urn", "collection", "hadithNumber",
+            "hadithText", "arabicText", "englishMatn",
+            "isChainRef", "dupGroup", "gradeNorm", "grade",
+        ],
+    )
+    return r["hits"]["hits"]
+
+
+def dedup(hits, n):
     groups, singletons = {}, []
     for h in hits:
         gid = h["_source"].get("dupGroup")
@@ -103,69 +150,46 @@ def dedup_hits(hits, n):
     return merged[:n]
 
 
-def chain_filter(hits):
-    return [h for h in hits if not h["_source"].get("isChainRef")]
+# ── Fetch all results ─────────────────────────────────────────────────────────
 
-
-# ── Prefetch Arabic text ───────────────────────────────────────────────────────
-def get_arabic_text(collection, hadith_number):
-    try:
-        r = es.search(index="english-mxbai", size=1,
-            query={"bool": {"must": [
-                {"term": {"collection": collection}},
-                {"term": {"hadithNumber": str(hadith_number)}},
-            ]}},
-            _source=["arabicText"])
-        hits = r["hits"]["hits"]
-        if hits:
-            return strip_html(hits[0]["_source"].get("arabicText") or "")
-    except Exception:
-        pass
-    return ""
-
-
-# ── Fetch ─────────────────────────────────────────────────────────────────────
-print("Fetching results...")
-all_results = {}   # {query: {model: {hits, wall_ms, error}}}
+print("Embedding queries and searching...")
+all_results = {}   # {query: {model_key: {hits, embed_ms, search_ms, error}}}
 
 for q in QUERIES:
     all_results[q] = {}
-    for model in MODELS:
+    for m in MODELS:
         try:
-            hits, wall_ms = search_api(model, q, FETCH)
-            hits = chain_filter(hits)
-            hits = dedup_hits(hits, N)
-            all_results[q][model] = {"hits": hits, "wall_ms": wall_ms, "error": None}
-            print(f"  [{model:20s}] '{q[:40]}': {len(hits)} hits | {wall_ms}ms")
+            t0 = time.perf_counter()
+            vec = embed_query(m["ollama_id"], q)
+            embed_ms = round((time.perf_counter() - t0) * 1000)
+
+            t1 = time.perf_counter()
+            hits = knn_search(m["vec_field"], vec, FETCH)
+            search_ms = round((time.perf_counter() - t1) * 1000)
+
+            hits = dedup(hits, N)
+            all_results[q][m["key"]] = {
+                "hits": hits, "embed_ms": embed_ms,
+                "search_ms": search_ms, "error": None,
+            }
+            print(f"  [{m['key']:12s}] '{q[:35]}' → {len(hits)} hits | embed={embed_ms}ms search={search_ms}ms")
         except Exception as e:
-            all_results[q][model] = {"hits": [], "wall_ms": 0, "error": str(e)}
-            print(f"  ERROR [{model}] '{q}': {e}")
+            all_results[q][m["key"]] = {"hits": [], "embed_ms": 0, "search_ms": 0, "error": str(e)}
+            print(f"  ERROR [{m['key']}] '{q}': {e}")
 
 
-# ── Prefetch Arabic text ───────────────────────────────────────────────────────
-print("Fetching Arabic text...")
-arabic_cache = {}
+# ── Report ────────────────────────────────────────────────────────────────────
 
-for q in QUERIES:
-    for model in MODELS:
-        for h in all_results[q][model]["hits"]:
-            s   = h["_source"]
-            key = (s.get("collection", ""), str(s.get("hadithNumber", "")))
-            if key not in arabic_cache:
-                arabic_cache[key] = get_arabic_text(*key)
-
-
-# ── Build report ───────────────────────────────────────────────────────────────
 lines = []
 W = lines.append
 
 
-def build_cell(model, rank, q):
-    r    = all_results[q][model]
+def build_cell(model_key, rank, q):
+    r    = all_results[q][model_key]
     hits = r["hits"]
 
     if r["error"]:
-        return f"<em>ERROR: {html_escape(r['error'][:80])}</em>"
+        return f"<em>ERROR: {html_escape(r['error'][:100])}</em>"
     if rank - 1 >= len(hits):
         return "<em>—</em>"
 
@@ -175,13 +199,16 @@ def build_cell(model, rank, q):
     num     = s.get("hadithNumber", "")
     score   = h["_score"]
     dup_grp = s.get("dupGroup") or ""
+    grade   = s.get("gradeNorm") or s.get("grade") or ""
 
     ref = f"<strong>{html_escape(str(coll))} {html_escape(str(num))}</strong>&nbsp; {score:.4f}"
     if dup_grp:
         ref += f" <small>· dup:{dup_grp}</small>"
+    if grade:
+        ref += f" <small>· {html_escape(grade)}</small>"
 
     matn = strip_html(s.get("englishMatn") or "")
-    full = strip_html(s.get("hadithText") or s.get("englishText") or matn)
+    full = strip_html(s.get("hadithText") or matn)
 
     # Show stripped isnad prefix in grey
     isnad = ""
@@ -199,29 +226,30 @@ def build_cell(model, rank, q):
     elif full:
         parts.append(html_escape(full[:500]))
 
-    ar = arabic_cache.get((coll, str(num)), "")
+    ar = strip_html(s.get("arabicText") or "")
     if ar:
-        parts.append(f'<span dir="rtl" lang="ar"><big>{html_escape(ar[:350])}</big></span>')
+        parts.append(f'<span dir="rtl" lang="ar"><big>{html_escape(ar[:300])}</big></span>')
 
     return "<br><br>".join(parts)
 
 
 def build_table(q):
     n     = len(MODELS)
-    rw    = 4
+    rw    = 3
     col_w = (100 - rw) // n
 
     W('<table width="100%"><thead><tr>')
     W(f'<th width="{rw}%">#</th>')
     for m in MODELS:
-        W(f'<th width="{col_w}%">{MODEL_LABEL[m]}</th>')
+        W(f'<th width="{col_w}%"><strong>{html_escape(m["label"])}</strong><br>'
+          f'<small>{html_escape(m["sublabel"])}</small></th>')
     W('</tr></thead><tbody>')
 
     for rank in range(1, N + 1):
         W('<tr>')
         W(f'<td align="center" valign="top"><strong>{rank}</strong></td>')
         for m in MODELS:
-            W(f'<td valign="top">{build_cell(m, rank, q)}</td>')
+            W(f'<td valign="top">{build_cell(m["key"], rank, q)}</td>')
         W('</tr>')
 
     W('</tbody></table>')
@@ -230,16 +258,15 @@ def build_table(q):
 
 W("# Small Model Comparison")
 W("")
-W("Evaluating small Ollama-backed embedding models as prod candidates for `english-mxbai`.")
+W("Single `small-model-eval` index — four dense_vector fields, one per model.")
+W("All models embed `englishMatn` (isnad-stripped) when available, else `hadithText`.")
 W("")
-W("| Model | Dims | Params | Ollama pull |")
+W("| Model | Ollama ID | Dims | Params |")
 W("|---|---|---|---|")
-W("| mxbai-embed-large | 1024 | ~335M | `mxbai-embed-large` (baseline) |")
-W("| nomic-embed-text | 768 | ~137M | `nomic-embed-text` |")
-W("| snowflake-arctic-embed:m | 768 | ~110M | `snowflake-arctic-embed:m` |")
-W("| all-MiniLM-L6-v2 | 384 | ~22M | `all-minilm` |")
+for m in MODELS:
+    W(f"| {m['label']} | `{m['ollama_id']}` | {m['sublabel'].split('·')[0].strip()} | {m['sublabel'].split('·')[1].strip()} |")
 W("")
-W("*Filters: chain-ref OFF · Dedup ON · `englishMatn` shown (isnad stripped)*")
+W("*Filters: isChainRef=true excluded · Dedup ON (collection-boost priority)*")
 W("")
 W("---")
 W("")
@@ -247,12 +274,18 @@ W("")
 for q in QUERIES:
     W(f"## Query: \"{q}\"")
     W("")
-    lat = " · ".join(
-        f"**{m}** {all_results[q][m]['wall_ms']}ms"
-        for m in MODELS if not all_results[q][m]["error"]
-    )
-    W(f"*Latency: {lat}*  ")
+
+    # Latency table
+    W("| Model | Embed | kNN search |")
+    W("|---|---|---|")
+    for m in MODELS:
+        r = all_results[q][m["key"]]
+        if r["error"]:
+            W(f"| {m['label']} | ERROR | — |")
+        else:
+            W(f"| {m['label']} | {r['embed_ms']}ms | {r['search_ms']}ms |")
     W("")
+
     build_table(q)
     W("---")
     W("")
