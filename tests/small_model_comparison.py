@@ -1,27 +1,40 @@
 """
-Side-by-side comparison of small embedding models from the `small-model-eval` index.
+Side-by-side comparison of all 9 embedding model candidates from `small-model-eval`.
 
-Queries ES directly — no Flask dependency. For each query, embeds with all four
-models via Ollama and runs kNN against the appropriate dense_vector field.
+Queries ES directly — no Flask dependency. For each query, embeds with each model
+and runs kNN against the appropriate dense_vector field.
 
 Models compared:
-  mxbai-embed-large   (1024-dim) — prod baseline
-  nomic-embed-text     (768-dim)
-  snowflake-arctic-embed:m  (768-dim)
-  all-MiniLM-L6-v2    (384-dim)
+  Ollama (F16 / default quant):
+    mxbai-embed-large       1024-dim  335M params  (prod baseline)
+    nomic-embed-text         768-dim  137M params
+    snowflake-arctic-embed:m 768-dim  110M params
+    all-MiniLM-L6-v2         384-dim   22M params
+
+  sentence_transformers / HF:
+    embeddinggemma-300m      768-dim  300M params
+    embeddinggemma-qat-q8    768-dim  300M params (QAT-Q8, stored in fp32)
+    embeddinggemma-qat-q4    768-dim  300M params (QAT-Q4, stored in fp32)
+    mxbai-embed-xsmall-v1   384-dim   33M params
+
+  ONNX quantized:
+    mxbai-embed-large (INT8) 1024-dim  335M params (quantized vs F16 baseline)
 
 Prerequisites:
   - small-model-eval index built (run tests/build_small_model_eval_index.py first)
-  - Ollama running with all four models pulled
+  - Ollama running with all four Ollama models pulled
+  - HF_TOKEN env var set (for Gemma query embedding)
 
 Run inside container:
-  docker exec search-web-1 python3 /code/tests/small_model_comparison.py
+  docker exec -e HF_TOKEN=hf_xxx search-web-1 python3 /code/tests/small_model_comparison.py
 
 Output: /code/test results & reports/small_model_comparison.md
 """
-import os, re, json, time, urllib.request, numpy as np
+import os, re, json, time, subprocess, sys, urllib.request
+import numpy as np
 from elasticsearch import Elasticsearch
 
+HF_TOKEN   = os.environ.get("HF_TOKEN", "")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://host.docker.internal:11434")
 ES_HOST    = "http://172.31.250.10:9200"
 EVAL_IDX   = "small-model-eval"
@@ -31,40 +44,92 @@ es = Elasticsearch(ES_HOST, basic_auth=("elastic", os.environ["ELASTIC_PASSWORD"
                    request_timeout=60)
 
 # ── Models ────────────────────────────────────────────────────────────────────
+
 MODELS = [
+    # ── Ollama ──────────────────────────────────────────────────────────────────
     {
-        "key":        "mxbai",
-        "label":      "mxbai-embed-large",
-        "sublabel":   "1024-dim · 335M params",
-        "ollama_id":  "mxbai-embed-large",
-        "vec_field":  "vec_mxbai",
+        "key":       "mxbai",
+        "label":     "mxbai-embed-large",
+        "sublabel":  "1024-dim · 335M · F16",
+        "embed_fn":  "ollama",
+        "embed_id":  "mxbai-embed-large",
+        "vec_field": "vec_mxbai",
     },
     {
-        "key":        "nomic",
-        "label":      "nomic-embed-text",
-        "sublabel":   "768-dim · 137M params",
-        "ollama_id":  "nomic-embed-text",
-        "vec_field":  "vec_nomic",
+        "key":       "nomic",
+        "label":     "nomic-embed-text",
+        "sublabel":  "768-dim · 137M · Ollama",
+        "embed_fn":  "ollama",
+        "embed_id":  "nomic-embed-text",
+        "vec_field": "vec_nomic",
     },
     {
-        "key":        "snowflake",
-        "label":      "snowflake-arctic-embed:m",
-        "sublabel":   "768-dim · 110M params",
-        "ollama_id":  "snowflake-arctic-embed:m",
-        "vec_field":  "vec_snowflake",
+        "key":       "snowflake",
+        "label":     "snowflake-arctic-embed:m",
+        "sublabel":  "768-dim · 110M · Ollama",
+        "embed_fn":  "ollama",
+        "embed_id":  "snowflake-arctic-embed:m",
+        "vec_field": "vec_snowflake",
     },
     {
-        "key":        "miniLM",
-        "label":      "all-MiniLM-L6-v2",
-        "sublabel":   "384-dim · 22M params",
-        "ollama_id":  "all-minilm",
-        "vec_field":  "vec_miniLM",
+        "key":       "miniLM",
+        "label":     "all-MiniLM-L6-v2",
+        "sublabel":  "384-dim · 22M · Ollama",
+        "embed_fn":  "ollama",
+        "embed_id":  "all-minilm",
+        "vec_field": "vec_miniLM",
+    },
+    # ── sentence_transformers ────────────────────────────────────────────────────
+    {
+        "key":       "gemma",
+        "label":     "embeddinggemma-300m",
+        "sublabel":  "768-dim · 300M · base",
+        "embed_fn":  "st",
+        "embed_id":  "google/embeddinggemma-300m",
+        "vec_field": "vec_gemma",
+        "trust_remote_code": True,
+    },
+    {
+        "key":       "gemma_q8",
+        "label":     "embeddinggemma-300m-qat-q8",
+        "sublabel":  "768-dim · 300M · QAT-Q8",
+        "embed_fn":  "st",
+        "embed_id":  "google/embeddinggemma-300m-qat-q8_0-unquantized",
+        "vec_field": "vec_gemma_q8",
+        "trust_remote_code": True,
+    },
+    {
+        "key":       "gemma_q4",
+        "label":     "embeddinggemma-300m-qat-q4",
+        "sublabel":  "768-dim · 300M · QAT-Q4",
+        "embed_fn":  "st",
+        "embed_id":  "google/embeddinggemma-300m-qat-q4_0-unquantized",
+        "vec_field": "vec_gemma_q4",
+        "trust_remote_code": True,
+    },
+    {
+        "key":       "mxbai_xs",
+        "label":     "mxbai-embed-xsmall-v1",
+        "sublabel":  "384-dim · 33M · ST",
+        "embed_fn":  "st",
+        "embed_id":  "mixedbread-ai/mxbai-embed-xsmall-v1",
+        "vec_field": "vec_mxbai_xs",
+        "trust_remote_code": False,
+    },
+    # ── ONNX quantized ───────────────────────────────────────────────────────────
+    {
+        "key":       "mxbai_q",
+        "label":     "mxbai-embed-large (INT8 ONNX)",
+        "sublabel":  "1024-dim · 335M · quant",
+        "embed_fn":  "onnx",
+        "embed_id":  "mixedbread-ai/mxbai-embed-large-v1",
+        "onnx_file": "onnx/model_quantized.onnx",
+        "vec_field": "vec_mxbai_q",
     },
 ]
 
 # ── Queries ───────────────────────────────────────────────────────────────────
-# Mix of conceptual, person-based, practice-specific, and abstract —
-# chosen to expose retrieval quality differences between models.
+
 QUERIES = [
     "good character and manners",
     "angels recording deeds",
@@ -82,8 +147,8 @@ COLLECTION_BOOSTS = {
     "darimi": 2.0, "mishkat": 2.5, "nawawi40": 3.3, "riyadussalihin": 2.5,
 }
 
-N     = 10   # results to display per model
-FETCH = 50   # pool size before dedup/filter
+N     = 10
+FETCH = 50
 
 _SHORTCODE = re.compile(r'\[/?(?:quran|narrator|prematn|matn|footnote|hadith)[^\]]*\]')
 
@@ -96,10 +161,15 @@ def html_escape(t):
     return t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-# ── Ollama ────────────────────────────────────────────────────────────────────
+# ── Embedding backends ────────────────────────────────────────────────────────
 
-def embed_query(ollama_id, query):
-    payload = json.dumps({"model": ollama_id, "input": query}).encode()
+def _norm(v):
+    a = np.array(v, dtype=np.float32)
+    n = np.linalg.norm(a)
+    return (a / n).tolist() if n > 0 else a.tolist()
+
+def embed_ollama(model_id, query):
+    payload = json.dumps({"model": model_id, "input": query}).encode()
     req = urllib.request.Request(
         f"{OLLAMA_URL}/v1/embeddings",
         data=payload,
@@ -107,9 +177,77 @@ def embed_query(ollama_id, query):
     )
     with urllib.request.urlopen(req, timeout=30) as r:
         body = json.loads(r.read())
-    vec = np.array(body["data"][0]["embedding"], dtype=np.float32)
-    norm = np.linalg.norm(vec)
-    return (vec / norm).tolist() if norm > 0 else vec.tolist()
+    return _norm(body["data"][0]["embedding"])
+
+
+# Lazy-loaded ST/ONNX state: one model at a time per process
+_st_cache  = {}   # hf_repo → SentenceTransformer instance
+_onnx_cache = {}  # (hf_repo, onnx_file) → (session, tokenizer)
+_st_ready   = False
+_onnx_ready = False
+
+def _ensure_st():
+    global _st_ready
+    if not _st_ready:
+        subprocess.run([sys.executable, "-m", "pip", "install", "-q",
+                        "sentence-transformers>=3.0", "huggingface_hub"], check=True)
+        _st_ready = True
+
+def _ensure_onnx():
+    global _onnx_ready
+    if not _onnx_ready:
+        subprocess.run([sys.executable, "-m", "pip", "install", "-q",
+                        "onnxruntime", "transformers", "huggingface_hub"], check=True)
+        _onnx_ready = True
+
+def embed_st(model_def, query):
+    _ensure_st()
+    from sentence_transformers import SentenceTransformer
+    repo = model_def["embed_id"]
+    if repo not in _st_cache:
+        kwargs = {"trust_remote_code": model_def.get("trust_remote_code", False)}
+        if HF_TOKEN:
+            kwargs["token"] = HF_TOKEN
+        _st_cache[repo] = SentenceTransformer(repo, **kwargs)
+    model = _st_cache[repo]
+    vec = model.encode([query], normalize_embeddings=True, show_progress_bar=False)[0]
+    return vec.tolist()
+
+def embed_onnx(model_def, query):
+    _ensure_onnx()
+    import onnxruntime as ort
+    from transformers import AutoTokenizer
+    from huggingface_hub import hf_hub_download
+
+    repo  = model_def["embed_id"]
+    ofile = model_def["onnx_file"]
+    ckey  = (repo, ofile)
+    if ckey not in _onnx_cache:
+        path = hf_hub_download(repo, filename=ofile, token=HF_TOKEN or None)
+        sess = ort.InferenceSession(path, providers=["CPUExecutionProvider"])
+        tok  = AutoTokenizer.from_pretrained(repo, token=HF_TOKEN or None)
+        _onnx_cache[ckey] = (sess, tok)
+
+    sess, tok = _onnx_cache[ckey]
+    input_names = {inp.name for inp in sess.get_inputs()}
+    enc = tok([query], padding=True, truncation=True, max_length=512, return_tensors="np")
+    inputs = {k: v for k, v in enc.items() if k in input_names}
+    outputs = sess.run(None, inputs)
+    hidden = outputs[0]  # (1, S, D)
+    mask   = enc["attention_mask"][:, :, None]
+    v = (hidden * mask).sum(axis=1) / mask.sum(axis=1).clip(min=1)
+    v = v[0].astype(np.float32)
+    return _norm(v.tolist())
+
+def embed_query(model_def, query):
+    fn = model_def["embed_fn"]
+    if fn == "ollama":
+        return embed_ollama(model_def["embed_id"], query)
+    elif fn == "st":
+        return embed_st(model_def, query)
+    elif fn == "onnx":
+        return embed_onnx(model_def, query)
+    raise ValueError(f"Unknown embed_fn: {fn}")
 
 
 # ── ES kNN search ─────────────────────────────────────────────────────────────
@@ -118,9 +256,9 @@ def knn_search(vec_field, query_vec, size):
     r = es.search(
         index=EVAL_IDX,
         knn={
-            "field":        vec_field,
-            "query_vector": query_vec,
-            "k":            size,
+            "field":          vec_field,
+            "query_vector":   query_vec,
+            "k":              size,
             "num_candidates": size * 5,
             "filter": {"bool": {"must_not": {"term": {"isChainRef": True}}}},
         },
@@ -152,7 +290,7 @@ def dedup(hits, n):
 
 # ── Fetch all results ─────────────────────────────────────────────────────────
 
-print("Embedding queries and searching...")
+print("Embedding queries and searching ...")
 all_results = {}   # {query: {model_key: {hits, embed_ms, search_ms, error}}}
 
 for q in QUERIES:
@@ -160,7 +298,7 @@ for q in QUERIES:
     for m in MODELS:
         try:
             t0 = time.perf_counter()
-            vec = embed_query(m["ollama_id"], q)
+            vec = embed_query(m, q)
             embed_ms = round((time.perf_counter() - t0) * 1000)
 
             t1 = time.perf_counter()
@@ -172,9 +310,12 @@ for q in QUERIES:
                 "hits": hits, "embed_ms": embed_ms,
                 "search_ms": search_ms, "error": None,
             }
-            print(f"  [{m['key']:12s}] '{q[:35]}' → {len(hits)} hits | embed={embed_ms}ms search={search_ms}ms")
+            print(f"  [{m['key']:12s}] '{q[:35]}' → {len(hits)} hits "
+                  f"| embed={embed_ms}ms search={search_ms}ms")
         except Exception as e:
-            all_results[q][m["key"]] = {"hits": [], "embed_ms": 0, "search_ms": 0, "error": str(e)}
+            all_results[q][m["key"]] = {
+                "hits": [], "embed_ms": 0, "search_ms": 0, "error": str(e)
+            }
             print(f"  ERROR [{m['key']}] '{q}': {e}")
 
 
@@ -189,7 +330,7 @@ def build_cell(model_key, rank, q):
     hits = r["hits"]
 
     if r["error"]:
-        return f"<em>ERROR: {html_escape(r['error'][:100])}</em>"
+        return f"<em>ERROR: {html_escape(r['error'][:120])}</em>"
     if rank - 1 >= len(hits):
         return "<em>—</em>"
 
@@ -210,7 +351,6 @@ def build_cell(model_key, rank, q):
     matn = strip_html(s.get("englishMatn") or "")
     full = strip_html(s.get("hadithText") or matn)
 
-    # Show stripped isnad prefix in grey
     isnad = ""
     if matn and full and matn != full:
         probe = matn[:60]
@@ -235,7 +375,7 @@ def build_cell(model_key, rank, q):
 
 def build_table(q):
     n     = len(MODELS)
-    rw    = 3
+    rw    = 2
     col_w = (100 - rw) // n
 
     W('<table width="100%"><thead><tr>')
@@ -256,26 +396,30 @@ def build_table(q):
     W('')
 
 
-W("# Small Model Comparison")
+# ── Header ────────────────────────────────────────────────────────────────────
+W("# Small Model Comparison — Full Sweep")
 W("")
-W("Single `small-model-eval` index — four dense_vector fields, one per model.")
-W("All models embed `englishMatn` (isnad-stripped) when available, else `hadithText`.")
+W("Single `small-model-eval` index. All models embed raw `hadithText` (same input for fair comparison).")
 W("")
-W("| Model | Ollama ID | Dims | Params |")
-W("|---|---|---|---|")
-for m in MODELS:
-    W(f"| {m['label']} | `{m['ollama_id']}` | {m['sublabel'].split('·')[0].strip()} | {m['sublabel'].split('·')[1].strip()} |")
+W("| # | Model | Vec field | Dims | Size | Backend |")
+W("|---|---|---|---|---|---|")
+backend_labels = {"ollama": "Ollama", "st": "sentence_transformers", "onnx": "ONNX Runtime"}
+for i, m in enumerate(MODELS, 1):
+    W(f"| {i} | {m['label']} | `{m['vec_field']}` | "
+      f"{m['sublabel'].split('·')[0].strip()} | "
+      f"{m['sublabel'].split('·')[1].strip()} | "
+      f"{backend_labels.get(m['embed_fn'], m['embed_fn'])} |")
 W("")
 W("*Filters: isChainRef=true excluded · Dedup ON (collection-boost priority)*")
 W("")
 W("---")
 W("")
 
+# ── Per-query sections ────────────────────────────────────────────────────────
 for q in QUERIES:
     W(f"## Query: \"{q}\"")
     W("")
 
-    # Latency table
     W("| Model | Embed | kNN search |")
     W("|---|---|---|")
     for m in MODELS:
