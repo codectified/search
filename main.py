@@ -1224,6 +1224,7 @@ _COLLECTION_SLUGS = {
     "malik", "ahmad", "nawawi40", "nawawi", "forty", "riyadussalihin",
     "mishkat", "darimi", "ibnhibban", "baghawi", "adab", "shamail",
 }
+_COLLECTION_ALIAS = {"nawawi40": "forty", "nawawi": "forty"}
 _REF_RE = re.compile(
     r"^(?P<coll>" + "|".join(_COLLECTION_SLUGS) + r")\s+(?P<num>\d+[a-z]?)$",
     re.IGNORECASE,
@@ -1250,10 +1251,9 @@ def _route_query(query, mode):
 
     m = _REF_RE.match(q)
     if m:
-        return "reference", None, {
-            "collection": m.group("coll").lower(),
-            "number": m.group("num"),
-        }
+        coll = m.group("coll").lower()
+        coll = _COLLECTION_ALIAS.get(coll, coll)
+        return "reference", None, {"collection": coll, "number": m.group("num")}
 
     if _ARABIC_RE.search(q):
         return "lexical", "arabic", {}
@@ -1439,6 +1439,7 @@ def search(language):
         result.body,
         lexical_ms,
     )
+    result.body.setdefault("_meta", {})["route"] = "lexical"
     return jsonify(result.body)
 
 

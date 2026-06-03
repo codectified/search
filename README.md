@@ -249,18 +249,24 @@ Normalised hadith grade across five buckets: `Sahih`, `Hasan`, `Da'if`, `Maudu'`
 
 ## Query routing
 
-Every incoming query is classified before dispatch. Some query shapes override the client-supplied `mode`:
+Every incoming query is classified by `_route_query()` before any ES call. Rules apply in strict priority order — earlier rules always win and override `?mode=`:
 
-| Query shape | Route | Example |
-|---|---|---|
-| Wrapped in double quotes | Lexical phrase (`match_phrase`) | `"angel of death"` |
-| Collection slug + number | Direct reference lookup (`term` filter) | `bukhari 1`, `muslim 100a` |
-| Any Arabic (single word or phrase) | Arabic BM25 (`match` + `custom_arabic` analyzer) | `صلاة`, `الصلاة في المسجد` |
-| Everything else | Client `mode` (semantic or lexical) | `prayer at night` |
+| Priority | Query shape | Route | `_meta.route` | Example |
+|---|---|---|---|---|
+| 1 | Wrapped in double quotes (≥3 chars) | Phrase (`match_phrase`) | `lexical_phrase` | `"angel of death"` |
+| 2 | Collection slug + hadith number | Reference lookup (`term` filter, no scoring) | `reference` | `bukhari 1`, `nawawi40 13` |
+| 3 | Any Arabic Unicode character present | Arabic BM25 (`match` on `arabicText`, `custom_arabic` analyzer) | `lexical_arabic` | `صلاة`, `aisha عائشة` |
+| 4 | Everything else | Client `mode` (`?mode=lexical` or `?mode=semantic`) | `lexical` or `semantic` | `prayer at night` |
 
-Quoted and reference patterns always fire regardless of `mode`. Single Arabic words fall through to the requested mode (semantic by default).
+**Priority is absolute.** An Arabic query with `?mode=semantic` still routes to `lexical_arabic`. A quoted query with `?mode=semantic` still routes to `lexical_phrase`. A `bukhari 1` query with `?mode=semantic` still routes to reference lookup.
 
-Every response includes a `_meta.route` field naming the path taken: `"reference"`, `"lexical_phrase"`, `"lexical_arabic"`, or `"semantic"`. Standard BM25 responses omit `_meta` (unchanged path).
+**Collection aliases:** `nawawi40` and `nawawi` resolve to `forty` (the DB slug). Recognised slugs: bukhari, muslim, nasai, abudawud, tirmidhi, ibnmajah, malik, ahmad, forty, riyadussalihin, bulugh, hisn, mishkat, darimi, ibnhibban, baghawi, adab, shamail, virtues.
+
+**Arabic route scope:** Searches all docs regardless of language — no lang filter is applied.
+
+**`_meta.route`** is present in every response and names the path taken. The reference route does not include facet aggregations (it returns a single known hadith). All other routes include `gradeNorm` and `collection` aggregations.
+
+For full ES query shapes, detection code, and known limitations see [`test results & reports/query_router_design.md`](test%20results%20%26%20reports/query_router_design.md).
 
 ---
 
