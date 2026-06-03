@@ -139,6 +139,11 @@ def _build_remote_mxbai_inference():
 
 SEMANTIC_ENABLED = _is_truthy(os.environ.get("SEMANTIC_ENABLED"))
 
+# When enabled, logs one structured entry per query showing the routing
+# decision: route taken, variant, whether the client mode was overridden.
+# Set ROUTER_LOG=true in .env to turn on. Off by default.
+ROUTER_LOG = _is_truthy(os.environ.get("ROUTER_LOG"))
+
 # Catalog of semantic models. Pure data — no env coupling. Add an entry here
 # to register another model; the on/off switch lives on SEMANTIC_ENABLED above.
 EMBEDDING_MODELS = {
@@ -1277,6 +1282,41 @@ def search(language):
     size = int(request.args.get("size", 10))
 
     route, variant, extra = _route_query(query, mode)
+
+    if ROUTER_LOG:
+        # Derive the final route label the same way _meta.route is set so the
+        # log matches what the client receives.
+        if route == "reference":
+            log_route = "reference"
+        elif variant == "phrase":
+            log_route = "lexical_phrase"
+        elif variant == "arabic":
+            log_route = "lexical_arabic"
+        elif route == "lexical":
+            log_route = "lexical"
+        else:
+            log_route = str(route)
+
+        # overridden = True when the router forced a path different from ?mode=.
+        # Reference always overrides. Phrase/arabic override only when mode=semantic
+        # (those variants are still lexical BM25, so they're not "overrides" for
+        # a lexical client — but they do block a semantic request).
+        overridden = route == "reference" or (
+            route == "lexical" and mode == SearchMode.SEMANTIC
+        )
+        log_extra = {"route": log_route, "variant": variant, "overridden": overridden}
+        if route == "reference":
+            log_extra["collection"] = extra.get("collection")
+            log_extra["hadith_number"] = extra.get("number")
+        access_log.info(
+            "router_decision",
+            extra={
+                "request_id": getattr(g, "request_id", None),
+                "query": query,
+                "mode_requested": str(mode),
+                **log_extra,
+            },
+        )
 
     # ── Reference lookup: collection slug + hadith number ─────────────────────
     if route == "reference":
