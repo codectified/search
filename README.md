@@ -250,13 +250,15 @@ Per-run tuning via env vars: `HF_DEDICATED_CONCURRENCY` (default 4), `HF_DEDICAT
 
 ## Shadow sampling (semantic rollout)
 
-> **Already in prod** (`main` branch). This feature is not introduced by the query-router branch — it exists in the current production codebase. The query router adds the `routing_decision` column value; previously it was always null.
-
 On a random fraction of lexical-served `/search` queries the service also runs the
 semantic query in a background thread and records both sides — results and query
 timings — to a `search_metrics` table in a separate **searchdb** (MySQL). The user
 always gets the lexical response, unchanged and undelayed; the semantic run is
 fire-and-forget.
+
+The `routing_decision` column records which query route was taken (`lexical`,
+`lexical_arabic`, `lexical_phrase`, `semantic`) so sampled results can be grouped
+and compared by query type.
 
 This produces an apples-to-apples dataset (same real queries, both engines) to
 compare result quality and latency before flipping semantic on for everyone.
@@ -275,8 +277,7 @@ are dropped under load, default 50).
 
 `search_metrics` columns: `query`, `lexical_results` / `semantic_results` (full
 ES response bodies as JSON), `lexical_query_time_ms` / `semantic_query_time_ms`,
-`semantic_model_name`, and `routing_decision` (populated by the query router with
-the `_meta.route` value — e.g. `lexical`, `lexical_arabic`, `lexical_phrase`, `semantic`).
+`semantic_model_name`, `routing_decision`.
 
 Locally, the `searchdb` service in `docker-compose.yml` provisions this DB and
 creates the table from `searchdb/01-search_metrics.sql` on first start — no setup
