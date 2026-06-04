@@ -14,17 +14,17 @@ Browser / PHP website
         │
         ├── query router (_route_query)
         │       ├── "quoted query"    → match_phrase   ─┐
-        │       ├── collection + num  → term filter     ├─ english-mxbai
-        │       ├── any Arabic text  → Arabic BM25     │   (text fields)
-        │       ├── standard BM25    → cross_fields    ─┘
-        │       └── mode=semantic    → kNN             ── english-mxbai
-        │                                                  (semantic_text)
+        │       ├── any Arabic text  → Arabic BM25     ├─ english-mxbai
+        │       └── standard BM25    → cross_fields    ─┘  (text fields)
+        │
+        └── mode=semantic             → kNN            ── english-mxbai
+                                                           (semantic_text)
         └── Elasticsearch
                 └── english-mxbai  — single index for all paths
                         text fields:  hadithText, arabicText
-                        vector field: semantic_text (mxbai-embed-large, 1024-dim)
+                        vector field: semantic_text (configurable embedding model)
 
-  Ollama (host, port 11434) — embeds search queries
+  Ollama (host, port 11434) — embeds queries at search time
   HF Dedicated Endpoint (optional) — embeds documents at index time
 ```
 
@@ -49,12 +49,14 @@ cp .env.sample .env
 
 Semantic search is on by default (`SEMANTIC_ENABLED=true`). Set it to `false` if you want lexical-only and don't want to run Ollama. `OLLAMA_URL` defaults to `http://host.docker.internal:11434`, which works on Docker Desktop (Mac/Windows) — leave it unset locally.
 
-To offload index-time embedding to a HuggingFace Dedicated Inference Endpoint (recommended for prod — orders of magnitude faster on a small GPU than Ollama on a CPU instance), also set `HUGGING_FACE_KEY` and `HF_DEDICATED_URL` in `.env`. The endpoint must run [TEI](https://github.com/huggingface/text-embeddings-inference) with `mixedbread-ai/mxbai-embed-large-v1`. Leaving either var unset falls back to embedding via Ollama at index time too.
+To offload index-time embedding to a HuggingFace Dedicated Inference Endpoint (recommended for prod — orders of magnitude faster on a small GPU than Ollama on a CPU instance), also set `HUGGING_FACE_KEY` and `HF_DEDICATED_URL` in `.env`. The endpoint must run [TEI](https://github.com/huggingface/text-embeddings-inference) with the configured model. Leaving either var unset falls back to embedding via Ollama at index time too.
 
 ### 2. Pull the model
 
+Pull whichever embedding model is configured in `EMBEDDING_MODELS` in `main.py`:
+
 ```bash
-ollama pull mxbai-embed-large
+ollama pull <model-name>
 ```
 
 ### 3. Start the stack
@@ -75,9 +77,9 @@ This reads all hadiths from MySQL and builds **both** the lexical and semantic i
 
 To build a subset, pass `targets=` (comma-separated):
 ```
-http://localhost:5000/index?password=index123&targets=lexical          # lexical only
-http://localhost:5000/index?password=index123&targets=mxbai            # one semantic model
-http://localhost:5000/index?password=index123&targets=lexical,mxbai    # both (same as default)
+http://localhost:5000/index?password=index123&targets=lexical              # lexical only
+http://localhost:5000/index?password=index123&targets=<model-key>          # one semantic model
+http://localhost:5000/index?password=index123&targets=lexical,<model-key>  # both
 ```
 
 To force a full rebuild instead of incremental:
@@ -136,10 +138,10 @@ SEARCH_METRICS_SAMPLE_PERCENT=0
 
 ### 2. Ollama on Linux
 
-Install [Ollama](https://ollama.com) on the host and pull the model before starting the stack:
+Install [Ollama](https://ollama.com) on the host and pull the configured embedding model before starting the stack:
 
 ```bash
-ollama pull mxbai-embed-large
+ollama pull <model-name>
 ```
 
 `host.docker.internal` only works on Docker Desktop (Mac/Windows), not on Linux. The prod compose file adds `host-gateway` so this hostname resolves correctly on Linux too — the default `OLLAMA_URL` works without any extra `.env` changes.
@@ -158,7 +160,7 @@ The prod stack is exposed on **port 7650**. Builds both lexical and semantic by 
 http://<server>:7650/index?password=<INDEXING_PASSWORD>
 ```
 
-Add `&targets=lexical` or `&targets=mxbai` to build a subset.
+Add `&targets=lexical` or `&targets=<model-key>` to build a subset.
 
 Check index status:
 ```
@@ -167,7 +169,7 @@ http://<server>:7650/index/status
 
 ### Deploying the query router
 
-The query router is a **pure code change** — no index rebuild or schema migration needed. The existing `english-mxbai` index serves all four routes without modification.
+The query router is a **pure code change** — no index rebuild or schema migration needed. The existing index serves all routes without modification.
 
 **Recommended rollout steps:**
 
@@ -194,33 +196,33 @@ The query router is a **pure code change** — no index rebuild or schema migrat
 
 ## Embedding model
 
-| Key | Model | Query-time | Index-time | Dimensions |
-|---|---|---|---|---|
-| `mxbai` | mxbai-embed-large | Ollama (host) | HF Dedicated Endpoint (optional) → else Ollama | 1024 |
+The active model(s) are declared in `EMBEDDING_MODELS` in `main.py`. Model selection is under active evaluation — see `tests/small_model_comparison.py` and `test results & reports/` for comparison reports.
 
-Queries are always embedded via **Ollama on the host machine** (not inside Docker) — the container reaches it at `http://host.docker.internal:11434` via ES 8.16's OpenAI-compatible inference endpoint. Index-time embedding is offloaded to a remote TEI endpoint when `HUGGING_FACE_KEY` + `HF_DEDICATED_URL` are set: the indexer fetches vectors over HTTP and ships them inline with the bulk payload (ES's `semantic_text` accepts pre-populated chunks and skips its own inference call). Vectors from TEI and Ollama for the same model are bit-compatible (cosine ≈ 0.9999), so queries can match docs embedded by either side.
+Queries are embedded at search time via **Ollama on the host machine** — the container reaches it at `http://host.docker.internal:11434` via ES's OpenAI-compatible inference endpoint. Index-time embedding can be offloaded to a remote TEI endpoint (faster on GPU) when `HUGGING_FACE_KEY` + `HF_DEDICATED_URL` are set. Leaving either var unset falls back to Ollama at index time too.
 
-Per-run tuning via env vars: `HF_DEDICATED_CONCURRENCY` (default 4), `HF_DEDICATED_BATCH_SIZE` (default 16, must keep `batch × max_input_length ≤ TEI's max_batch_tokens`), `HF_DEDICATED_RPM` (default -1, disabled).
+Per-run tuning via env vars: `HF_DEDICATED_CONCURRENCY` (default 4), `HF_DEDICATED_BATCH_SIZE` (default 16), `HF_DEDICATED_RPM` (default -1, disabled).
 
 ### Adding a model
 
-1. Add an entry to `EMBEDDING_MODELS` in `main.py` — copy the mxbai entry as a template (~10 lines).
-2. Pull the model on the Ollama host: `ollama pull your-model-name`.
-3. Hit `/index?password=...&targets=newkey` to build its index. (`/index` with no `targets=` will pick it up too, alongside lexical and the other semantic models.)
-4. Add the alias name to `SEMANTIC_INDEXES` in `tests/batch_search.py`.
-5. If it should be the default for `/search?mode=semantic` without a `&model=` param, point `DEFAULT_SEMANTIC_MODEL` at the new key.
+1. Add an entry to `EMBEDDING_MODELS` in `main.py` (copy an existing entry as template).
+2. Pull the model on the Ollama host: `ollama pull <model-name>`.
+3. Hit `/index?password=...&targets=<model-key>` to build its index.
+4. Add the key to `SEMANTIC_INDEXES` in `tests/batch_search.py`.
+5. To make it the default for `?mode=semantic`, point `DEFAULT_SEMANTIC_MODEL` at the new key.
 
-`SEMANTIC_ENABLED` is a single global toggle — you don't add a per-model env var.
+`SEMANTIC_ENABLED` is a single global toggle — there is no per-model on/off switch.
 
 ---
 
 ## Shadow sampling (semantic rollout)
 
-To roll semantic search out safely, the service can **shadow-sample** live traffic:
-on a random fraction of lexical-served `/search` queries it also runs the semantic
-query in a background thread and records both sides — results and query timings —
-to a `search_metrics` table in a separate **searchdb** (MySQL). The user always
-gets the lexical response, unchanged and undelayed; the semantic run is fire-and-forget.
+> **Already in prod** (`main` branch). This feature is not introduced by the query-router branch — it exists in the current production codebase. The query router adds the `routing_decision` column value; previously it was always null.
+
+On a random fraction of lexical-served `/search` queries the service also runs the
+semantic query in a background thread and records both sides — results and query
+timings — to a `search_metrics` table in a separate **searchdb** (MySQL). The user
+always gets the lexical response, unchanged and undelayed; the semantic run is
+fire-and-forget.
 
 This produces an apples-to-apples dataset (same real queries, both engines) to
 compare result quality and latency before flipping semantic on for everyone.
@@ -240,7 +242,7 @@ are dropped under load, default 50).
 `search_metrics` columns: `query`, `lexical_results` / `semantic_results` (full
 ES response bodies as JSON), `lexical_query_time_ms` / `semantic_query_time_ms`,
 `semantic_model_name`, and `routing_decision` (populated by the query router with
-the `_meta.route` value — e.g. `lexical`, `reference`, `lexical_arabic`).
+the `_meta.route` value — e.g. `lexical`, `lexical_arabic`, `lexical_phrase`, `semantic`).
 
 Locally, the `searchdb` service in `docker-compose.yml` provisions this DB and
 creates the table from `searchdb/01-search_metrics.sql` on first start — no setup
@@ -259,7 +261,7 @@ All search paths run against `english-mxbai`. Fields:
 | `arabicText` | `text` | `custom_arabic` analyzer — normalises alef variants (أ/إ/آ → ا), tatweel, hamza, taa marbuta. Used by the Arabic BM25 route. |
 | `englishMatn` | `text` | `synonym` analyzer. Hadith body only — isnad prefix stripped. Cleaner signal for semantic and BM25 than `hadithText`. |
 | `collection` | `text` + `.keyword` | Collection slug (e.g. `bukhari`). Use `collection.keyword` for aggregations and term filters. |
-| `hadithNumber` | `text` + `.keyword` | Hadith number as string (e.g. `"1"`, `"59a"`). `.keyword` for exact term filter in reference lookup. |
+| `hadithNumber` | `text` + `.keyword` | Hadith number as string (e.g. `"1"`, `"59a"`). Boosted `^2` in BM25; `.keyword` sub-field for exact term filters. |
 | `grade` | `text` + `.keyword` | Raw grade string from DB. Spelling varies wildly across sources — prefer `gradeNorm`. |
 | `arabicGrade` | `text` + `.keyword` | Arabic grade string. Not used in current search paths. |
 | `gradeNorm` | `keyword` | Normalised grade bucket: `Sahih`, `Hasan`, `Da'if`, `Maudu'`, `Uncategorized`. Filterable and aggregatable. Added by corpus-normalization branch. |
@@ -269,7 +271,7 @@ All search paths run against `english-mxbai`. Fields:
 | `urn` | `text` (not indexed) | Unique resource name for the hadith. Stored for display; not used in query paths. |
 | `contentHash` | `keyword` (not indexed) | MD5 of the document content. Used to detect unchanged docs during incremental indexing. |
 | `matchingArabicURN` | `text` (not indexed) | Links a bilingual hadith to its Arabic-only counterpart in the DB. |
-| `semantic_text` | `semantic_text` | mxbai-embed-large vectors (1024-dim, cosine similarity). Populated at index time via HF Dedicated Endpoint or Ollama. |
+| `semantic_text` | `semantic_text` | Dense vector field (cosine similarity). Populated at index time from the configured embedding model via HF Dedicated Endpoint or Ollama. |
 
 `collection.keyword` is used for facet aggregations; `collection` (text) is included in the BM25 cross-field query with a `^2` boost.
 
@@ -390,7 +392,7 @@ Mode is passed as a query parameter:
 /english/search?q=prayer&mode=lexical
 ```
 
-`mode=semantic` uses the model named in `DEFAULT_SEMANTIC_MODEL` (currently `mxbai`) when no `&model=` is supplied. Pass `&model=<key>` to pick a different enabled model.
+`mode=semantic` uses the model named in `DEFAULT_SEMANTIC_MODEL` when no `&model=` is supplied. Pass `&model=<key>` to pick a different enabled model.
 
 ---
 
