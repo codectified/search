@@ -165,6 +165,31 @@ Check index status:
 http://<server>:7650/index/status
 ```
 
+### Deploying the query router
+
+The query router is a **pure code change** — no index rebuild or schema migration needed. The existing `english-mxbai` index serves all four routes without modification.
+
+**Recommended rollout steps:**
+
+1. **Deploy with `ROUTER_LOG=true`** first. This emits one structured log line per request to the access log, letting you audit routing decisions on real traffic before committing:
+
+   ```env
+   ROUTER_LOG=true
+   ```
+
+   Watch for unexpected `route` values or `overridden: true` cases where user intent doesn't match what the router chose.
+
+2. **Review a day of traffic.** Key things to check:
+   - Arabic queries route to `lexical_arabic` and not falling through to standard BM25.
+   - Quoted queries route to `lexical_phrase`.
+   - No legitimate English queries accidentally route to `lexical_arabic` — this happens if a query contains a stray Arabic character. Look for `overridden: true` on queries that look English.
+
+3. **Correlate with shadow sampling** (if `SEARCH_METRICS_SAMPLE_PERCENT > 0`). The `routing_decision` column in `search_metrics` records the route taken alongside lexical and semantic result bodies for each sampled request — useful for comparing what each route returned on the same real queries.
+
+4. **Turn off `ROUTER_LOG`** once routing looks correct. Structured logs are low-overhead but add access log noise on high-traffic servers.
+
+5. **Rollback** is a single `docker compose` redeploy of the previous image. The index is untouched so rollback is instant.
+
 ---
 
 ## Embedding model
@@ -214,7 +239,8 @@ are dropped under load, default 50).
 
 `search_metrics` columns: `query`, `lexical_results` / `semantic_results` (full
 ES response bodies as JSON), `lexical_query_time_ms` / `semantic_query_time_ms`,
-`semantic_model_name`, and `routing_decision` (reserved for a future query router).
+`semantic_model_name`, and `routing_decision` (populated by the query router with
+the `_meta.route` value — e.g. `lexical`, `reference`, `lexical_arabic`).
 
 Locally, the `searchdb` service in `docker-compose.yml` provisions this DB and
 creates the table from `searchdb/01-search_metrics.sql` on first start — no setup
@@ -301,19 +327,16 @@ Every incoming query is classified by `_route_query()` before any ES call. Rules
 | Priority | Query shape | Route | `_meta.route` | Example |
 |---|---|---|---|---|
 | 1 | Wrapped in double quotes (≥3 chars) | Phrase (`match_phrase`) | `lexical_phrase` | `"angel of death"` |
-| 2 | Collection slug + hadith number | Reference lookup (`term` filter, no scoring) | `reference` | `bukhari 1`, `nawawi40 13` |
-| 3 | Any Arabic Unicode character present | Arabic BM25 (`match` on `arabicText`, `custom_arabic` analyzer) | `lexical_arabic` | `صلاة`, `aisha عائشة` |
-| 4 | Everything else | Client `mode` (`?mode=lexical` or `?mode=semantic`) | `lexical` or `semantic` | `prayer at night` |
+| 2 | Any Arabic Unicode character present | Arabic BM25 (`match` on `arabicText`, `custom_arabic` analyzer) | `lexical_arabic` | `صلاة`, `aisha عائشة` |
+| 3 | Everything else | Client `mode` (`?mode=lexical` or `?mode=semantic`) | `lexical` or `semantic` | `prayer at night`, `bukhari 1` |
 
-**Priority is absolute.** An Arabic query with `?mode=semantic` still routes to `lexical_arabic`. A quoted query with `?mode=semantic` still routes to `lexical_phrase`. A `bukhari 1` query with `?mode=semantic` still routes to reference lookup.
+**Priority is absolute.** An Arabic query with `?mode=semantic` still routes to `lexical_arabic`. A quoted query with `?mode=semantic` still routes to `lexical_phrase`.
 
-**Collection aliases:** `nawawi40` and `nawawi` resolve to `forty` (the DB slug). Recognised slugs: bukhari, muslim, nasai, abudawud, tirmidhi, ibnmajah, malik, ahmad, forty, riyadussalihin, bulugh, hisn, mishkat, darimi, ibnhibban, baghawi, adab, shamail, virtues.
+**Collection+number queries** (`bukhari 1`, `nasai 200`) go through standard lexical BM25. Both `hadithNumber` and `collection` are boosted fields (`^2`), and each collection gets an additional `function_score` weight, so the correct hadith surfaces at or near rank 1 for well-formed queries. Misspelled collection names (`bukahri 1`) degrade gracefully — BM25 still returns relevant results rather than zero.
 
 **Arabic route scope:** Searches all docs regardless of language — no `lang` filter is applied. The `lang` field is stored but not indexed, so it cannot be used in ES term filters.
 
-**`isChainRef` filter:** Applied on every route. Pure isnad-chain entries are always excluded.
-
-**`_meta.route`** is present in every response and names the path taken. The reference route does not include facet aggregations (it returns a single known hadith). All other routes include `gradeNorm` and `collection` aggregations.
+**`_meta.route`** is present in every response and names the path taken. Facet aggregations (`gradeNorm`, `collection`) and the `isChainRef` exclusion filter are added by downstream branches (corpus-normalization and facets).
 
 ### Standard lexical — collection boosts
 
@@ -340,17 +363,15 @@ Set `ROUTER_LOG=true` in `.env` to emit one structured log entry per request:
 ```json
 {
   "message": "router_decision",
-  "query": "bukhari 1",
-  "mode_requested": "lexical",
-  "route": "reference",
-  "variant": null,
-  "overridden": true,
-  "collection": "bukhari",
-  "hadith_number": "1"
+  "query": "صلاة الليل",
+  "mode_requested": "semantic",
+  "route": "lexical_arabic",
+  "variant": "arabic",
+  "overridden": true
 }
 ```
 
-`overridden: true` means the router chose a path other than what `?mode=` requested — reference lookups always set it; phrase/Arabic routes set it only when `mode=semantic` was requested (those routes block semantic). Off by default.
+`overridden: true` means phrase or Arabic routing forced a lexical path when `?mode=semantic` was requested. Off by default.
 
 For full ES query shapes, detection code, and known limitations see [`test results & reports/query_router_design.md`](test%20results%20%26%20reports/query_router_design.md).
 
