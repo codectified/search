@@ -32,9 +32,6 @@ query string
     ├─ starts and ends with " " (≥3 chars)?
     │       → route: lexical  │  variant: phrase
     │
-    ├─ matches <collection> <number>?
-    │       → route: reference  │  extra: {collection, number}
-    │
     ├─ contains any Arabic Unicode character?
     │       → route: lexical  │  variant: arabic
     │
@@ -46,81 +43,21 @@ query string
 ### Detection code
 
 ```python
-_REF_RE   = re.compile(r'^(?P<coll>[a-z0-9]+)\s+(?P<num>\d+[a-z]?)$', re.I)
 _ARABIC_RE = re.compile(r'[؀-ۿ]')
 
 def _route_query(query, mode):
     q = query.strip()
     if len(q) >= 3 and q[0] == '"' and q[-1] == '"':
         return "lexical", "phrase", {"phrase_text": q[1:-1]}
-    m = _REF_RE.match(q)
-    if m:
-        coll = _COLLECTION_ALIAS.get(m.group("coll").lower(), m.group("coll").lower())
-        return "reference", None, {"collection": coll, "number": m.group("num")}
     if _ARABIC_RE.search(q):
         return "lexical", "arabic", {}
     return mode, None, {}
 ```
 
 Priority is absolute: Arabic text inside quotes (`"صلاة"`) routes to phrase, not Arabic.
-A collection+number query with `?mode=semantic` still routes to reference.
+An Arabic query with `?mode=semantic` still routes to `lexical_arabic`.
 
----
-
-## Route: `reference`
-
-**Triggered by:** A query that is exactly a recognised collection slug followed by
-a space and a hadith number (optionally with a letter suffix: `59a`).
-
-**Examples:** `bukhari 1`, `nasai 200`, `nawawi40 1`, `bulugh 5a`
-
-**Collection aliases:** `nawawi40` and `nawawi` resolve to `forty` (the actual DB
-slug). Recognised slugs: bukhari, muslim, nasai, abudawud, tirmidhi, ibnmajah,
-malik, ahmad, forty, riyadussalihin, bulugh, hisn, mishkat, darimi, ibnhibban,
-baghawi, adab, shamail, virtues.
-
-**ES query:** Pure `filter` — no scoring, no BM25.
-
-Example for query `bukhari 1`:
-
-```json
-GET /english-mxbai/_search
-{
-  "size": 10,
-  "query": {
-    "bool": {
-      "filter": [
-        {"term": {"collection": "bukhari"}},
-        {"term": {"hadithNumber": "1"}}
-      ]
-    }
-  }
-}
-```
-
-Example for query `nawawi40 13` (alias resolved, letter suffix):
-
-```json
-GET /english-mxbai/_search
-{
-  "query": {
-    "bool": {
-      "filter": [
-        {"term": {"collection": "forty"}},
-        {"term": {"hadithNumber": "13"}}
-      ]
-    }
-  }
-}
-```
-
-**Why no BM25:** A user typing `bukhari 1` wants exactly that hadith. Scoring would
-introduce noise from other hadiths that match the token "1" across all collections.
-
-**Response `_meta`:** `{"route": "reference"}`
-
-**Facet aggs:** NOT included — reference results are a single known hadith, not a
-search over a population.
+**Collection+number queries** (`bukhari 1`, `nasai 200`) fall through to standard lexical BM25. Both `hadithNumber^2` and `collection^2` are boosted fields in the cross-field query, and each collection carries an additional `function_score` weight, so the correct hadith reliably surfaces at or near rank 1. Misspellings (`bukahri 1`) degrade gracefully via BM25 rather than returning zero results.
 
 ---
 
@@ -316,10 +253,9 @@ Every response includes `_meta.route`. Values:
 
 | Value | Path |
 |-------|------|
-| `reference` | Direct filter lookup by collection + number |
 | `lexical_phrase` | `match_phrase` on quoted query |
 | `lexical_arabic` | Arabic analyser BM25 on `arabicText` |
-| `lexical` | Standard cross-field BM25 with collection boosts |
+| `lexical` | Standard cross-field BM25 with collection boosts (including collection+number queries) |
 | `semantic` | Vector similarity via inference endpoint |
 
 ---
@@ -331,9 +267,9 @@ This document covers what `feature/query-router` ships. Subsequent branches laye
 | Branch | Adds |
 |--------|------|
 | `feature/corpus-normalization` | `isChainRef: true` exclusion filter on all routes; `dupGroup` dedup in semantic; `gradeNorm` normalisation backfill |
-| `feature/facets` | `gradeNorm` and `collection` facet aggregations on all routes except reference; `?gradeNorm=` filter param |
+| `feature/facets` | `gradeNorm` and `collection` facet aggregations on all routes; `?gradeNorm=` filter param |
 
-The ES query examples above are accurate for this branch only. With corpus-normalization merged, every query gains a `must_not: {term: {isChainRef: true}}` clause. With facets merged, non-reference queries gain `aggs: {gradeNorm: …, collection: …}`.
+The ES query examples above are accurate for this branch only. With corpus-normalization merged, every query gains a `must_not: {term: {isChainRef: true}}` clause. With facets merged, all routes gain `aggs: {gradeNorm: …, collection: …}`.
 
 ---
 
@@ -347,20 +283,17 @@ The router is a pure code change — no index rebuild required. The `english-mxb
    ```json
    {
      "message": "router_decision",
-     "query": "bukhari 1",
-     "mode_requested": "lexical",
-     "route": "reference",
-     "variant": null,
-     "overridden": true,
-     "collection": "bukhari",
-     "hadith_number": "1"
+     "query": "صلاة الليل",
+     "mode_requested": "semantic",
+     "route": "lexical_arabic",
+     "variant": "arabic",
+     "overridden": true
    }
    ```
 
 2. Review a day of real queries. Focus on:
-   - `overridden: true` — router chose a different path than `?mode=` asked for. Legitimate for reference/Arabic/phrase; investigate if English queries appear here.
+   - `overridden: true` — Arabic or phrase routing blocked a `?mode=semantic` request. Investigate if English-looking queries appear here.
    - `route: lexical_arabic` on queries that look English — a stray Arabic character in the input will trigger this.
-   - Reference hits returning rank 1 for `bukhari N` style queries.
 
 3. If shadow sampling is enabled, `routing_decision` in `search_metrics` records the route for each sampled request alongside full result bodies.
 
@@ -370,14 +303,16 @@ The router is a pure code change — no index rebuild required. The `english-mxb
 
 ---
 
-## Reference route: comparison with BM25
+## Collection+number queries and BM25
 
-The reference route was evaluated against straight BM25 across 15 collection+number queries (see `tests/report_query_router.py`). Key findings:
+`bukhari 1`, `nasai 200`, and similar queries are handled by standard lexical BM25. The cross-field query includes `hadithNumber^2` and `collection^2` as boosted fields, and each collection carries an additional `function_score` weight (Bukhari/Muslim: 3.5×, Nawawi 40/Riyad: 3.3×, etc.).
 
-- **BM25 ranked the target hadith #1 on 9/15 queries** — it works most of the time due to collection and number fields being boosted.
-- **Reference route returned the target hadith at #1 on 15/15 queries** by definition — it's a pure filter, no ranking ambiguity.
-- **Where BM25 failed:** Short hadith numbers (`bukhari 1`, `ibnmajah 1`) matched too many docs — BM25 ranked a higher-scoring keyword match above the exact target. Numbers like `1` appear in hadithText frequently.
-- **Conclusion:** Reference route is worth keeping. The cost is negligible (filter-only, no scoring), and it eliminates ranking uncertainty for an explicit lookup intent.
+For specific numbers (e.g. `bukhari 7563`) this is highly precise — few docs in any collection have that exact number. For common numbers (`bukhari 1`) the collection boost keeps Bukhari ranked first even when "1" appears throughout `hadithText`. Misspellings (`bukahri 1`) fall through to the same BM25 path and return imperfect-but-non-empty results, which is strictly better than a dedicated filter path that returns zero on any mismatch.
+
+An earlier design had a dedicated reference route (exact term filter). It was removed because:
+- Misspellings silently returned zero results
+- BM25 with field boosts is accurate enough for well-formed queries
+- Fewer code paths means fewer edge cases to test and maintain
 
 ---
 
@@ -388,4 +323,4 @@ The reference route was evaluated against straight BM25 across 15 collection+num
 | Dagger alef (`الرحمٰن`) not normalised | 0 results for that spelling | Known gap, not addressed |
 | Single Arabic character routes to Arabic path | `aisha عائشة` goes Arabic even though intent may be English | Acceptable — Arabic tokens dominate intent |
 | `query_string` → `simple_query_string` fallback is silent | Client can't tell which was used | Logged server-side |
-| Reference path has no fuzzy match | `bukahri 1` returns nothing | Intentional — reference must be exact |
+| Multi-word collection names not handled | `abu dawud 1` or `ibn majah 1` go to standard BM25 (same as all other queries); BM25 field boosts still surface the right hadith near rank 1 | Acceptable — no silent zero-results |

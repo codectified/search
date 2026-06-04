@@ -1194,41 +1194,28 @@ def build_semantic_query(query, filter_clauses):
 
 _ARABIC_RE = re.compile(r"[؀-ۿ]")
 
-_COLLECTION_SLUGS = {
-    "bukhari", "muslim", "nasai", "abudawud", "tirmidhi", "ibnmajah",
-    "malik", "ahmad", "nawawi40", "nawawi", "forty", "riyadussalihin",
-    "mishkat", "darimi", "ibnhibban", "baghawi", "adab", "shamail",
-}
-_COLLECTION_ALIAS = {"nawawi40": "forty", "nawawi": "forty"}
-_REF_RE = re.compile(
-    r"^(?P<coll>" + "|".join(_COLLECTION_SLUGS) + r")\s+(?P<num>\d+[a-z]?)$",
-    re.IGNORECASE,
-)
-
 
 def _route_query(query, mode):
     """Classify the query and return (route, variant, extra).
 
-    route   — "reference" | "lexical" | mode (passes through for semantic/lexical)
+    route   — "lexical" | mode (passes through for semantic/lexical)
     variant — None | "phrase" | "arabic"
-    extra   — dict with parsed values, e.g. {"collection": ..., "number": ...}
+    extra   — always {}
 
-    Rules (applied in order; reference and phrase always override mode):
-      1. Quoted → lexical phrase search
-      2. Collection + number → direct hadith reference lookup
-      3. Multi-word Arabic → lexical BM25 on arabicText
-      4. Otherwise → mode as requested
+    Rules (applied in order; phrase and arabic always override mode):
+      1. Quoted → lexical phrase search (match_phrase)
+      2. Any Arabic character → lexical BM25 on arabicText
+      3. Otherwise → mode as requested (lexical BM25 or semantic)
+
+    Collection+number queries ("bukhari 1") fall through to standard lexical
+    BM25 — hadithNumber and collection are both boosted fields (^2) so the
+    correct hadith surfaces naturally, and misspellings degrade gracefully
+    rather than returning zero results.
     """
     q = query.strip()
 
     if len(q) >= 3 and q[0] == '"' and q[-1] == '"':
         return "lexical", "phrase", {"phrase_text": q[1:-1]}
-
-    m = _REF_RE.match(q)
-    if m:
-        coll = m.group("coll").lower()
-        coll = _COLLECTION_ALIAS.get(coll, coll)
-        return "reference", None, {"collection": coll, "number": m.group("num")}
 
     if _ARABIC_RE.search(q):
         return "lexical", "arabic", {}
@@ -1284,11 +1271,7 @@ def search(language):
     route, variant, extra = _route_query(query, mode)
 
     if ROUTER_LOG:
-        # Derive the final route label the same way _meta.route is set so the
-        # log matches what the client receives.
-        if route == "reference":
-            log_route = "reference"
-        elif variant == "phrase":
+        if variant == "phrase":
             log_route = "lexical_phrase"
         elif variant == "arabic":
             log_route = "lexical_arabic"
@@ -1297,44 +1280,19 @@ def search(language):
         else:
             log_route = str(route)
 
-        # overridden = True when the router forced a path different from ?mode=.
-        # Reference always overrides. Phrase/arabic override only when mode=semantic
-        # (those variants are still lexical BM25, so they're not "overrides" for
-        # a lexical client — but they do block a semantic request).
-        overridden = route == "reference" or (
-            route == "lexical" and mode == SearchMode.SEMANTIC
-        )
-        log_extra = {"route": log_route, "variant": variant, "overridden": overridden}
-        if route == "reference":
-            log_extra["collection"] = extra.get("collection")
-            log_extra["hadith_number"] = extra.get("number")
+        # overridden = True when phrase/arabic forced lexical despite mode=semantic
+        overridden = route == "lexical" and mode == SearchMode.SEMANTIC
         access_log.info(
             "router_decision",
             extra={
                 "request_id": getattr(g, "request_id", None),
                 "query": query,
                 "mode_requested": str(mode),
-                **log_extra,
+                "route": log_route,
+                "variant": variant,
+                "overridden": overridden,
             },
         )
-
-    # ── Reference lookup: collection slug + hadith number ─────────────────────
-    if route == "reference":
-        ref_filters = [
-            {"term": {"collection": extra["collection"]}},
-            {"term": {"hadithNumber": extra["number"]}},
-        ] + filters
-        try:
-            result = es_client.search(
-                index=LEXICAL_INDEX,
-                size=10,
-                query={"bool": {"filter": ref_filters}},
-                _source={"excludes": [SEMANTIC_FIELD]},
-            )
-        except (BadRequestError, NotFoundError) as e:
-            return malformed_query_response(e)
-        result.body["_meta"] = {"route": "reference"}
-        return jsonify(result.body)
 
     # ── Semantic path ──────────────────────────────────────────────────────────
     if route == SearchMode.SEMANTIC:

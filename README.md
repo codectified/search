@@ -180,10 +180,9 @@ The query router is a **pure code change** — no index rebuild or schema migrat
    Watch for unexpected `route` values or `overridden: true` cases where user intent doesn't match what the router chose.
 
 2. **Review a day of traffic.** Key things to check:
-   - Reference queries (`bukhari 1`, etc.) route to `reference` and return the correct hadith at rank 1.
-   - Arabic queries route to `lexical_arabic` and don't fall through to standard BM25.
+   - Arabic queries route to `lexical_arabic` and not falling through to standard BM25.
    - Quoted queries route to `lexical_phrase`.
-   - No legitimate English queries are accidentally routed to `lexical_arabic` (would happen if a query contains a stray Arabic character — look for `overridden: true` on queries that look English).
+   - No legitimate English queries accidentally route to `lexical_arabic` — this happens if a query contains a stray Arabic character. Look for `overridden: true` on queries that look English.
 
 3. **Correlate with shadow sampling** (if `SEARCH_METRICS_SAMPLE_PERCENT > 0`). The `routing_decision` column in `search_metrics` records the route taken alongside lexical and semantic result bodies for each sampled request — useful for comparing what each route returned on the same real queries.
 
@@ -284,13 +283,12 @@ Every incoming query is classified by `_route_query()` before any ES call. Rules
 | Priority | Query shape | Route | `_meta.route` | Example |
 |---|---|---|---|---|
 | 1 | Wrapped in double quotes (≥3 chars) | Phrase (`match_phrase`) | `lexical_phrase` | `"angel of death"` |
-| 2 | Collection slug + hadith number | Reference lookup (`term` filter, no scoring) | `reference` | `bukhari 1`, `nawawi40 13` |
-| 3 | Any Arabic Unicode character present | Arabic BM25 (`match` on `arabicText`, `custom_arabic` analyzer) | `lexical_arabic` | `صلاة`, `aisha عائشة` |
-| 4 | Everything else | Client `mode` (`?mode=lexical` or `?mode=semantic`) | `lexical` or `semantic` | `prayer at night` |
+| 2 | Any Arabic Unicode character present | Arabic BM25 (`match` on `arabicText`, `custom_arabic` analyzer) | `lexical_arabic` | `صلاة`, `aisha عائشة` |
+| 3 | Everything else | Client `mode` (`?mode=lexical` or `?mode=semantic`) | `lexical` or `semantic` | `prayer at night`, `bukhari 1` |
 
-**Priority is absolute.** An Arabic query with `?mode=semantic` still routes to `lexical_arabic`. A quoted query with `?mode=semantic` still routes to `lexical_phrase`. A `bukhari 1` query with `?mode=semantic` still routes to reference lookup.
+**Priority is absolute.** An Arabic query with `?mode=semantic` still routes to `lexical_arabic`. A quoted query with `?mode=semantic` still routes to `lexical_phrase`.
 
-**Collection aliases:** `nawawi40` and `nawawi` resolve to `forty` (the DB slug). Recognised slugs: bukhari, muslim, nasai, abudawud, tirmidhi, ibnmajah, malik, ahmad, forty, riyadussalihin, bulugh, hisn, mishkat, darimi, ibnhibban, baghawi, adab, shamail, virtues.
+**Collection+number queries** (`bukhari 1`, `nasai 200`) go through standard lexical BM25. Both `hadithNumber` and `collection` are boosted fields (`^2`), and each collection gets an additional `function_score` weight, so the correct hadith surfaces at or near rank 1 for well-formed queries. Misspelled collection names (`bukahri 1`) degrade gracefully — BM25 still returns relevant results rather than zero.
 
 **Arabic route scope:** Searches all docs regardless of language — no `lang` filter is applied. The `lang` field is stored but not indexed, so it cannot be used in ES term filters.
 
@@ -321,17 +319,15 @@ Set `ROUTER_LOG=true` in `.env` to emit one structured log entry per request:
 ```json
 {
   "message": "router_decision",
-  "query": "bukhari 1",
-  "mode_requested": "lexical",
-  "route": "reference",
-  "variant": null,
-  "overridden": true,
-  "collection": "bukhari",
-  "hadith_number": "1"
+  "query": "صلاة الليل",
+  "mode_requested": "semantic",
+  "route": "lexical_arabic",
+  "variant": "arabic",
+  "overridden": true
 }
 ```
 
-`overridden: true` means the router chose a path other than what `?mode=` requested — reference lookups always set it; phrase/Arabic routes set it only when `mode=semantic` was requested (those routes block semantic). Off by default.
+`overridden: true` means phrase or Arabic routing forced a lexical path when `?mode=semantic` was requested. Off by default.
 
 For full ES query shapes, detection code, and known limitations see [`test results & reports/query_router_design.md`](test%20results%20%26%20reports/query_router_design.md).
 
