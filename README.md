@@ -165,6 +165,32 @@ Check index status:
 http://<server>:7650/index/status
 ```
 
+### Deploying the query router
+
+The query router is a **pure code change** — no index rebuild or schema migration needed. The existing `english-mxbai` index serves all four routes without modification.
+
+**Recommended rollout steps:**
+
+1. **Deploy with `ROUTER_LOG=true`** first. This emits one structured log line per request to the access log, letting you audit routing decisions on real traffic before committing:
+
+   ```env
+   ROUTER_LOG=true
+   ```
+
+   Watch for unexpected `route` values or `overridden: true` cases where user intent doesn't match what the router chose.
+
+2. **Review a day of traffic.** Key things to check:
+   - Reference queries (`bukhari 1`, etc.) route to `reference` and return the correct hadith at rank 1.
+   - Arabic queries route to `lexical_arabic` and don't fall through to standard BM25.
+   - Quoted queries route to `lexical_phrase`.
+   - No legitimate English queries are accidentally routed to `lexical_arabic` (would happen if a query contains a stray Arabic character — look for `overridden: true` on queries that look English).
+
+3. **Correlate with shadow sampling** (if `SEARCH_METRICS_SAMPLE_PERCENT > 0`). The `routing_decision` column in `search_metrics` records the route taken alongside lexical and semantic result bodies for each sampled request — useful for comparing what each route returned on the same real queries.
+
+4. **Turn off `ROUTER_LOG`** once routing looks correct. Structured logs are low-overhead but add access log noise on high-traffic servers.
+
+5. **Rollback** is a single `docker compose` redeploy of the previous image. The index is untouched so rollback is instant.
+
 ---
 
 ## Embedding model
@@ -214,7 +240,8 @@ are dropped under load, default 50).
 
 `search_metrics` columns: `query`, `lexical_results` / `semantic_results` (full
 ES response bodies as JSON), `lexical_query_time_ms` / `semantic_query_time_ms`,
-`semantic_model_name`, and `routing_decision` (reserved for a future query router).
+`semantic_model_name`, and `routing_decision` (populated by the query router with
+the `_meta.route` value — e.g. `lexical`, `reference`, `lexical_arabic`).
 
 Locally, the `searchdb` service in `docker-compose.yml` provisions this DB and
 creates the table from `searchdb/01-search_metrics.sql` on first start — no setup
@@ -267,9 +294,7 @@ Every incoming query is classified by `_route_query()` before any ES call. Rules
 
 **Arabic route scope:** Searches all docs regardless of language — no `lang` filter is applied. The `lang` field is stored but not indexed, so it cannot be used in ES term filters.
 
-**`isChainRef` filter:** Applied on every route. Pure isnad-chain entries are always excluded.
-
-**`_meta.route`** is present in every response and names the path taken. The reference route does not include facet aggregations (it returns a single known hadith). All other routes include `gradeNorm` and `collection` aggregations.
+**`_meta.route`** is present in every response and names the path taken. Facet aggregations (`gradeNorm`, `collection`) and the `isChainRef` exclusion filter are added by downstream branches (corpus-normalization and facets).
 
 ### Standard lexical — collection boosts
 

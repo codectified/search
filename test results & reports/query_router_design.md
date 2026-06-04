@@ -91,8 +91,7 @@ GET /english-mxbai/_search
     "bool": {
       "filter": [
         {"term": {"collection": "bukhari"}},
-        {"term": {"hadithNumber": "1"}},
-        {"bool": {"must_not": {"term": {"isChainRef": true}}}}
+        {"term": {"hadithNumber": "1"}}
       ]
     }
   }
@@ -108,8 +107,7 @@ GET /english-mxbai/_search
     "bool": {
       "filter": [
         {"term": {"collection": "forty"}},
-        {"term": {"hadithNumber": "13"}},
-        {"bool": {"must_not": {"term": {"isChainRef": true}}}}
+        {"term": {"hadithNumber": "13"}}
       ]
     }
   }
@@ -140,19 +138,12 @@ GET /english-mxbai/_search
 {
   "query": {
     "bool": {
-      "filter": [
-        {"bool": {"must_not": {"term": {"isChainRef": true}}}}
-      ],
       "should": [
         {"match_phrase": {"hadithText": "actions are by intention"}},
         {"match_phrase": {"arabicText": "actions are by intention"}}
       ],
       "minimum_should_match": 1
     }
-  },
-  "aggs": {
-    "gradeNorm": {"terms": {"field": "gradeNorm", "size": 10}},
-    "collection": {"terms": {"field": "collection.keyword", "size": 30}}
   }
 }
 ```
@@ -182,17 +173,10 @@ GET /english-mxbai/_search
 {
   "query": {
     "bool": {
-      "filter": [
-        {"bool": {"must_not": {"term": {"isChainRef": true}}}}
-      ],
       "must": [
         {"match": {"arabicText": {"query": "صلاة الليل", "analyzer": "custom_arabic"}}}
       ]
     }
-  },
-  "aggs": {
-    "gradeNorm": {"terms": {"field": "gradeNorm", "size": 10}},
-    "collection": {"terms": {"field": "collection.keyword", "size": 30}}
   }
 }
 ```
@@ -204,9 +188,6 @@ GET /english-mxbai/_search
 {
   "query": {
     "bool": {
-      "filter": [
-        {"bool": {"must_not": {"term": {"isChainRef": true}}}}
-      ],
       "must": [
         {"match": {"arabicText": {"query": "aisha عائشة", "analyzer": "custom_arabic"}}}
       ]
@@ -252,9 +233,6 @@ GET /english-mxbai/_search
     "function_score": {
       "query": {
         "bool": {
-          "filter": [
-            {"bool": {"must_not": {"term": {"isChainRef": true}}}}
-          ],
           "must": [
             {"query_string": {
               "query": "prayer at night",
@@ -279,10 +257,6 @@ GET /english-mxbai/_search
       "score_mode": "sum",
       "boost_mode": "sum"
     }
-  },
-  "aggs": {
-    "gradeNorm": {"terms": {"field": "gradeNorm", "size": 10}},
-    "collection": {"terms": {"field": "collection.keyword", "size": 30}}
   }
 }
 ```
@@ -318,17 +292,10 @@ GET /english-mxbai/_search
 {
   "query": {
     "bool": {
-      "filter": [
-        {"bool": {"must_not": {"term": {"isChainRef": true}}}}
-      ],
       "must": [
         {"semantic": {"field": "semantic_text", "query": "comparing yourself to others"}}
       ]
     }
-  },
-  "aggs": {
-    "gradeNorm": {"terms": {"field": "gradeNorm", "size": 10}},
-    "collection": {"terms": {"field": "collection.keyword", "size": 30}}
   }
 }
 ```
@@ -337,12 +304,9 @@ The `semantic` query type is handled by the ES inference plugin — it embeds th
 query string at search time using the same model used at index time
 (mxbai-embed-large via Ollama). No client-side embedding needed.
 
-**Response `_meta`:** `{"route": "semantic", "dedup": true|false}`
+**Response `_meta`:** `{"route": "semantic"}`
 
-**Deduplication:** Within each duplicate group (`dupGroup` field), only the
-highest-scoring representative from the most authoritative collection is returned.
-
-**Facet aggs:** Included.
+**Facet aggs:** Not included on this branch. Added by the facets branch.
 
 ---
 
@@ -357,6 +321,63 @@ Every response includes `_meta.route`. Values:
 | `lexical_arabic` | Arabic analyser BM25 on `arabicText` |
 | `lexical` | Standard cross-field BM25 with collection boosts |
 | `semantic` | Vector similarity via inference endpoint |
+
+---
+
+## What downstream branches add
+
+This document covers what `feature/query-router` ships. Subsequent branches layer on additional features:
+
+| Branch | Adds |
+|--------|------|
+| `feature/corpus-normalization` | `isChainRef: true` exclusion filter on all routes; `dupGroup` dedup in semantic; `gradeNorm` normalisation backfill |
+| `feature/facets` | `gradeNorm` and `collection` facet aggregations on all routes except reference; `?gradeNorm=` filter param |
+
+The ES query examples above are accurate for this branch only. With corpus-normalization merged, every query gains a `must_not: {term: {isChainRef: true}}` clause. With facets merged, non-reference queries gain `aggs: {gradeNorm: …, collection: …}`.
+
+---
+
+## Production rollout
+
+The router is a pure code change — no index rebuild required. The `english-mxbai` index is unchanged.
+
+**Recommended steps:**
+
+1. Deploy with `ROUTER_LOG=true` in `.env`. Every request emits a structured log line:
+   ```json
+   {
+     "message": "router_decision",
+     "query": "bukhari 1",
+     "mode_requested": "lexical",
+     "route": "reference",
+     "variant": null,
+     "overridden": true,
+     "collection": "bukhari",
+     "hadith_number": "1"
+   }
+   ```
+
+2. Review a day of real queries. Focus on:
+   - `overridden: true` — router chose a different path than `?mode=` asked for. Legitimate for reference/Arabic/phrase; investigate if English queries appear here.
+   - `route: lexical_arabic` on queries that look English — a stray Arabic character in the input will trigger this.
+   - Reference hits returning rank 1 for `bukhari N` style queries.
+
+3. If shadow sampling is enabled, `routing_decision` in `search_metrics` records the route for each sampled request alongside full result bodies.
+
+4. Disable `ROUTER_LOG` once routing looks stable.
+
+5. Rollback: redeploy previous image. Index is untouched; rollback is instant.
+
+---
+
+## Reference route: comparison with BM25
+
+The reference route was evaluated against straight BM25 across 15 collection+number queries (see `tests/report_query_router.py`). Key findings:
+
+- **BM25 ranked the target hadith #1 on 9/15 queries** — it works most of the time due to collection and number fields being boosted.
+- **Reference route returned the target hadith at #1 on 15/15 queries** by definition — it's a pure filter, no ranking ambiguity.
+- **Where BM25 failed:** Short hadith numbers (`bukhari 1`, `ibnmajah 1`) matched too many docs — BM25 ranked a higher-scoring keyword match above the exact target. Numbers like `1` appear in hadithText frequently.
+- **Conclusion:** Reference route is worth keeping. The cost is negligible (filter-only, no scoring), and it eliminates ranking uncertainty for an explicit lookup intent.
 
 ---
 
