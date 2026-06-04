@@ -257,27 +257,74 @@ needed beyond `docker compose up`. In prod, searchdb is an externally-managed DB
 
 ---
 
+## Index field mapping
+
+All search paths run against `english-mxbai`. Fields:
+
+| Field | ES type | Analyzer / notes |
+|---|---|---|
+| `hadithText` | `text` | `synonym` analyzer (English stemming + Islamic term synonyms). Sub-field `hadithText.trigram` for suggestions. Full text including isnad prefix ("Narrated by…"). |
+| `arabicText` | `text` | `custom_arabic` analyzer — normalises alef variants (أ/إ/آ → ا), tatweel, hamza, taa marbuta. Used by the Arabic BM25 route. |
+| `englishMatn` | `text` | `synonym` analyzer. Hadith body only — isnad prefix stripped. Cleaner signal for semantic and BM25 than `hadithText`. |
+| `collection` | `text` + `.keyword` | Collection slug (e.g. `bukhari`). Use `collection.keyword` for aggregations and term filters. |
+| `hadithNumber` | `text` + `.keyword` | Hadith number as string (e.g. `"1"`, `"59a"`). `.keyword` for exact term filter in reference lookup. |
+| `grade` | `text` + `.keyword` | Raw grade string from DB. Spelling varies wildly across sources — prefer `gradeNorm`. |
+| `arabicGrade` | `text` + `.keyword` | Arabic grade string. Not used in current search paths. |
+| `gradeNorm` | `keyword` | Normalised grade bucket: `Sahih`, `Hasan`, `Da'if`, `Maudu'`, `Uncategorized`. Filterable and aggregatable. |
+| `isChainRef` | `boolean` | `true` on pure narrator-chain entries (no hadith body). Only stored on flagged docs — absent = not a chain ref. |
+| `dupGroup` | `integer` | Duplicate group id (smallest URN in the group). Absent on singletons. Computed by `tests/dedup_mxbai.py`. |
+| `lang` | `text` (not indexed) | `"en"` for English/bilingual, `"ar"` for Arabic-only. Stored but not searchable — cannot be used in ES term filters. |
+| `urn` | `text` (not indexed) | Unique resource name for the hadith. Stored for display; not used in query paths. |
+| `contentHash` | `keyword` (not indexed) | MD5 of the document content. Used to detect unchanged docs during incremental indexing. |
+| `matchingArabicURN` | `text` (not indexed) | Links a bilingual hadith to its Arabic-only counterpart in the DB. |
+| `semantic_text` | `semantic_text` | mxbai-embed-large vectors (1024-dim, cosine similarity). Populated at index time via HF Dedicated Endpoint or Ollama. |
+
+`collection.keyword` is used for facet aggregations; `collection` (text) is included in the BM25 cross-field query with a `^2` boost.
+
+---
+
 ## Corpus normalization fields
 
-Three fields on `english-mxbai` clean up search results without requiring a re-index:
+Three fields clean up search results without requiring a full re-index:
 
 ### `isChainRef` (boolean)
 
-Some hadiths — especially in Sahih Muslim — are pure narrator-chain entries: they record an alternate transmission path for a hadith that already appears elsewhere, with no hadith body of their own. These are flagged `isChainRef: true` and excluded from all search paths by default.
+Some hadiths — particularly in Sahih Muslim — are pure narrator-chain (isnad) entries: they record an alternate transmission path for a hadith that already appears in full elsewhere, with no matn (hadith body) of their own. These entries add noise to search results because they match on narrator names and transmission terms rather than on content.
 
-The filter uses `must_not: {term: {isChainRef: true}}` rather than `term: false` because the field is only stored on flagged docs. Docs without the field (the vast majority) must pass through, not be excluded.
+Docs with no body are flagged `isChainRef: true` and **excluded from all four search paths** (reference, phrase, Arabic BM25, standard BM25, and semantic).
+
+The filter is `must_not: {term: {isChainRef: true}}` rather than `term: {isChainRef: false}`. The field is only stored on flagged docs — docs where the field is absent (the vast majority) must pass through, not be excluded. A `term: false` filter would exclude all docs that lack the field entirely.
+
+Pass `?show_dupes=1` to disable dedup but note there is no equivalent bypass for `isChainRef` — chain refs are always excluded.
 
 ### `dupGroup` (integer)
 
-The same matn sometimes appears across multiple collections or with minor textual variants. Docs belonging to a duplicate group share a `dupGroup` id (the smallest URN in the group). Singletons have no `dupGroup` field.
+The same matn text often appears across multiple collections, sometimes with minor wording differences. For example, Nawawi 40 #1 ("Actions are by intentions") appears in Bukhari, Muslim, and several other collections with nearly identical text.
 
-In semantic search results, groups are collapsed to a single representative — the member from the most authoritative collection (using `COLLECTION_BOOSTS` as the ranking key, raw score as tiebreaker). Pass `?show_dupes=1` to bypass deduplication and see all group members.
+Docs in a duplicate group share a `dupGroup` value (the smallest URN integer in the group). Singletons have no `dupGroup` field. Groups are computed by `tests/dedup_mxbai.py`: mxbai vectors are compared pairwise using cosine similarity with a threshold of **0.93**, and groups are formed by union-find.
 
-Dedup count is approximate: isnad stripping used to compute the vectors is not 100% accurate for all collections, so a small number of groups may be wrong (false positives or false negatives).
+**In semantic search**, groups are collapsed to one representative before results are returned:
+
+1. Within each group, keep only the member from the most authoritative collection (ranked by `COLLECTION_BOOSTS`: Bukhari/Muslim > Nawawi 40/Riyadussalihin > … ).
+2. If multiple members are from the same collection, the one with the higher raw ES score wins.
+3. Re-sort survivors by score and trim to the requested size.
+
+The collapsed result still carries the score of the best-scoring member, so a highly-relevant Bukhari hadith won't be buried by a weaker match from the same group.
+
+Pass `?show_dupes=1` to bypass deduplication and see all group members with their individual scores.
+
+**Accuracy note:** isnad stripping used to compute `englishMatn` vectors is not 100% accurate across all collections, so a small number of groups may have false positives (unrelated hadiths grouped) or false negatives (true duplicates not grouped). Threshold 0.93 was chosen empirically to minimise both.
 
 ### `gradeNorm` (keyword)
 
-Normalised hadith grade across five buckets: `Sahih`, `Hasan`, `Da'if`, `Maudu'`, `Uncategorized`. Filter results by passing `?gradeNorm=Sahih` (preferred over the legacy `?grade=` raw field, which varies in spelling across sources).
+Normalised hadith grade across five buckets: `Sahih`, `Hasan`, `Da'if`, `Maudu'`, `Uncategorized`.
+
+Normalisation rules:
+- Bukhari and Muslim docs are auto-graded `Sahih` regardless of the raw `grade` field.
+- Raw grade strings are lower-cased, parenthetical annotations stripped, then matched against a map that handles Arabic equivalents (`صحيح`, `حسن`, `ضعيف`, `موضوع`), common variants (`daif`, `weak`, `fabricated`), and JSON-blob grade fields (some collections store `[{"grade": "Sahih", …}]`).
+- Anything that doesn't match becomes `Uncategorized`.
+
+Filter results by passing `?gradeNorm=Sahih`. Prefer this over `?grade=` (the legacy raw field), which varies in spelling, capitalisation, and format across sources. Every non-reference search response includes a `gradeNorm` facet aggregation so the client can render a grade filter UI dynamically.
 
 ---
 
@@ -296,9 +343,48 @@ Every incoming query is classified by `_route_query()` before any ES call. Rules
 
 **Collection aliases:** `nawawi40` and `nawawi` resolve to `forty` (the DB slug). Recognised slugs: bukhari, muslim, nasai, abudawud, tirmidhi, ibnmajah, malik, ahmad, forty, riyadussalihin, bulugh, hisn, mishkat, darimi, ibnhibban, baghawi, adab, shamail, virtues.
 
-**Arabic route scope:** Searches all docs regardless of language — no lang filter is applied.
+**Arabic route scope:** Searches all docs regardless of language — no `lang` filter is applied. The `lang` field is stored but not indexed, so it cannot be used in ES term filters.
+
+**`isChainRef` filter:** Applied on every route. Pure isnad-chain entries are always excluded.
 
 **`_meta.route`** is present in every response and names the path taken. The reference route does not include facet aggregations (it returns a single known hadith). All other routes include `gradeNorm` and `collection` aggregations.
+
+### Standard lexical — collection boosts
+
+Standard BM25 queries (`route: lexical`) are wrapped in a `function_score` that adds a flat weight to docs from authoritative collections before the BM25 score is summed:
+
+| Weight | Collections |
+|---|---|
+| 3.5 | Bukhari, Muslim |
+| 3.3 | Nawawi 40, Riyadussalihin |
+| 2.5 | Mishkat, Malik, Ahmad, Tirmidhi |
+| 2.0 | Ibn Majah, Darimi |
+| 1.0 | All others (baseline) |
+
+This lifts the most-authenticated hadiths above identical keyword matches in weaker collections. The boost is additive (`boost_mode: sum`) so a highly-relevant weak-collection hadith can still outrank a barely-relevant Bukhari hadith.
+
+### Standard lexical — query_string fallback
+
+Standard BM25 uses `query_string` first (supports `AND`, `OR`, `-`, field prefixes). If ES rejects the query syntax (unmatched quotes, stray parentheses, reserved operators in unexpected positions), the handler retries automatically with `simple_query_string`, which is lenient and treats the query as plain text. The fallback is logged server-side but not exposed in `_meta`.
+
+### Router audit logging
+
+Set `ROUTER_LOG=true` in `.env` to emit one structured log entry per request:
+
+```json
+{
+  "message": "router_decision",
+  "query": "bukhari 1",
+  "mode_requested": "lexical",
+  "route": "reference",
+  "variant": null,
+  "overridden": true,
+  "collection": "bukhari",
+  "hadith_number": "1"
+}
+```
+
+`overridden: true` means the router chose a path other than what `?mode=` requested — reference lookups always set it; phrase/Arabic routes set it only when `mode=semantic` was requested (those routes block semantic). Off by default.
 
 For full ES query shapes, detection code, and known limitations see [`test results & reports/query_router_design.md`](test%20results%20%26%20reports/query_router_design.md).
 
