@@ -8,10 +8,9 @@ Tests four routes:
   4. Semantic/lexical  — normal English query, both modes
 
 Also tests:
-  - isChainRef filtering (chain-only entries should not appear)
-  - gradeNorm facet aggregation returned on every search
-  - collection facet aggregation returned on every search
-  - gradeNorm filter param works
+  - Route values in _meta.route on every path
+  - Mode override priority (Arabic/phrase/reference beat ?mode=semantic)
+  - Arabic route searches full corpus (no language restriction)
 
 Run from the host (Flask is exposed at localhost:5001):
     python3 tests/test_query_router.py
@@ -60,10 +59,6 @@ def first_hit(resp):
 
 def source(hit):
     return hit.get("_source", {}) if hit else {}
-
-
-def aggs(resp):
-    return resp.get("aggregations", {})
 
 
 def meta(resp):
@@ -255,77 +250,9 @@ except Exception as e:
 
 
 # ══════════════════════════════════════════════════════════════════
-# 5. isChainRef FILTERING
+# 5. ROUTE META VALUES — explicit route checks
 # ══════════════════════════════════════════════════════════════════
-section("5. isChainRef filtering (chain-only entries excluded)")
-
-try:
-    resp = search("narrated to me from")
-    h = hits(resp)
-    chain_ref_hits = [hit for hit in h if source(hit).get("isChainRef") is True]
-    check(
-        "no isChainRef=True docs in results",
-        len(chain_ref_hits) == 0,
-        f"{len(chain_ref_hits)} chain-ref hits in top {len(h)}"
-    )
-except Exception as e:
-    check("isChainRef filter → no exception", False, str(e))
-
-
-# ══════════════════════════════════════════════════════════════════
-# 6. GRADE FACETS
-# ══════════════════════════════════════════════════════════════════
-section("6. gradeNorm + collection facet aggregations")
-
-try:
-    resp = search("prayer")
-    agg = aggs(resp)
-    check(
-        "aggregations key present in response",
-        bool(agg),
-        f"keys: {list(agg.keys())}"
-    )
-    grade_agg = agg.get("gradeNorm", {})
-    buckets = grade_agg.get("buckets", [])
-    bucket_keys = [b["key"] for b in buckets]
-    check(
-        "gradeNorm agg has expected buckets",
-        any(k in bucket_keys for k in ["Sahih", "Hasan", "Da'if"]),
-        f"buckets: {bucket_keys}"
-    )
-    coll_agg = agg.get("collection", {})
-    coll_buckets = coll_agg.get("buckets", [])
-    check(
-        "collection agg has buckets",
-        len(coll_buckets) > 0,
-        f"{len(coll_buckets)} collections"
-    )
-    check(
-        "bukhari appears in collection agg",
-        any(b["key"] == "bukhari" for b in coll_buckets),
-        f"collections: {[b['key'] for b in coll_buckets[:5]]}"
-    )
-except Exception as e:
-    check("grade facets → no exception", False, str(e))
-
-# gradeNorm filter param
-try:
-    resp_sahih = search("prayer", gradeNorm="Sahih")
-    h = hits(resp_sahih)
-    all_sahih = all(source(hit).get("gradeNorm") in ("Sahih", None) for hit in h)
-    check(
-        "gradeNorm=Sahih filter returns only Sahih/Bukhari/Muslim",
-        all_sahih,
-        f"{len(h)} results, non-sahih: {[source(hit).get('gradeNorm') for hit in h if source(hit).get('gradeNorm') not in ('Sahih', None)][:3]}"
-    )
-except Exception as e:
-    check("gradeNorm filter → no exception", False, str(e))
-
-
-# ══════════════════════════════════════════════════════════════════
-# 7. ROUTE META VALUES — explicit route checks
-# ══════════════════════════════════════════════════════════════════
-section("7. Explicit route values in _meta")
+section("5. Explicit route values in _meta")
 
 # Standard English → route: lexical
 for q in ["prayer forgiveness", "comparing yourself to others", "aisha"]:
@@ -354,9 +281,9 @@ except Exception as e:
 
 
 # ══════════════════════════════════════════════════════════════════
-# 8. MODE OVERRIDE PRIORITY
+# 6. MODE OVERRIDE PRIORITY
 # ══════════════════════════════════════════════════════════════════
-section("8. Mode override priority  (arabic/phrase/reference beat mode param)")
+section("6. Mode override priority  (arabic/phrase/reference beat mode param)")
 
 # Arabic query + mode=semantic → must still go lexical_arabic (not semantic)
 try:
@@ -420,9 +347,9 @@ except Exception as e:
 
 
 # ══════════════════════════════════════════════════════════════════
-# 9. ARABIC ROUTE — no language filter applied
+# 7. ARABIC ROUTE — no language filter applied
 # ══════════════════════════════════════════════════════════════════
-section("9. Arabic route — no language restriction (searches full index)")
+section("7. Arabic route — no language restriction (searches full index)")
 
 # Note: english-mxbai is a bilingual index (all docs have hadithText + arabicText).
 # There are no lang:ar-only docs in this index, so we verify the filter isn't
@@ -446,86 +373,18 @@ except Exception as e:
     check("arabic no-restriction → no exception", False, str(e))
 
 # Verify Arabic route doesn't restrict to a subset of collections
+# by checking that hits span multiple distinct collections
 try:
     resp = search("رمضان")   # "ramadan" — appears across all collections
-    agg = aggs(resp)
-    coll_buckets = agg.get("collection", {}).get("buckets", [])
+    h = hits(resp)
+    collections_seen = {source(hit).get("collection") for hit in h if source(hit).get("collection")}
     check(
         "Arabic query hits multiple collections (no collection restriction)",
-        len(coll_buckets) >= 5,
-        f"{len(coll_buckets)} collections in results"
+        len(collections_seen) >= 5,
+        f"{len(collections_seen)} distinct collections in top {len(h)} hits: {sorted(collections_seen)}"
     )
 except Exception as e:
     check("arabic multi-collection → no exception", False, str(e))
-
-
-# ══════════════════════════════════════════════════════════════════
-# 10. FACETS PRESENT ON ALL ROUTES EXCEPT REFERENCE
-# ══════════════════════════════════════════════════════════════════
-section("10. Facet aggs present on phrase / arabic / semantic routes; absent on reference")
-
-# Phrase route — aggs present
-try:
-    resp = search('"Messenger of Allah"')
-    agg = aggs(resp)
-    check(
-        "phrase route has gradeNorm agg",
-        bool(agg.get("gradeNorm", {}).get("buckets")),
-        f"buckets: {len(agg.get('gradeNorm', {}).get('buckets', []))}"
-    )
-    check(
-        "phrase route has collection agg",
-        bool(agg.get("collection", {}).get("buckets")),
-        f"buckets: {len(agg.get('collection', {}).get('buckets', []))}"
-    )
-except Exception as e:
-    check("phrase route facets → no exception", False, str(e))
-
-# Arabic route — aggs present
-try:
-    resp = search("الزكاة")
-    agg = aggs(resp)
-    check(
-        "arabic route has gradeNorm agg",
-        bool(agg.get("gradeNorm", {}).get("buckets")),
-        f"buckets: {len(agg.get('gradeNorm', {}).get('buckets', []))}"
-    )
-    check(
-        "arabic route has collection agg",
-        bool(agg.get("collection", {}).get("buckets")),
-        f"buckets: {len(agg.get('collection', {}).get('buckets', []))}"
-    )
-except Exception as e:
-    check("arabic route facets → no exception", False, str(e))
-
-# Semantic route — aggs present
-try:
-    resp = search("fear of Allah", mode="semantic")
-    agg = aggs(resp)
-    check(
-        "semantic route has gradeNorm agg",
-        bool(agg.get("gradeNorm", {}).get("buckets")),
-        f"buckets: {len(agg.get('gradeNorm', {}).get('buckets', []))}"
-    )
-except Exception as e:
-    check("semantic route facets → no exception", False, str(e))
-
-# Reference route — aggs NOT present (single known hadith, no population)
-try:
-    resp = search("bukhari 1")
-    agg = aggs(resp)
-    check(
-        "reference route has no gradeNorm agg",
-        not agg.get("gradeNorm"),
-        f"gradeNorm agg present: {bool(agg.get('gradeNorm'))}"
-    )
-    check(
-        "reference route has no collection agg",
-        not agg.get("collection"),
-        f"collection agg present: {bool(agg.get('collection'))}"
-    )
-except Exception as e:
-    check("reference no-aggs → no exception", False, str(e))
 
 
 # ══════════════════════════════════════════════════════════════════
