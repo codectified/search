@@ -236,9 +236,9 @@ All search paths run against `english-mxbai`. Fields:
 | `hadithNumber` | `text` + `.keyword` | Hadith number as string (e.g. `"1"`, `"59a"`). `.keyword` for exact term filter in reference lookup. |
 | `grade` | `text` + `.keyword` | Raw grade string from DB. Spelling varies wildly across sources — prefer `gradeNorm`. |
 | `arabicGrade` | `text` + `.keyword` | Arabic grade string. Not used in current search paths. |
-| `gradeNorm` | `keyword` | Normalised grade bucket: `Sahih`, `Hasan`, `Da'if`, `Maudu'`, `Uncategorized`. Filterable and aggregatable. |
-| `isChainRef` | `boolean` | `true` on pure narrator-chain entries (no hadith body). Only stored on flagged docs — absent = not a chain ref. |
-| `dupGroup` | `integer` | Duplicate group id (smallest URN in the group). Absent on singletons. Computed by `tests/dedup_mxbai.py`. |
+| `gradeNorm` | `keyword` | Normalised grade bucket: `Sahih`, `Hasan`, `Da'if`, `Maudu'`, `Uncategorized`. Filterable and aggregatable. Added by corpus-normalization branch. |
+| `isChainRef` | `boolean` | `true` on pure narrator-chain entries (no hadith body). Only stored on flagged docs — absent = not a chain ref. Added by corpus-normalization branch. |
+| `dupGroup` | `integer` | Duplicate group id (smallest URN in the group). Absent on singletons. Computed by `tests/dedup_mxbai.py`. Added by corpus-normalization branch. |
 | `lang` | `text` (not indexed) | `"en"` for English/bilingual, `"ar"` for Arabic-only. Stored but not searchable — cannot be used in ES term filters. |
 | `urn` | `text` (not indexed) | Unique resource name for the hadith. Stored for display; not used in query paths. |
 | `contentHash` | `keyword` (not indexed) | MD5 of the document content. Used to detect unchanged docs during incremental indexing. |
