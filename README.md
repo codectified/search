@@ -223,6 +223,33 @@ needed beyond `docker compose up`. In prod, searchdb is an externally-managed DB
 
 ---
 
+## Index field mapping
+
+All search paths run against `english-mxbai`. Fields:
+
+| Field | ES type | Analyzer / notes |
+|---|---|---|
+| `hadithText` | `text` | `synonym` analyzer (English stemming + Islamic term synonyms). Sub-field `hadithText.trigram` for suggestions. Full text including isnad prefix ("Narrated by…"). |
+| `arabicText` | `text` | `custom_arabic` analyzer — normalises alef variants (أ/إ/آ → ا), tatweel, hamza, taa marbuta. Used by the Arabic BM25 route. |
+| `englishMatn` | `text` | `synonym` analyzer. Hadith body only — isnad prefix stripped. Cleaner signal for semantic and BM25 than `hadithText`. |
+| `collection` | `text` + `.keyword` | Collection slug (e.g. `bukhari`). Use `collection.keyword` for aggregations and term filters. |
+| `hadithNumber` | `text` + `.keyword` | Hadith number as string (e.g. `"1"`, `"59a"`). `.keyword` for exact term filter in reference lookup. |
+| `grade` | `text` + `.keyword` | Raw grade string from DB. Spelling varies wildly across sources — prefer `gradeNorm`. |
+| `arabicGrade` | `text` + `.keyword` | Arabic grade string. Not used in current search paths. |
+| `gradeNorm` | `keyword` | Normalised grade bucket: `Sahih`, `Hasan`, `Da'if`, `Maudu'`, `Uncategorized`. Filterable and aggregatable. Added by corpus-normalization branch. |
+| `isChainRef` | `boolean` | `true` on pure narrator-chain entries (no hadith body). Only stored on flagged docs — absent = not a chain ref. Added by corpus-normalization branch. |
+| `dupGroup` | `integer` | Duplicate group id (smallest URN in the group). Absent on singletons. Computed by `tests/dedup_mxbai.py`. Added by corpus-normalization branch. |
+| `lang` | `text` (not indexed) | `"en"` for English/bilingual, `"ar"` for Arabic-only. Stored but not searchable — cannot be used in ES term filters. |
+| `urn` | `text` (not indexed) | Unique resource name for the hadith. Stored for display; not used in query paths. |
+| `contentHash` | `keyword` (not indexed) | MD5 of the document content. Used to detect unchanged docs during incremental indexing. |
+| `matchingArabicURN` | `text` (not indexed) | Links a bilingual hadith to its Arabic-only counterpart in the DB. |
+| `semantic_text` | `semantic_text` | mxbai-embed-large vectors (1024-dim, cosine similarity). Populated at index time via HF Dedicated Endpoint or Ollama. |
+
+`collection.keyword` is used for facet aggregations; `collection` (text) is included in the BM25 cross-field query with a `^2` boost.
+
+---
+
+
 ## Query routing
 
 Every incoming query is classified by `_route_query()` before any ES call. Rules apply in strict priority order — earlier rules always win and override `?mode=`:
@@ -238,9 +265,48 @@ Every incoming query is classified by `_route_query()` before any ES call. Rules
 
 **Collection aliases:** `nawawi40` and `nawawi` resolve to `forty` (the DB slug). Recognised slugs: bukhari, muslim, nasai, abudawud, tirmidhi, ibnmajah, malik, ahmad, forty, riyadussalihin, bulugh, hisn, mishkat, darimi, ibnhibban, baghawi, adab, shamail, virtues.
 
-**Arabic route scope:** Searches all docs regardless of language — no lang filter is applied.
+**Arabic route scope:** Searches all docs regardless of language — no `lang` filter is applied. The `lang` field is stored but not indexed, so it cannot be used in ES term filters.
+
+**`isChainRef` filter:** Applied on every route. Pure isnad-chain entries are always excluded.
 
 **`_meta.route`** is present in every response and names the path taken. The reference route does not include facet aggregations (it returns a single known hadith). All other routes include `gradeNorm` and `collection` aggregations.
+
+### Standard lexical — collection boosts
+
+Standard BM25 queries (`route: lexical`) are wrapped in a `function_score` that adds a flat weight to docs from authoritative collections before the BM25 score is summed:
+
+| Weight | Collections |
+|---|---|
+| 3.5 | Bukhari, Muslim |
+| 3.3 | Nawawi 40, Riyadussalihin |
+| 2.5 | Mishkat, Malik, Ahmad, Tirmidhi |
+| 2.0 | Ibn Majah, Darimi |
+| 1.0 | All others (baseline) |
+
+This lifts the most-authenticated hadiths above identical keyword matches in weaker collections. The boost is additive (`boost_mode: sum`) so a highly-relevant weak-collection hadith can still outrank a barely-relevant Bukhari hadith.
+
+### Standard lexical — query_string fallback
+
+Standard BM25 uses `query_string` first (supports `AND`, `OR`, `-`, field prefixes). If ES rejects the query syntax (unmatched quotes, stray parentheses, reserved operators in unexpected positions), the handler retries automatically with `simple_query_string`, which is lenient and treats the query as plain text. The fallback is logged server-side but not exposed in `_meta`.
+
+### Router audit logging
+
+Set `ROUTER_LOG=true` in `.env` to emit one structured log entry per request:
+
+```json
+{
+  "message": "router_decision",
+  "query": "bukhari 1",
+  "mode_requested": "lexical",
+  "route": "reference",
+  "variant": null,
+  "overridden": true,
+  "collection": "bukhari",
+  "hadith_number": "1"
+}
+```
+
+`overridden: true` means the router chose a path other than what `?mode=` requested — reference lookups always set it; phrase/Arabic routes set it only when `mode=semantic` was requested (those routes block semantic). Off by default.
 
 For full ES query shapes, detection code, and known limitations see [`test results & reports/query_router_design.md`](test%20results%20%26%20reports/query_router_design.md).
 
