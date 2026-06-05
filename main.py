@@ -1336,28 +1336,10 @@ def search(language):
         result.body["_meta"] = {"route": "lexical_phrase"}
         return jsonify(result.body)
 
-    # Arabic BM25: multi-word Arabic → match on arabicText with Arabic analyzer
-    if variant == "arabic":
-        try:
-            result = es_client.search(
-                index=LEXICAL_INDEX,
-                size=size,
-                query={"bool": {
-                    "filter": filters,
-                    "must": [{"match": {"arabicText": {
-                        "query": query,
-                        "analyzer": "custom_arabic",
-                    }}}],
-                }},
-                _source={"excludes": [SEMANTIC_FIELD]},
-                highlight={"number_of_fragments": 0, "fields": {"arabicText": {}}},
-            )
-        except (BadRequestError, NotFoundError) as e:
-            return malformed_query_response(e)
-        result.body["_meta"] = {"route": "lexical_arabic"}
-        return jsonify(result.body)
-
-    # Standard BM25: cross-field search with collection boosts
+    # Arabic BM25 and standard BM25 share the same cross-fields query structure.
+    # arabicText is mapped with custom_arabic — query_string uses each field's own
+    # analyzer automatically, so Arabic tokens get correct morphological analysis
+    # without explicit annotation. The Arabic route differs only in _meta.route.
     fields = ["hadithNumber^2", "hadithText", "arabicText", "collection^2"]
 
     def build_lexical(query_type):
@@ -1395,6 +1377,10 @@ def search(language):
     except BadRequestError as e:
         return malformed_query_response(e)
     lexical_ms = (time.perf_counter() - lexical_start) * 1000
+
+    if variant == "arabic":
+        result.body["_meta"] = {"route": "lexical_arabic"}
+        return jsonify(result.body)
 
     _maybe_shadow_sample(
         query,
