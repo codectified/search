@@ -397,7 +397,11 @@ if USE_MATN:
     ALL_MODEL_SETS.append(("englishMatn", MODELS_MATN))
 
 # ── Warmup — load model weights before timing ─────────────────────────────────
-print("Warming up models (one dummy query each to avoid cold-start timing) ...")
+# Pass 1: load ST/ONNX models into Python cache (expensive first-time download).
+# Pass 2: re-touch every Ollama model immediately before timed runs — Ollama
+# evicts models from its loaded-model cache as others load, so re-touching right
+# before measurement ensures each model is already resident.
+print("Warming up models (loading weights into memory before timing) ...")
 _warmed = set()
 for _il, ms in ALL_MODEL_SETS:
     for m in ms:
@@ -405,10 +409,24 @@ for _il, ms in ALL_MODEL_SETS:
         if wk not in _warmed:
             try:
                 embed_query(m, "prayer")
-                print(f"  warmed [{m['key']:14s}]")
+                print(f"  loaded  [{m['key']:14s}]")
             except Exception as e:
                 print(f"  warmup ERROR [{m['key']}]: {e}")
             _warmed.add(wk)
+
+print("Re-touching Ollama models (eviction fix) ...")
+_ollama_warmed = set()
+for _il, ms in ALL_MODEL_SETS:
+    for m in ms:
+        if m["embed_fn"] == "ollama":
+            eid = m.get("embed_id", "")
+            if eid not in _ollama_warmed:
+                try:
+                    embed_query(m, "prayer")
+                    print(f"  touched [{m['key']:14s}]")
+                except Exception as e:
+                    print(f"  touch ERROR [{m['key']}]: {e}")
+                _ollama_warmed.add(eid)
 print("Warmup complete. Starting timed runs ...")
 
 all_results = {}   # {query: {model_key: {hits, embed_ms, search_ms, error}}}
@@ -461,8 +479,26 @@ for q in QUERIES:
 
 # ── Report ────────────────────────────────────────────────────────────────────
 
+def _anchor(section_label, query=""):
+    """GitHub-compatible anchor: lowercase, non-alphanumeric → hyphen."""
+    s = (section_label + ("-" + query if query else "")).lower()
+    return re.sub(r'[^a-z0-9]+', '-', s).strip('-')
+
 lines = []
 W = lines.append
+
+# ── Table of contents ────────────────────────────────────────────────────────
+W("# Small Model Comparison")
+W("")
+W("## Contents")
+W("")
+for _sec_label, _ in ALL_MODEL_SETS:
+    W(f"**{_sec_label}**")
+    for _q in QUERIES:
+        W(f"- [{_q}](#{_anchor(_sec_label, _q)})")
+    W("")
+W("---")
+W("")
 
 
 def build_cell(model_key, rank, q):
@@ -568,6 +604,7 @@ def build_section(input_label, model_set):
     display_set = [bm25_model] + list(model_set)
 
     for q in QUERIES:
+        W(f'<a name="{_anchor(input_label, q)}"></a>')
         W(f"## Query: \"{q}\"")
         W("")
 
