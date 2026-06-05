@@ -45,8 +45,9 @@ os.environ.setdefault("TRANSFORMERS_CACHE", _HF_CACHE)
 HF_TOKEN   = os.environ.get("HF_TOKEN", "")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://host.docker.internal:11434")
 ES_HOST    = "http://172.31.250.10:9200"
-EVAL_IDX   = "small-model-eval"
-REPORT     = "/code/test results & reports/small_model_comparison.md"
+EVAL_IDX      = "small-model-eval"
+LEXICAL_INDEX = "english-mxbai"
+REPORT        = "/code/test results & reports/small_model_comparison.md"
 
 es = Elasticsearch(ES_HOST, basic_auth=("elastic", os.environ["ELASTIC_PASSWORD"]),
                    request_timeout=60)
@@ -329,6 +330,38 @@ def knn_search(vec_field, query_vec, size):
     return r["hits"]["hits"]
 
 
+def bm25_search(query, n):
+    try:
+        r = es.search(
+            index=LEXICAL_INDEX,
+            size=n,
+            query={"bool": {
+                "filter": [{"exists": {"field": "hadithText"}}],
+                "must": [{"query_string": {
+                    "query": query,
+                    "fields": ["hadithNumber^2", "hadithText", "arabicText", "collection^2"],
+                    "type": "cross_fields",
+                    "default_operator": "OR",
+                }}],
+            }},
+            _source={"excludes": ["semantic_text"]},
+        )
+    except Exception:
+        r = es.search(
+            index=LEXICAL_INDEX,
+            size=n,
+            query={"bool": {
+                "filter": [{"exists": {"field": "hadithText"}}],
+                "must": [{"simple_query_string": {
+                    "query": query,
+                    "fields": ["hadithNumber^2", "hadithText", "arabicText", "collection^2"],
+                }}],
+            }},
+            _source={"excludes": ["semantic_text"]},
+        )
+    return r["hits"]["hits"]
+
+
 def dedup(hits, n):
     groups, singletons = {}, []
     for h in hits:
@@ -363,11 +396,44 @@ ALL_MODEL_SETS = [("hadithText", MODELS)]
 if USE_MATN:
     ALL_MODEL_SETS.append(("englishMatn", MODELS_MATN))
 
-print("Embedding queries and searching ...")
+# ── Warmup — load model weights before timing ─────────────────────────────────
+print("Warming up models (one dummy query each to avoid cold-start timing) ...")
+_warmed = set()
+for _il, ms in ALL_MODEL_SETS:
+    for m in ms:
+        wk = (m["embed_fn"], m.get("embed_id", ""), m.get("onnx_file", ""))
+        if wk not in _warmed:
+            try:
+                embed_query(m, "prayer")
+                print(f"  warmed [{m['key']:14s}]")
+            except Exception as e:
+                print(f"  warmup ERROR [{m['key']}]: {e}")
+            _warmed.add(wk)
+print("Warmup complete. Starting timed runs ...")
+
 all_results = {}   # {query: {model_key: {hits, embed_ms, search_ms, error}}}
 
+# ── BM25 baseline — no embedding, query_string on lexical index ───────────────
 for q in QUERIES:
     all_results[q] = {}
+    t1 = time.perf_counter()
+    try:
+        hits = bm25_search(q, FETCH)
+        hits = dedup(hits, N)
+        search_ms = round((time.perf_counter() - t1) * 1000)
+        all_results[q]["bm25"] = {
+            "hits": hits, "embed_ms": None, "search_ms": search_ms, "error": None,
+        }
+        print(f"  [{'bm25':14s}] '{q[:35]}' → {len(hits)} hits | search={search_ms}ms")
+    except Exception as e:
+        all_results[q]["bm25"] = {
+            "hits": [], "embed_ms": None, "search_ms": 0, "error": str(e),
+        }
+        print(f"  ERROR [bm25] '{q}': {e}")
+
+# ── Semantic models ───────────────────────────────────────────────────────────
+print("Embedding queries and searching ...")
+for q in QUERIES:
     for _input_label, model_set in ALL_MODEL_SETS:
       for m in model_set:
         try:
@@ -384,7 +450,7 @@ for q in QUERIES:
                 "hits": hits, "embed_ms": embed_ms,
                 "search_ms": search_ms, "error": None,
             }
-            print(f"  [{m['key']:12s}] '{q[:35]}' → {len(hits)} hits "
+            print(f"  [{m['key']:14s}] '{q[:35]}' → {len(hits)} hits "
                   f"| embed={embed_ms}ms search={search_ms}ms")
         except Exception as e:
             all_results[q][m["key"]] = {
@@ -490,16 +556,25 @@ def build_section(input_label, model_set):
           f"{backend_labels.get(m['embed_fn'], m['embed_fn'])} |")
     W("")
     W("*Filters: isChainRef=true excluded · Dedup ON (collection-boost priority)*")
+    W("*Embed times are post-warmup — one dummy query per model loaded before measurement.*")
     W("")
     W("---")
     W("")
+
+    bm25_model = {
+        "key": "bm25", "label": "BM25 Lexical",
+        "sublabel": "— · no encoding · query_string", "embed_fn": "bm25", "vec_field": None,
+    }
+    display_set = [bm25_model] + list(model_set)
 
     for q in QUERIES:
         W(f"## Query: \"{q}\"")
         W("")
 
-        W("| Model | Embed | kNN search |")
+        W("| Model | Embed | ES search |")
         W("|---|---|---|")
+        r0 = all_results[q].get("bm25", {})
+        W(f"| BM25 Lexical | — | {r0.get('search_ms', '?')}ms |")
         for m in model_set:
             r = all_results[q].get(m["key"], {})
             if not r or r.get("error"):
@@ -508,7 +583,7 @@ def build_section(input_label, model_set):
                 W(f"| {m['label']} | {r['embed_ms']}ms | {r['search_ms']}ms |")
         W("")
 
-        build_table(q, model_set)
+        build_table(q, display_set)
         W("---")
         W("")
 
