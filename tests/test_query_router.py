@@ -183,10 +183,11 @@ except Exception as e:
 # ══════════════════════════════════════════════════════════════════
 # 4. COLLECTION+NUMBER QUERIES — handled by standard lexical BM25
 # ══════════════════════════════════════════════════════════════════
-section("4. Collection+number queries route through standard lexical BM25")
+section("4. Collection+number queries → lexical_reference (forced lexical, same BM25)")
 
-# These are NOT routed to a special reference path — they go through the
-# standard BM25 with hadithNumber^2 and collection^2 boosts.
+# Detected as collection+number → routed lexical regardless of ?mode=.
+# Query runs standard cross-fields BM25 unchanged; detection prevents semantic
+# from handling these (semantic returns 0/9 correct in top 10, tested empirically).
 ref_cases = [
     ("bukhari 1",    "bukhari", "1"),
     ("bukhari 6594", "bukhari", "6594"),
@@ -202,8 +203,8 @@ for query, expected_coll, expected_num in ref_cases:
         h = first_hit(resp)
         s = source(h)
         check(
-            f'"{query}" → lexical route (not a dedicated reference path)',
-            m.get("route") == "lexical",
+            f'"{query}" → lexical_reference route',
+            m.get("route") == "lexical_reference",
             f'route={m.get("route")}'
         )
         check(
@@ -215,13 +216,14 @@ for query, expected_coll, expected_num in ref_cases:
     except Exception as e:
         check(f'"{query}" → no exception', False, str(e))
 
-# Misspelled collection — should degrade gracefully (not return zero results)
+# Misspelled collection — falls through to standard lexical (no detection match),
+# but BM25 still surfaces the target hadith.
 for q in ["bukahri 1", "bukahri 7563"]:
     try:
         resp = search(q)
         h = hits(resp)
         check(
-            f'"{q}" (misspelled) → returns results (degrades to BM25, not zero)',
+            f'"{q}" (misspelled) → returns results (falls through to lexical BM25)',
             len(h) > 0,
             f'{len(h)} hits'
         )
@@ -306,6 +308,17 @@ try:
     )
 except Exception as e:
     check("single arabic char → no exception", False, str(e))
+
+try:
+    resp = search("bukhari 1", mode="semantic")
+    m = meta(resp)
+    check(
+        '"bukhari 1" + mode=semantic → lexical_reference (not semantic)',
+        m.get("route") == "lexical_reference",
+        f'route={m.get("route")}'
+    )
+except Exception as e:
+    check("reference overrides semantic → no exception", False, str(e))
 
 
 # ══════════════════════════════════════════════════════════════════

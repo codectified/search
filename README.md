@@ -330,12 +330,13 @@ Every incoming query is classified by `_route_query()` before any ES call. Rules
 | Priority | Query shape | Route | `_meta.route` | Example |
 |---|---|---|---|---|
 | 1 | Wrapped in double quotes (≥3 chars) | Phrase (`match_phrase`) | `lexical_phrase` | `"angel of death"` |
-| 2 | Any Arabic Unicode character present | `cross_fields` BM25, full corpus (no `hadithText` filter — Arabic-only docs are valid matches) | `lexical_arabic` | `صلاة`, `aisha عائشة` |
-| 3 | Everything else | Client `mode` (`?mode=lexical` or `?mode=semantic`) | `lexical` or `semantic` | `prayer at night`, `bukhari 1` |
+| 2 | Any Arabic Unicode character present | `cross_fields` BM25, full corpus | `lexical_arabic` | `صلاة`, `aisha عائشة` |
+| 3 | Single-word collection slug + number (`/^\w+\s+\d+[a-z]?\s*$/`) | `cross_fields` BM25, forced off semantic | `lexical_reference` | `bukhari 1`, `nasai 59a` |
+| 4 | Everything else | Client `mode` (`?mode=lexical` or `?mode=semantic`) | `lexical` or `semantic` | `prayer at night` |
 
-**Priority is absolute.** An Arabic query with `?mode=semantic` still routes to `lexical_arabic`. A quoted query with `?mode=semantic` still routes to `lexical_phrase`.
+**Priority is absolute** — all three lexical variants override `?mode=semantic`.
 
-**Collection+number queries** (`bukhari 1`, `nasai 200`) go through standard lexical BM25. Both `hadithNumber` and `collection` are boosted fields (`^2`), and each collection gets an additional `function_score` weight, so the correct hadith surfaces at or near rank 1 for well-formed queries. Misspelled collection names (`bukahri 1`) degrade gracefully — BM25 still returns relevant results rather than zero.
+**Collection+number queries:** `hadithNumber^2` and `collection^2` boosts plus `function_score` collection weights surface the correct hadith at rank 1 for well-formed queries. Misspelled names (`bukahri 1`) don't match the regex and fall through to standard `lexical` BM25, returning sensible results rather than zero. Detection is necessary because semantic search returns completely wrong results for these queries (tested: 0/9 correct in top 10).
 
 **Language scoping:** Phrase, lexical, and semantic routes on `/english/search` apply `{"exists": {"field": "hadithText"}}` to exclude Arabic-only docs. The Arabic route skips this filter — Arabic-only docs have `arabicText` but no `hadithText`, so the filter would exclude valid matches. (`lang` is stored but not indexed; exists on `hadithText` is the equivalent filter.)
 
