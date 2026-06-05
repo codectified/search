@@ -1302,12 +1302,12 @@ def search(language):
 
     route, variant, extra = _route_query(query, mode)
 
-    # Arabic queries search the full corpus — Arabic-only docs (lang:ar) have
-    # arabicText but no hadithText, so a lang filter would exclude valid matches.
-    # All other routes restrict to the language in the URL path.
-    _LANG_MAP = {"english": "en", "arabic": "ar"}
-    if variant != "arabic" and (lang_code := _LANG_MAP.get(language)):
-        filters = filters + [{"term": {"lang": lang_code}}]
+    # English route restricts to docs that have hadithText (excludes Arabic-only docs).
+    # lang is stored but not indexed, so we can't term-filter on it — exists on
+    # hadithText is equivalent: English/bilingual docs always have it, Arabic-only never do.
+    # Arabic variant skips this block to search the full corpus.
+    if variant != "arabic" and language == "english":
+        filters = filters + [{"exists": {"field": "hadithText"}}]
 
     if ROUTER_LOG:
         if variant == "phrase":
