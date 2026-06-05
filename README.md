@@ -268,7 +268,7 @@ All search paths run against `english-mxbai`. Fields:
 | `gradeNorm` | `keyword` | Normalised grade bucket: `Sahih`, `Hasan`, `Da'if`, `Maudu'`, `Uncategorized`. Filterable and aggregatable. Added by corpus-normalization branch. |
 | `isChainRef` | `boolean` | `true` on pure narrator-chain entries (no hadith body). Only stored on flagged docs — absent = not a chain ref. Added by corpus-normalization branch. |
 | `dupGroup` | `integer` | Duplicate group id (smallest URN in the group). Absent on singletons. Computed by `tests/dedup_mxbai.py`. Added by corpus-normalization branch. |
-| `lang` | `text` (not indexed) | `"en"` for English/bilingual, `"ar"` for Arabic-only. Stored but not searchable — cannot be used in ES term filters. |
+| `lang` | `text` (not indexed) | `"en"` for English/bilingual, `"ar"` for Arabic-only. Stored but not indexed — cannot be used in ES term filters. Language scoping is done via `{"exists": {"field": "hadithText"}}` instead. |
 | `urn` | `text` (not indexed) | Unique resource name for the hadith. Stored for display; not used in query paths. |
 | `contentHash` | `keyword` (not indexed) | MD5 of the document content. Used to detect unchanged docs during incremental indexing. |
 | `matchingArabicURN` | `text` (not indexed) | Links a bilingual hadith to its Arabic-only counterpart in the DB. |
@@ -286,14 +286,14 @@ Every incoming query is classified by `_route_query()` before any ES call. Rules
 | Priority | Query shape | Route | `_meta.route` | Example |
 |---|---|---|---|---|
 | 1 | Wrapped in double quotes (≥3 chars) | Phrase (`match_phrase`) | `lexical_phrase` | `"angel of death"` |
-| 2 | Any Arabic Unicode character present | Arabic BM25 (`match` on `arabicText`, `custom_arabic` analyzer) | `lexical_arabic` | `صلاة`, `aisha عائشة` |
+| 2 | Any Arabic Unicode character present | Arabic BM25 (same `cross_fields` + `function_score` as standard; `arabicText` uses `custom_arabic` analyzer automatically; full corpus, no `hadithText` exists filter) | `lexical_arabic` | `صلاة`, `aisha عائشة` |
 | 3 | Everything else | Client `mode` (`?mode=lexical` or `?mode=semantic`) | `lexical` or `semantic` | `prayer at night`, `bukhari 1` |
 
 **Priority is absolute.** An Arabic query with `?mode=semantic` still routes to `lexical_arabic`. A quoted query with `?mode=semantic` still routes to `lexical_phrase`.
 
 **Collection+number queries** (`bukhari 1`, `nasai 200`) go through standard lexical BM25. Both `hadithNumber` and `collection` are boosted fields (`^2`), and each collection gets an additional `function_score` weight, so the correct hadith surfaces at or near rank 1 for well-formed queries. Misspelled collection names (`bukahri 1`) degrade gracefully — BM25 still returns relevant results rather than zero.
 
-**Arabic route scope:** Searches all docs regardless of language — no `lang` filter is applied. The `lang` field is stored but not indexed, so it cannot be used in ES term filters.
+**Language scoping:** All non-Arabic routes on `/english/search` apply `{"exists": {"field": "hadithText"}}` to exclude Arabic-only docs. Arabic-only docs (`lang:ar`) have `arabicText` but no `hadithText`. The Arabic route skips this filter to search the full corpus — both Arabic-only and bilingual docs have `arabicText` populated and are valid matches for an Arabic query. The `lang` field is stored but not indexed and cannot be used in ES term filters directly.
 
 **`_meta.route`** is present in every response and names the path taken. Facet aggregations (`gradeNorm`, `collection`) and the `isChainRef` exclusion filter are added by downstream branches (corpus-normalization and facets).
 

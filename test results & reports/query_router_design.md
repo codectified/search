@@ -68,13 +68,14 @@ An Arabic query with `?mode=semantic` still routes to `lexical_arabic`.
 **ES query:** `match_phrase` on both `hadithText` and `arabicText` (minimum one
 must match). Requires all tokens to appear in order with no gaps.
 
-Example for query `"actions are by intention"`:
+Example for query `"actions are by intention"` on `/english/search`:
 
 ```json
 GET /english-mxbai/_search
 {
   "query": {
     "bool": {
+      "filter": [{"exists": {"field": "hadithText"}}],
       "should": [
         {"match_phrase": {"hadithText": "actions are by intention"}},
         {"match_phrase": {"arabicText": "actions are by intention"}}
@@ -105,10 +106,15 @@ like `aisha عائشة` routes here.
 `query_string` is used across `["hadithNumber^2", "hadithText", "arabicText",
 "collection^2"]` with `type: cross_fields`. ES uses each field's mapped analyzer
 automatically — `arabicText` is mapped with `custom_arabic`, so Arabic tokens get
-correct morphological analysis without explicit annotation. The Arabic route differs
-from standard BM25 only in `_meta.route`.
+correct morphological analysis without explicit annotation.
 
-Example for query `صلاة الليل`:
+**Key difference from standard BM25:** The Arabic route omits the `hadithText` exists
+filter that all other routes apply. Standard BM25 on `/english/search` adds
+`{"exists": {"field": "hadithText"}}` to restrict to English/bilingual docs. The Arabic
+route skips this, searching the full corpus — Arabic-only docs (`lang:ar`) have
+`arabicText` but no `hadithText`, so the exists filter would exclude them.
+
+Example for query `صلاة الليل` (no filter — full corpus):
 
 ```json
 GET /english-mxbai/_search
@@ -145,10 +151,6 @@ on a well-configured Arabic analyser is fast, exact, and covers morphological
 variants well enough for Arabic text search. Multilingual semantic search is
 planned as a parallel comparison path, not a replacement.
 
-**All docs are searched:** Arabic-only (`lang:ar`) and bilingual (`lang:en`) hadiths
-both have `arabicText` populated. No lang filter is applied — an Arabic query can
-return any hadith in any language.
-
 **Arabic analyser normalisation:** Handles alef variants (`أ/إ/آ` → `ا`), tatweel,
 hamza, taa marbuta. Does NOT normalise dagger alef (`الرحمٰن`) — known gap,
 not yet addressed.
@@ -167,7 +169,7 @@ not yet addressed.
 Tries `query_string` first (supports `AND`/`OR`/`-` operators); falls back to
 `simple_query_string` if the query has syntax that `query_string` rejects.
 
-Example for query `prayer at night`:
+Example for query `prayer at night` on `/english/search`:
 
 ```json
 GET /english-mxbai/_search
@@ -176,6 +178,7 @@ GET /english-mxbai/_search
     "function_score": {
       "query": {
         "bool": {
+          "filter": [{"exists": {"field": "hadithText"}}],
           "must": [
             {"query_string": {
               "query": "prayer at night",
@@ -223,18 +226,19 @@ lift authoritative collections above identical term matches in weaker ones.
 ## Route: `semantic`
 
 **Triggered by:** `?mode=semantic` (or `hybrid`) in the request, AND the query
-didn't match reference, phrase, or Arabic rules (those always override mode).
+didn't match phrase or Arabic rules (those always override mode).
 
 **ES query:** `semantic` query on the `semantic_text` field, which calls the
 configured inference endpoint (Ollama → mxbai-embed-large) at query time.
 
-Example for query `comparing yourself to others` with `?mode=semantic`:
+Example for query `comparing yourself to others` with `?mode=semantic` on `/english/search`:
 
 ```json
 GET /english-mxbai/_search
 {
   "query": {
     "bool": {
+      "filter": [{"exists": {"field": "hadithText"}}],
       "must": [
         {"semantic": {"field": "semantic_text", "query": "comparing yourself to others"}}
       ]
