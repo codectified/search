@@ -13,9 +13,9 @@ Browser / PHP website
   Flask API (this repo)
         │
         ├── query router (_route_query)
-        │       ├── "quoted query"    → match_phrase   ─┐
-        │       ├── any Arabic text  → Arabic BM25     ├─ english-mxbai
-        │       └── standard BM25    → cross_fields    ─┘  (text fields)
+        │       ├── "quoted query"    → match_phrase (en docs)         ─┐
+        │       ├── any Arabic text  → cross_fields BM25 (all docs)    ├─ english-mxbai
+        │       └── everything else  → cross_fields BM25 (en docs)    ─┘
         │
         └── mode=semantic             → kNN            ── english-mxbai
                                                            (semantic_text)
@@ -364,14 +364,14 @@ Every incoming query is classified by `_route_query()` before any ES call. Rules
 | Priority | Query shape | Route | `_meta.route` | Example |
 |---|---|---|---|---|
 | 1 | Wrapped in double quotes (≥3 chars) | Phrase (`match_phrase`) | `lexical_phrase` | `"angel of death"` |
-| 2 | Any Arabic Unicode character present | Arabic BM25 (same `cross_fields` + `function_score` as standard; `arabicText` uses `custom_arabic` analyzer automatically; full corpus, no `hadithText` exists filter) | `lexical_arabic` | `صلاة`, `aisha عائشة` |
+| 2 | Any Arabic Unicode character present | `cross_fields` BM25, full corpus (no `hadithText` filter — Arabic-only docs are valid matches) | `lexical_arabic` | `صلاة`, `aisha عائشة` |
 | 3 | Everything else | Client `mode` (`?mode=lexical` or `?mode=semantic`) | `lexical` or `semantic` | `prayer at night`, `bukhari 1` |
 
 **Priority is absolute.** An Arabic query with `?mode=semantic` still routes to `lexical_arabic`. A quoted query with `?mode=semantic` still routes to `lexical_phrase`.
 
 **Collection+number queries** (`bukhari 1`, `nasai 200`) go through standard lexical BM25. Both `hadithNumber` and `collection` are boosted fields (`^2`), and each collection gets an additional `function_score` weight, so the correct hadith surfaces at or near rank 1 for well-formed queries. Misspelled collection names (`bukahri 1`) degrade gracefully — BM25 still returns relevant results rather than zero.
 
-**Language scoping:** All non-Arabic routes on `/english/search` apply `{"exists": {"field": "hadithText"}}` to exclude Arabic-only docs. Arabic-only docs (`lang:ar`) have `arabicText` but no `hadithText`. The Arabic route skips this filter to search the full corpus — both Arabic-only and bilingual docs have `arabicText` populated and are valid matches for an Arabic query. The `lang` field is stored but not indexed and cannot be used in ES term filters directly.
+**Language scoping:** Phrase, lexical, and semantic routes on `/english/search` apply `{"exists": {"field": "hadithText"}}` to exclude Arabic-only docs. The Arabic route skips this filter — Arabic-only docs have `arabicText` but no `hadithText`, so the filter would exclude valid matches. (`lang` is stored but not indexed; exists on `hadithText` is the equivalent filter.)
 
 **`_meta.route`** is present in every response and names the path taken. Facet aggregations (`gradeNorm`, `collection`) and the `isChainRef` exclusion filter are added by downstream branches (corpus-normalization and facets).
 
