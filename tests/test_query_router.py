@@ -94,6 +94,7 @@ phrase_cases = [
     '"prayer at night"',
     '"Messenger of Allah"',
     '"Day of Judgement"',
+    '"صلاة الليل"',        # quoted Arabic → phrase route (not arabic route)
 ]
 
 for q in phrase_cases:
@@ -185,15 +186,16 @@ except Exception as e:
 # ══════════════════════════════════════════════════════════════════
 section("4. Collection+number queries → lexical_reference (forced lexical, same BM25)")
 
-# Detected as collection+number → routed lexical regardless of ?mode=.
-# Query runs standard cross-fields BM25 unchanged; detection prevents semantic
-# from handling these (semantic returns 0/9 correct in top 10, tested empirically).
+# Any query ending with a number → forced lexical regardless of ?mode=.
+# Includes multi-word collection names. BM25 unchanged; detection prevents semantic.
 ref_cases = [
-    ("bukhari 1",    "bukhari", "1"),
-    ("bukhari 6594", "bukhari", "6594"),
-    ("muslim 2363",  "muslim",  "2363"),
-    ("nasai 3",      "nasai",   "3"),
-    ("forty 1",      "forty",   "1"),
+    ("bukhari 1",       "bukhari",   "1"),
+    ("bukhari 6594",    "bukhari",   "6594"),
+    ("muslim 2363",     "muslim",    "2363"),
+    ("nasai 3",         "nasai",     "3"),
+    ("forty 1",         "forty",     "1"),
+    ("abu dawud 1",     "abudawud",  "1"),
+    ("ibn majah 1",     "ibnmajah",  "1"),
 ]
 
 for query, expected_coll, expected_num in ref_cases:
@@ -216,14 +218,20 @@ for query, expected_coll, expected_num in ref_cases:
     except Exception as e:
         check(f'"{query}" → no exception', False, str(e))
 
-# Misspelled collection — falls through to standard lexical (no detection match),
-# but BM25 still surfaces the target hadith.
+# Misspelled collection — still ends with a number so regex matches → lexical_reference.
+# BM25 surfaces the right hadith anyway via hadithNumber^2 + collection^2 boosts.
 for q in ["bukahri 1", "bukahri 7563"]:
     try:
         resp = search(q)
+        m = meta(resp)
         h = hits(resp)
         check(
-            f'"{q}" (misspelled) → returns results (falls through to lexical BM25)',
+            f'"{q}" (misspelled) → lexical_reference (ends with number)',
+            m.get("route") == "lexical_reference",
+            f'route={m.get("route")}'
+        )
+        check(
+            f'"{q}" (misspelled) → returns results',
             len(h) > 0,
             f'{len(h)} hits'
         )

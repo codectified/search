@@ -1193,10 +1193,9 @@ def build_semantic_query(query, filter_clauses):
 
 
 _ARABIC_RE = re.compile(r"[؀-ۿ]")
-# Matches "word digits[optional-letter]" — e.g. "bukhari 1", "nasai 59a".
-# Multi-word collection names (abu dawud) fall through to standard lexical and
-# still surface correctly via hadithNumber^2 + collection^2 boosts.
-_REF_RE = re.compile(r"^\w+\s+\d+[a-z]?\s*$", re.IGNORECASE)
+# Any query ending with a number — "bukhari 1", "abu dawud 200", "ibn majah 12".
+# Forces lexical regardless of mode: semantic returns 0/9 correct for these queries.
+_REF_RE = re.compile(r"\s\d+[a-z]?\s*$", re.IGNORECASE)
 
 
 def _route_query(query, mode):
@@ -1207,14 +1206,10 @@ def _route_query(query, mode):
     extra   — always {}
 
     Rules (applied in order — earlier rules always win):
-      1. Quoted (≥3 chars) → lexical phrase (match_phrase)
+      1. Quoted (≥3 chars) → lexical phrase (match_phrase on hadithText + arabicText)
       2. Any Arabic character → lexical arabic BM25, full corpus
-      3. collection+number pattern → lexical reference (same BM25, tagged)
+      3. Ends with a number → lexical reference (same BM25, forced off semantic)
       4. Otherwise → mode as requested (lexical BM25 or semantic)
-
-    Rule 3 forces lexical for reference lookups regardless of ?mode=. This
-    matters when semantic becomes the default — semantic returns garbage for
-    "bukhari 1"-style queries (tested: 0/9 correct in top 10).
     """
     q = query.strip()
 
@@ -1224,7 +1219,7 @@ def _route_query(query, mode):
     if _ARABIC_RE.search(q):
         return "lexical", "arabic", {}
 
-    if _REF_RE.match(q):
+    if _REF_RE.search(q):
         return "lexical", "reference", {}
 
     return mode, None, {}
