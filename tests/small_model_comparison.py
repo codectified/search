@@ -557,6 +557,32 @@ for _sec_label, _ in ALL_MODEL_SETS:
 W("---")
 W("")
 
+# ── Latency summary ───────────────────────────────────────────────────────────
+W("## Latency Summary")
+W("")
+W("Average embed + ES search time across all 8 queries (post-warmup steady state).")
+W("")
+W("| Model | Avg Embed | Avg Search | Avg Total |")
+W("|---|---|---|---|")
+_bm25_s = [all_results[q]["bm25"]["search_ms"] for q in QUERIES
+           if not all_results[q]["bm25"].get("error")]
+_avg_bm25 = round(sum(_bm25_s) / len(_bm25_s)) if _bm25_s else "?"
+W(f"| BM25 Lexical | — | {_avg_bm25}ms | {_avg_bm25}ms |")
+_hf_set = next((ms for lbl, ms in ALL_MODEL_SETS if lbl == "HF Serverless API"), [])
+for _m in list(ALL_MODEL_SETS[0][1]) + list(_hf_set):
+    _et = [all_results[q][_m["key"]]["embed_ms"]  for q in QUERIES
+           if all_results[q].get(_m["key"]) and not all_results[q][_m["key"]].get("error")]
+    _st = [all_results[q][_m["key"]]["search_ms"] for q in QUERIES
+           if all_results[q].get(_m["key"]) and not all_results[q][_m["key"]].get("error")]
+    if not _et:
+        W(f"| {_m['label']} | ERROR | ERROR | ERROR |")
+        continue
+    _ae, _as = round(sum(_et) / len(_et)), round(sum(_st) / len(_st))
+    W(f"| {_m['label']} | {_ae}ms | {_as}ms | {_ae + _as}ms |")
+W("")
+W("---")
+W("")
+
 
 def build_cell(model_key, rank, q):
     r    = all_results[q][model_key]
@@ -661,8 +687,7 @@ def build_section(input_label, model_set):
     display_set = [bm25_model] + list(model_set)
 
     for q in QUERIES:
-        W(f'<a name="{_anchor(input_label, q)}"></a>')
-        W(f"## Query: \"{q}\"")
+        W(f"## {input_label}: {q}")
         W("")
 
         W("| Model | Embed | ES search |")

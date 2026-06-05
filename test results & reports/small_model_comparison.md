@@ -34,6 +34,31 @@
 
 ---
 
+## Latency Summary
+
+Average embed + ES search time across all 8 queries (post-warmup steady state).
+
+| Model | Avg Embed | Avg Search | Avg Total |
+|---|---|---|---|
+| BM25 Lexical | — | 14ms | 14ms |
+| mxbai-embed-large | 492ms | 105ms | 597ms |
+| nomic-embed-text | 53ms | 83ms | 136ms |
+| snowflake-arctic-embed:m | 41ms | 82ms | 123ms |
+| all-MiniLM-L6-v2 | 450ms | 104ms | 554ms |
+| embeddinggemma-300m | 73ms | 85ms | 158ms |
+| embeddinggemma-300m-qat-q8 | 73ms | 82ms | 155ms |
+| embeddinggemma-300m-qat-q4 | 71ms | 81ms | 152ms |
+| mxbai-embed-xsmall-v1 | 11ms | 81ms | 92ms |
+| mxbai-embed-large (Q4_K_M) | 473ms | 103ms | 576ms |
+| mxbai-embed-large (INT8 ONNX) | 24ms | 84ms | 108ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 3ms | 82ms | 85ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 6ms | 82ms | 88ms |
+| mxbai-embed-large (HF API) | 226ms | 102ms | 328ms |
+| snowflake-arctic-embed:m (HF API) | 936ms | 101ms | 1037ms |
+| all-MiniLM-L6-v2 (HF API) | 178ms | 96ms | 274ms |
+
+---
+
 # Small Model Comparison — hadithText
 
 Input: raw `hadithText` (isnad + matn). Same field for all models.
@@ -58,24 +83,23 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 
 ---
 
-<a name="hadithtext-good-character-and-manners"></a>
-## Query: "good character and manners"
+## hadithText: good character and manners
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 25ms |
-| mxbai-embed-large | 524ms | 103ms |
-| nomic-embed-text | 46ms | 82ms |
-| snowflake-arctic-embed:m | 42ms | 83ms |
-| all-MiniLM-L6-v2 | 481ms | 106ms |
-| embeddinggemma-300m | 78ms | 80ms |
-| embeddinggemma-300m-qat-q8 | 74ms | 81ms |
-| embeddinggemma-300m-qat-q4 | 80ms | 81ms |
-| mxbai-embed-xsmall-v1 | 10ms | 82ms |
-| mxbai-embed-large (Q4_K_M) | 497ms | 105ms |
-| mxbai-embed-large (INT8 ONNX) | 22ms | 81ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 83ms |
-| mxbai-embed-xsmall (INT4 ONNX) | 6ms | 83ms |
+| BM25 Lexical | — | 28ms |
+| mxbai-embed-large | 493ms | 106ms |
+| nomic-embed-text | 50ms | 81ms |
+| snowflake-arctic-embed:m | 36ms | 83ms |
+| all-MiniLM-L6-v2 | 447ms | 105ms |
+| embeddinggemma-300m | 73ms | 81ms |
+| embeddinggemma-300m-qat-q8 | 71ms | 81ms |
+| embeddinggemma-300m-qat-q4 | 75ms | 82ms |
+| mxbai-embed-xsmall-v1 | 10ms | 79ms |
+| mxbai-embed-large (Q4_K_M) | 485ms | 105ms |
+| mxbai-embed-large (INT8 ONNX) | 26ms | 84ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 3ms | 82ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 6ms | 82ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -257,24 +281,23 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 
 ---
 
-<a name="hadithtext-angels-recording-deeds"></a>
-## Query: "angels recording deeds"
+## hadithText: angels recording deeds
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 14ms |
-| mxbai-embed-large | 492ms | 104ms |
-| nomic-embed-text | 61ms | 82ms |
-| snowflake-arctic-embed:m | 40ms | 81ms |
-| all-MiniLM-L6-v2 | 436ms | 105ms |
-| embeddinggemma-300m | 71ms | 83ms |
-| embeddinggemma-300m-qat-q8 | 59ms | 81ms |
-| embeddinggemma-300m-qat-q4 | 100ms | 85ms |
+| BM25 Lexical | — | 15ms |
+| mxbai-embed-large | 494ms | 107ms |
+| nomic-embed-text | 50ms | 82ms |
+| snowflake-arctic-embed:m | 36ms | 81ms |
+| all-MiniLM-L6-v2 | 436ms | 98ms |
+| embeddinggemma-300m | 76ms | 97ms |
+| embeddinggemma-300m-qat-q8 | 74ms | 82ms |
+| embeddinggemma-300m-qat-q4 | 71ms | 81ms |
 | mxbai-embed-xsmall-v1 | 9ms | 80ms |
-| mxbai-embed-large (Q4_K_M) | 475ms | 102ms |
+| mxbai-embed-large (Q4_K_M) | 480ms | 98ms |
 | mxbai-embed-large (INT8 ONNX) | 23ms | 83ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 79ms |
-| mxbai-embed-xsmall (INT4 ONNX) | 5ms | 81ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 83ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 8ms | 81ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -318,11 +341,11 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 <td valign="top"><strong>bukhari 7501</strong>&nbsp; 0.7429<br><br>Narrated Abu Huraira: Allah's Apostle said, "Allah says, 'If My slave intends to do a bad deed then (O Angels) do not write it unless he does it; if he does it, then write it as it is, but if he refrains from doing it for My Sake, then write it as a good deed (in his account). (On the other hand) if he intends to do a good deed, but does not do it, then write a good deed (in his account), and if he does it, then write it for him (in his account) as ten good deeds up to seven-hundred times.' "<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا قُتَيْبَةُ بْنُ سَعِيدٍ ، حَدَّثَنَا الْمُغِيرَةُ بْنُ عَبْدِ الرَّحْمَنِ ، عَنْ أَبِي الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَقُولُ اللَّهُ إِذَا أَرَادَ عَبْدِي أَنْ يَعْمَلَ سَيِّئَةً فَلاَ تَكْتُبُوهَا عَلَيْهِ حَتَّى</big></span></td>
 <td valign="top"><strong>bukhari 7501</strong>&nbsp; 0.7415<br><br>Narrated Abu Huraira: Allah's Apostle said, "Allah says, 'If My slave intends to do a bad deed then (O Angels) do not write it unless he does it; if he does it, then write it as it is, but if he refrains from doing it for My Sake, then write it as a good deed (in his account). (On the other hand) if he intends to do a good deed, but does not do it, then write a good deed (in his account), and if he does it, then write it for him (in his account) as ten good deeds up to seven-hundred times.' "<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا قُتَيْبَةُ بْنُ سَعِيدٍ ، حَدَّثَنَا الْمُغِيرَةُ بْنُ عَبْدِ الرَّحْمَنِ ، عَنْ أَبِي الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَقُولُ اللَّهُ إِذَا أَرَادَ عَبْدِي أَنْ يَعْمَلَ سَيِّئَةً فَلاَ تَكْتُبُوهَا عَلَيْهِ حَتَّى</big></span></td>
 <td valign="top"><strong>muslim 129</strong>&nbsp; 0.7476<br><br>Abu Huraira reported that Muhammad, the Messenger of Allah (may peace be upon him), said: When it occurs to my bondsman that he should do a good deed but he actually does not do it, record one good to him, but if he puts it into practice, I make an entry of ten good acts in his favour. When it occurs to him to do evil, but he does not commit it, I forgive that. But if he commits it, I record one evil against his name. The Messenger of Allah (may peace be upon him) observed. The angels said: That<br><br><span dir="rtl" lang="ar"><big>وَحَدَّثَنَا مُحَمَّدُ بْنُ رَافِعٍ، حَدَّثَنَا عَبْدُ الرَّزَّاقِ، أَخْبَرَنَا مَعْمَرٌ، عَنْ هَمَّامِ بْنِ مُنَبِّهٍ، قَالَ هَذَا مَا حَدَّثَنَا أَبُو هُرَيْرَةَ، عَنْ مُحَمَّدٍ، رَسُولِ اللَّهِ صلى الله عليه وسلم فَذَكَرَ أَحَادِيثَ مِنْهَا قَالَ قَالَ رَسُولُ اللَّهِ صلى الله عليه وسلم ‏"‏ قَالَ</big></span></td>
-<td valign="top"><strong>mishkat 2374</strong>&nbsp; 0.7868<br><br>Ibn ‘Abbas reported God’s messenger as saying, “God records the good deeds and the evil deeds. If anyone intends to do a good deed but does not do it, God enters it for him in His record as a complete good deed: and if he intends to do a good deed and does it, God enters it for him in His record as ten to seven hundred and many more times as much. If anyone intends to do an evil deed and does not do it, God enters it for him in His record as a complete good deed; but if he intends to do it and d<br><br><span dir="rtl" lang="ar"><big>وَعَنِ ابْنِ عَبَّاسٍ رَضِيَ اللَّهُ عَنْهُ قَالَ: قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ: " إِنَّ اللَّهَ كَتَبَ الحسناتِ والسيِّئاتِ: فَمَنْ هَمَّ بِحَسَنَةٍ فَلَمْ يَعْمَلْهَا كَتَبَهَا اللَّهُ لهُ عندَهُ حَسَنَة كَامِلَة فَإِن هم بعملها كَتَبَهَا اللَّهُ لَهُ عِنْدَهُ عَشْرَ حَس</big></span></td>
+<td valign="top"><strong>mishkat 44</strong>&nbsp; 0.7839 <small>· [{"graded_by": "Zubair `Aliza'i", "grade": "Muttafaqun 'alayh ", "priority": 40}]</small><br><br>Abu Huraira reported God’s messenger as saying, “When one of you makes a good profession of Islam, every good deed he does will be recorded for him ten to seven hundredfold, and every evil deed he does will be recorded as it is till he meets God.” (Bukhari and Muslim.)<br><br><span dir="rtl" lang="ar"><big>وَعَنْ أَبِي هُرَيْرَةَ قَالَ قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ: إِذَا أَحْسَنَ أَحَدُكُمْ إِسْلَامَهُ فَكُلُّ حَسَنَةٍ يَعْمَلُهَا تُكْتَبُ لَهُ بِعشر أَمْثَالهَا إِلَى سبع مائَة ضعف وكل سَيِّئَة يعملها تكْتب لَهُ بِمِثْلِهَا "</big></span></td>
 <td valign="top"><strong>mishkat 463</strong>&nbsp; 0.8258<br><br>‘Ali reported God’s messenger as saying, “The angels do not enter a house in which there is a picture, a dog, or one who is defiled.” Abu Dawud and Nasa’i transmitted it.<br><br><span dir="rtl" lang="ar"><big>وَعَنْ عَلِيٍّ قَالَ: قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسلم: «لَا تدخل الْمَلَائِكَةُ بَيْتًا فِيهِ صُورَةٌ وَلَا كَلْبٌ وَلَا جنب» . رَوَاهُ أَبُو دَاوُد وَالنَّسَائِيّ</big></span></td>
 <td valign="top"><strong>bukhari 6491</strong>&nbsp; 0.8506<br><br>Narrated Ibn `Abbas: The Prophet narrating about his Lord I'm and said, "Allah ordered (the appointed angels over you) that the good and the bad deeds be written, and He then showed (the way) how (to write). If somebody intends to do a good deed and he does not do it, then Allah will write for him a full good deed (in his account with Him); and if he intends to do a good deed and actually did it, then Allah will write for him (in his account) with Him (its reward equal) from ten to seven hundred<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا أَبُو مَعْمَرٍ ، حَدَّثَنَا عَبْدُ الْوَارِثِ ، حَدَّثَنَا جَعْدٌ أَبُو عُثْمَانَ ، حَدَّثَنَا أَبُو رَجَاءٍ الْعُطَارِدِيُّ ، عَنِ ابْنِ عَبَّاسٍ ـ رضى الله عنهما ـ عَنِ النَّبِيِّ صلى الله عليه وسلم فِيمَا يَرْوِي عَنْ رَبِّهِ عَزَّ وَجَلَّ قَالَ قَالَ ‏"‏ إِنَّ اللَّهَ كَتَبَ الْحَسَنَ</big></span></td>
 <td valign="top"><strong>muslim 128 a</strong>&nbsp; 0.7953<br><br>It is narrated on the authority of Abu Huraira that the Messenger of Allah (may peace be upon him) said: The Great and the Glorious Lord said (to angels): Whenever My servant intends to commit an evil, do not record it against him, but if he actually commits it, then write it as one evil. And when he intends to do good but does not do it, then take it down is one act of goodness, but if he does it, then write down ten good deeds (in his record).<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا أَبُو بَكْرِ بْنُ أَبِي شَيْبَةَ، وَزُهَيْرُ بْنُ حَرْبٍ، وَإِسْحَاقُ بْنُ إِبْرَاهِيمَ، - وَاللَّفْظُ لأَبِي بَكْرٍ قَالَ إِسْحَاقُ أَخْبَرَنَا سُفْيَانُ، وَقَالَ الآخَرَانِ، حَدَّثَنَا - ابْنُ عُيَيْنَةَ، عَنْ أَبِي الزِّنَادِ، عَنِ الأَعْرَجِ، عَنْ أَبِي هُرَيْرَةَ، قَالَ قَالَ رَسُولُ</big></span></td>
-<td valign="top"><strong>mishkat 2374</strong>&nbsp; 0.7886<br><br>Ibn ‘Abbas reported God’s messenger as saying, “God records the good deeds and the evil deeds. If anyone intends to do a good deed but does not do it, God enters it for him in His record as a complete good deed: and if he intends to do a good deed and does it, God enters it for him in His record as ten to seven hundred and many more times as much. If anyone intends to do an evil deed and does not do it, God enters it for him in His record as a complete good deed; but if he intends to do it and d<br><br><span dir="rtl" lang="ar"><big>وَعَنِ ابْنِ عَبَّاسٍ رَضِيَ اللَّهُ عَنْهُ قَالَ: قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ: " إِنَّ اللَّهَ كَتَبَ الحسناتِ والسيِّئاتِ: فَمَنْ هَمَّ بِحَسَنَةٍ فَلَمْ يَعْمَلْهَا كَتَبَهَا اللَّهُ لهُ عندَهُ حَسَنَة كَامِلَة فَإِن هم بعملها كَتَبَهَا اللَّهُ لَهُ عِنْدَهُ عَشْرَ حَس</big></span></td>
+<td valign="top"><strong>mishkat 44</strong>&nbsp; 0.7824 <small>· [{"graded_by": "Zubair `Aliza'i", "grade": "Muttafaqun 'alayh ", "priority": 40}]</small><br><br>Abu Huraira reported God’s messenger as saying, “When one of you makes a good profession of Islam, every good deed he does will be recorded for him ten to seven hundredfold, and every evil deed he does will be recorded as it is till he meets God.” (Bukhari and Muslim.)<br><br><span dir="rtl" lang="ar"><big>وَعَنْ أَبِي هُرَيْرَةَ قَالَ قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ: إِذَا أَحْسَنَ أَحَدُكُمْ إِسْلَامَهُ فَكُلُّ حَسَنَةٍ يَعْمَلُهَا تُكْتَبُ لَهُ بِعشر أَمْثَالهَا إِلَى سبع مائَة ضعف وكل سَيِّئَة يعملها تكْتب لَهُ بِمِثْلِهَا "</big></span></td>
 </tr>
 <tr>
 <td align="center" valign="top"><strong>3</strong></td>
@@ -334,11 +357,11 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 <td valign="top"><strong>muslim 129</strong>&nbsp; 0.7382<br><br>Abu Huraira reported that Muhammad, the Messenger of Allah (may peace be upon him), said: When it occurs to my bondsman that he should do a good deed but he actually does not do it, record one good to him, but if he puts it into practice, I make an entry of ten good acts in his favour. When it occurs to him to do evil, but he does not commit it, I forgive that. But if he commits it, I record one evil against his name. The Messenger of Allah (may peace be upon him) observed. The angels said: That<br><br><span dir="rtl" lang="ar"><big>وَحَدَّثَنَا مُحَمَّدُ بْنُ رَافِعٍ، حَدَّثَنَا عَبْدُ الرَّزَّاقِ، أَخْبَرَنَا مَعْمَرٌ، عَنْ هَمَّامِ بْنِ مُنَبِّهٍ، قَالَ هَذَا مَا حَدَّثَنَا أَبُو هُرَيْرَةَ، عَنْ مُحَمَّدٍ، رَسُولِ اللَّهِ صلى الله عليه وسلم فَذَكَرَ أَحَادِيثَ مِنْهَا قَالَ قَالَ رَسُولُ اللَّهِ صلى الله عليه وسلم ‏"‏ قَالَ</big></span></td>
 <td valign="top"><strong>muslim 129</strong>&nbsp; 0.7365<br><br>Abu Huraira reported that Muhammad, the Messenger of Allah (may peace be upon him), said: When it occurs to my bondsman that he should do a good deed but he actually does not do it, record one good to him, but if he puts it into practice, I make an entry of ten good acts in his favour. When it occurs to him to do evil, but he does not commit it, I forgive that. But if he commits it, I record one evil against his name. The Messenger of Allah (may peace be upon him) observed. The angels said: That<br><br><span dir="rtl" lang="ar"><big>وَحَدَّثَنَا مُحَمَّدُ بْنُ رَافِعٍ، حَدَّثَنَا عَبْدُ الرَّزَّاقِ، أَخْبَرَنَا مَعْمَرٌ، عَنْ هَمَّامِ بْنِ مُنَبِّهٍ، قَالَ هَذَا مَا حَدَّثَنَا أَبُو هُرَيْرَةَ، عَنْ مُحَمَّدٍ، رَسُولِ اللَّهِ صلى الله عليه وسلم فَذَكَرَ أَحَادِيثَ مِنْهَا قَالَ قَالَ رَسُولُ اللَّهِ صلى الله عليه وسلم ‏"‏ قَالَ</big></span></td>
 <td valign="top"><strong>bukhari 7501</strong>&nbsp; 0.7446<br><br>Narrated Abu Huraira: Allah's Apostle said, "Allah says, 'If My slave intends to do a bad deed then (O Angels) do not write it unless he does it; if he does it, then write it as it is, but if he refrains from doing it for My Sake, then write it as a good deed (in his account). (On the other hand) if he intends to do a good deed, but does not do it, then write a good deed (in his account), and if he does it, then write it for him (in his account) as ten good deeds up to seven-hundred times.' "<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا قُتَيْبَةُ بْنُ سَعِيدٍ ، حَدَّثَنَا الْمُغِيرَةُ بْنُ عَبْدِ الرَّحْمَنِ ، عَنْ أَبِي الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَقُولُ اللَّهُ إِذَا أَرَادَ عَبْدِي أَنْ يَعْمَلَ سَيِّئَةً فَلاَ تَكْتُبُوهَا عَلَيْهِ حَتَّى</big></span></td>
-<td valign="top"><strong>mishkat 44</strong>&nbsp; 0.7839 <small>· [{"graded_by": "Zubair `Aliza'i", "grade": "Muttafaqun 'alayh ", "priority": 40}]</small><br><br>Abu Huraira reported God’s messenger as saying, “When one of you makes a good profession of Islam, every good deed he does will be recorded for him ten to seven hundredfold, and every evil deed he does will be recorded as it is till he meets God.” (Bukhari and Muslim.)<br><br><span dir="rtl" lang="ar"><big>وَعَنْ أَبِي هُرَيْرَةَ قَالَ قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ: إِذَا أَحْسَنَ أَحَدُكُمْ إِسْلَامَهُ فَكُلُّ حَسَنَةٍ يَعْمَلُهَا تُكْتَبُ لَهُ بِعشر أَمْثَالهَا إِلَى سبع مائَة ضعف وكل سَيِّئَة يعملها تكْتب لَهُ بِمِثْلِهَا "</big></span></td>
+<td valign="top"><strong>mishkat 1559</strong>&nbsp; 0.7756<br><br>‘Abdallah b. ‘Amr reported God’s messenger as saying, “When a servant of God is accustomed to worship Him in a good manner, then becomes ill, the angel who is entrusted with him is told to record for him actions equivalent to those which he did when he was well till God sets him free from his illness or takes him in death.” Transmitted in Sharh as-sunna .<br><br><span dir="rtl" lang="ar"><big>وَعَنْ عَبْدِ اللَّهِ بْنِ عَمْرٍو قَالَ: قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسلم: " إِن الْعَبْدَ إِذَا كَانَ عَلَى طَرِيقَةٍ حَسَنَةٍ مِنَ الْعِبَادَةِ ثُمَّ مَرِضَ قِيلَ لِلْمَلَكِ الْمُوَكَّلِ بِهِ: اكْتُبْ لَهُ مِثْلَ عَمَلِهِ إِذَا كَانَ طَلِيقًا حَتَّى أطلقهُ أَو أكفته إِلَيّ "</big></span></td>
 <td valign="top"><strong>mishkat 924</strong>&nbsp; 0.8251<br><br>He also reported God’s Messenger as saying, “God has angels who travel about in the earth and convey to me greetings from my people.” Nassa’i and Darimi transmitted it.<br><br><span dir="rtl" lang="ar"><big>وَعَنِ ابْنِ مَسْعُودٍ قَالَ: قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ: «إِنَّ لِلَّهِ مَلَائِكَةً سَيَّاحِينَ فِي الْأَرْضِ يُبَلِّغُونِي مِنْ أُمَّتِيَ السَّلَامَ» . رَوَاهُ النَّسَائِيّ والدارمي</big></span></td>
 <td valign="top"><strong>ibnmajah 76</strong>&nbsp; 0.8461 <small>· Sahih</small><br><br>'Abdullah bin Mas'ud said: "The Messenger of Allah (SAW), the true and truly inspired one, told us that: 'The creation of one of you is put together in his mother's womb for forty days, then it becomes a clot for a similar length of time, then it becomes a chewed lump of flesh for a similar length of time. Then Allah sends the angel to him and commands him to write down four things. He says: "Write down his deeds, his life span, his provision, and whether he is doomed (destined for Hell) or bles<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا عَلِيُّ بْنُ مُحَمَّدٍ، حَدَّثَنَا وَكِيعٌ، وَمُحَمَّدُ بْنُ فُضَيْلٍ، وَأَبُو مُعَاوِيَةَ ح وَحَدَّثَنَا عَلِيُّ بْنُ مَيْمُونٍ الرَّقِّيُّ، حَدَّثَنَا أَبُو مُعَاوِيَةَ، وَمُحَمَّدُ بْنُ عُبَيْدٍ، عَنِ الأَعْمَشِ، عَنْ زَيْدِ بْنِ وَهْبٍ، قَالَ قَالَ عَبْدُ اللَّهِ بْنُ مَسْعُودٍ حَدَّث</big></span></td>
 <td valign="top"><strong>mishkat 44</strong>&nbsp; 0.7874 <small>· [{"graded_by": "Zubair `Aliza'i", "grade": "Muttafaqun 'alayh ", "priority": 40}]</small><br><br>Abu Huraira reported God’s messenger as saying, “When one of you makes a good profession of Islam, every good deed he does will be recorded for him ten to seven hundredfold, and every evil deed he does will be recorded as it is till he meets God.” (Bukhari and Muslim.)<br><br><span dir="rtl" lang="ar"><big>وَعَنْ أَبِي هُرَيْرَةَ قَالَ قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ: إِذَا أَحْسَنَ أَحَدُكُمْ إِسْلَامَهُ فَكُلُّ حَسَنَةٍ يَعْمَلُهَا تُكْتَبُ لَهُ بِعشر أَمْثَالهَا إِلَى سبع مائَة ضعف وكل سَيِّئَة يعملها تكْتب لَهُ بِمِثْلِهَا "</big></span></td>
-<td valign="top"><strong>mishkat 44</strong>&nbsp; 0.7824 <small>· [{"graded_by": "Zubair `Aliza'i", "grade": "Muttafaqun 'alayh ", "priority": 40}]</small><br><br>Abu Huraira reported God’s messenger as saying, “When one of you makes a good profession of Islam, every good deed he does will be recorded for him ten to seven hundredfold, and every evil deed he does will be recorded as it is till he meets God.” (Bukhari and Muslim.)<br><br><span dir="rtl" lang="ar"><big>وَعَنْ أَبِي هُرَيْرَةَ قَالَ قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ: إِذَا أَحْسَنَ أَحَدُكُمْ إِسْلَامَهُ فَكُلُّ حَسَنَةٍ يَعْمَلُهَا تُكْتَبُ لَهُ بِعشر أَمْثَالهَا إِلَى سبع مائَة ضعف وكل سَيِّئَة يعملها تكْتب لَهُ بِمِثْلِهَا "</big></span></td>
+<td valign="top"><strong>mishkat 1559</strong>&nbsp; 0.7775<br><br>‘Abdallah b. ‘Amr reported God’s messenger as saying, “When a servant of God is accustomed to worship Him in a good manner, then becomes ill, the angel who is entrusted with him is told to record for him actions equivalent to those which he did when he was well till God sets him free from his illness or takes him in death.” Transmitted in Sharh as-sunna .<br><br><span dir="rtl" lang="ar"><big>وَعَنْ عَبْدِ اللَّهِ بْنِ عَمْرٍو قَالَ: قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسلم: " إِن الْعَبْدَ إِذَا كَانَ عَلَى طَرِيقَةٍ حَسَنَةٍ مِنَ الْعِبَادَةِ ثُمَّ مَرِضَ قِيلَ لِلْمَلَكِ الْمُوَكَّلِ بِهِ: اكْتُبْ لَهُ مِثْلَ عَمَلِهِ إِذَا كَانَ طَلِيقًا حَتَّى أطلقهُ أَو أكفته إِلَيّ "</big></span></td>
 </tr>
 <tr>
 <td align="center" valign="top"><strong>4</strong></td>
@@ -350,11 +373,11 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 <td valign="top"><strong>muslim 632 a</strong>&nbsp; 0.7279<br><br>Abu Huraira reported: The Messenger of Allah (may peace be upon him) said: Angels take turns among you by night and by day, and they all assemble at the dawn and afternoon prayers. Those (of the angels) who spend the night among you, then, ascend, and their Lord asks them, though He is the best informed about them: How did you leave My servants? -they say: We left them while they were praying and we came to them while they were praying.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا يَحْيَى بْنُ يَحْيَى، قَالَ قَرَأْتُ عَلَى مَالِكٍ عَنْ أَبِي الزِّنَادِ، عَنِ الأَعْرَجِ، عَنْ أَبِي هُرَيْرَةَ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَتَعَاقَبُونَ فِيكُمْ مَلاَئِكَةٌ بِاللَّيْلِ وَمَلاَئِكَةٌ بِالنَّهَارِ وَيَجْتَمِعُونَ فِي صَلاَةِ الْفَجْرِ وَصَلاَةِ ال</big></span></td>
 <td valign="top"><strong>mishkat 2374</strong>&nbsp; 0.7324<br><br>Ibn ‘Abbas reported God’s messenger as saying, “God records the good deeds and the evil deeds. If anyone intends to do a good deed but does not do it, God enters it for him in His record as a complete good deed: and if he intends to do a good deed and does it, God enters it for him in His record as ten to seven hundred and many more times as much. If anyone intends to do an evil deed and does not do it, God enters it for him in His record as a complete good deed; but if he intends to do it and d<br><br><span dir="rtl" lang="ar"><big>وَعَنِ ابْنِ عَبَّاسٍ رَضِيَ اللَّهُ عَنْهُ قَالَ: قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ: " إِنَّ اللَّهَ كَتَبَ الحسناتِ والسيِّئاتِ: فَمَنْ هَمَّ بِحَسَنَةٍ فَلَمْ يَعْمَلْهَا كَتَبَهَا اللَّهُ لهُ عندَهُ حَسَنَة كَامِلَة فَإِن هم بعملها كَتَبَهَا اللَّهُ لَهُ عِنْدَهُ عَشْرَ حَس</big></span></td>
 <td valign="top"><strong>mishkat 2374</strong>&nbsp; 0.7384<br><br>Ibn ‘Abbas reported God’s messenger as saying, “God records the good deeds and the evil deeds. If anyone intends to do a good deed but does not do it, God enters it for him in His record as a complete good deed: and if he intends to do a good deed and does it, God enters it for him in His record as ten to seven hundred and many more times as much. If anyone intends to do an evil deed and does not do it, God enters it for him in His record as a complete good deed; but if he intends to do it and d<br><br><span dir="rtl" lang="ar"><big>وَعَنِ ابْنِ عَبَّاسٍ رَضِيَ اللَّهُ عَنْهُ قَالَ: قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ: " إِنَّ اللَّهَ كَتَبَ الحسناتِ والسيِّئاتِ: فَمَنْ هَمَّ بِحَسَنَةٍ فَلَمْ يَعْمَلْهَا كَتَبَهَا اللَّهُ لهُ عندَهُ حَسَنَة كَامِلَة فَإِن هم بعملها كَتَبَهَا اللَّهُ لَهُ عِنْدَهُ عَشْرَ حَس</big></span></td>
-<td valign="top"><strong>mishkat 1559</strong>&nbsp; 0.7756<br><br>‘Abdallah b. ‘Amr reported God’s messenger as saying, “When a servant of God is accustomed to worship Him in a good manner, then becomes ill, the angel who is entrusted with him is told to record for him actions equivalent to those which he did when he was well till God sets him free from his illness or takes him in death.” Transmitted in Sharh as-sunna .<br><br><span dir="rtl" lang="ar"><big>وَعَنْ عَبْدِ اللَّهِ بْنِ عَمْرٍو قَالَ: قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسلم: " إِن الْعَبْدَ إِذَا كَانَ عَلَى طَرِيقَةٍ حَسَنَةٍ مِنَ الْعِبَادَةِ ثُمَّ مَرِضَ قِيلَ لِلْمَلَكِ الْمُوَكَّلِ بِهِ: اكْتُبْ لَهُ مِثْلَ عَمَلِهِ إِذَا كَانَ طَلِيقًا حَتَّى أطلقهُ أَو أكفته إِلَيّ "</big></span></td>
+<td valign="top"><strong>mishkat 2096</strong>&nbsp; 0.7580<br><br>Anas reported God's messenger as saying that when lailat al-qadr comes Gabriel descends with a company of angels who invoke blessings on everyone who is standing or sitting and remembering God who is great and glorious. Then when their festival day comes, i.e. the day when they break their fast, God speaks proudly of them to His angels saying, “My angels, what is the reward of a hired servant who has fully accomplished his work?” They reply, “Our Lord, his reward is that he should be paid his wa<br><br><span dir="rtl" lang="ar"><big>وَعَنْ أَنَسٍ قَالَ: قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ: " إِذَا كَانَ لَيْلَةُ الْقَدْرِ نزل جِبْرِيل عَلَيْهِ السَّلَام فِي كُبْكُبَةٍ مِنَ الْمَلَائِكَةِ يُصَلُّونَ عَلَى كُلِّ عَبْدٍ قَائِمٍ أَوْ قَاعِدٍ يَذْكُرُ اللَّهَ عَزَّ وَجَلَّ فَإِذَا كَانَ يَوْمُ عِيدِهِمْ يَعْنِي ي</big></span></td>
 <td valign="top"><strong>ibnmajah 3801</strong>&nbsp; 0.8233 <small>· Da'if</small><br><br>It was narrated from 'Abdullah bin 'Umar that : the Messenger of Allah (SAW) told them: "One of the slaves of Allah said: 'Ya Rabb! Lakal-hamdu kama yanbagi li-jalali Wajhika wa li 'azima sultanika (O Lord, to You is praise as befits the Glory of Your Face and the greatness of Your Might.)' The angels were uncertain and did not know how to write this down, so they ascended to heaven and said: 'O our Lord, Your slave has said a word that we do not know how to write down.' Allah said - and He know<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا إِبْرَاهِيمُ بْنُ الْمُنْذِرِ الْحِزَامِيُّ، حَدَّثَنَا صَدَقَةُ بْنُ بَشِيرٍ، مَوْلَى الْعُمَرِيِّينَ قَالَ سَمِعْتُ قُدَامَةَ بْنَ إِبْرَاهِيمَ الْجُمَحِيَّ، يُحَدِّثُ أَنَّهُ كَانَ يَخْتَلِفُ إِلَى عَبْدِ اللَّهِ بْنِ عُمَرَ بْنِ الْخَطَّابِ وَهُوَ غُلاَمٌ وَعَلَيْهِ ثَوْبَانِ مُعَصْفَ</big></span></td>
 <td valign="top"><strong>mishkat 2374</strong>&nbsp; 0.8447<br><br>Ibn ‘Abbas reported God’s messenger as saying, “God records the good deeds and the evil deeds. If anyone intends to do a good deed but does not do it, God enters it for him in His record as a complete good deed: and if he intends to do a good deed and does it, God enters it for him in His record as ten to seven hundred and many more times as much. If anyone intends to do an evil deed and does not do it, God enters it for him in His record as a complete good deed; but if he intends to do it and d<br><br><span dir="rtl" lang="ar"><big>وَعَنِ ابْنِ عَبَّاسٍ رَضِيَ اللَّهُ عَنْهُ قَالَ: قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ: " إِنَّ اللَّهَ كَتَبَ الحسناتِ والسيِّئاتِ: فَمَنْ هَمَّ بِحَسَنَةٍ فَلَمْ يَعْمَلْهَا كَتَبَهَا اللَّهُ لهُ عندَهُ حَسَنَة كَامِلَة فَإِن هم بعملها كَتَبَهَا اللَّهُ لَهُ عِنْدَهُ عَشْرَ حَس</big></span></td>
 <td valign="top"><strong>mishkat 1559</strong>&nbsp; 0.7862<br><br>‘Abdallah b. ‘Amr reported God’s messenger as saying, “When a servant of God is accustomed to worship Him in a good manner, then becomes ill, the angel who is entrusted with him is told to record for him actions equivalent to those which he did when he was well till God sets him free from his illness or takes him in death.” Transmitted in Sharh as-sunna .<br><br><span dir="rtl" lang="ar"><big>وَعَنْ عَبْدِ اللَّهِ بْنِ عَمْرٍو قَالَ: قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسلم: " إِن الْعَبْدَ إِذَا كَانَ عَلَى طَرِيقَةٍ حَسَنَةٍ مِنَ الْعِبَادَةِ ثُمَّ مَرِضَ قِيلَ لِلْمَلَكِ الْمُوَكَّلِ بِهِ: اكْتُبْ لَهُ مِثْلَ عَمَلِهِ إِذَا كَانَ طَلِيقًا حَتَّى أطلقهُ أَو أكفته إِلَيّ "</big></span></td>
-<td valign="top"><strong>mishkat 1559</strong>&nbsp; 0.7775<br><br>‘Abdallah b. ‘Amr reported God’s messenger as saying, “When a servant of God is accustomed to worship Him in a good manner, then becomes ill, the angel who is entrusted with him is told to record for him actions equivalent to those which he did when he was well till God sets him free from his illness or takes him in death.” Transmitted in Sharh as-sunna .<br><br><span dir="rtl" lang="ar"><big>وَعَنْ عَبْدِ اللَّهِ بْنِ عَمْرٍو قَالَ: قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسلم: " إِن الْعَبْدَ إِذَا كَانَ عَلَى طَرِيقَةٍ حَسَنَةٍ مِنَ الْعِبَادَةِ ثُمَّ مَرِضَ قِيلَ لِلْمَلَكِ الْمُوَكَّلِ بِهِ: اكْتُبْ لَهُ مِثْلَ عَمَلِهِ إِذَا كَانَ طَلِيقًا حَتَّى أطلقهُ أَو أكفته إِلَيّ "</big></span></td>
+<td valign="top"><strong>abudawud 1454</strong>&nbsp; 0.7654 <small>· Sahih</small><br><br>'Aishah reported the Prophet (saws) as saying: One who is skilled in the Qur'an is associated with the noble, upright recording angels, and he who falters when he recites the Qur'an and finds it difficult for him will have a double reward.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا مُسْلِمُ بْنُ إِبْرَاهِيمَ، حَدَّثَنَا هِشَامٌ، وَهَمَّامٌ، عَنْ قَتَادَةَ، عَنْ زُرَارَةَ بْنِ أَوْفَى، عَنْ سَعْدِ بْنِ هِشَامٍ، عَنْ عَائِشَةَ، عَنِ النَّبِيِّ صلى الله عليه وسلم قَالَ ‏"‏ الَّذِي يَقْرَأُ الْقُرْآنَ وَهُوَ مَاهِرٌ بِهِ مَعَ السَّفَرَةِ الْكِرَامِ الْبَرَرَةِ وَالَّذِي</big></span></td>
 </tr>
 <tr>
 <td align="center" valign="top"><strong>5</strong></td>
@@ -366,11 +389,11 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 <td valign="top"><strong>forty 33</strong>&nbsp; 0.7257<br><br>Actions are through intentions.<br><br><span dir="rtl" lang="ar"><big>الْاَعْمَالُ بِالنِّیَّةِ</big></span></td>
 <td valign="top"><strong>bukhari 7486</strong>&nbsp; 0.7289<br><br>Narrated Abu Huraira: Allah's Apostle said, "There are angels coming to you in succession at night, and others during the day, and they all gather at the time of `Asr and Fajr prayers. Then the angels who have stayed with you overnight ascend (to the heaven) and He (Allah) asks them though He perfectly knows their affairs. 'In what state have you left my slaves?' They say, 'When we left them, they were praying and when we came to them they were praying.' "<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا قُتَيْبَةُ بْنُ سَعِيدٍ ، عَنْ مَالِكٍ ، عَنْ أَبِي الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَتَعَاقَبُونَ فِيكُمْ مَلاَئِكَةٌ بِاللَّيْلِ وَمَلاَئِكَةٌ بِالنَّهَارِ، وَيَجْتَمِعُونَ فِي صَلاَةِ الْعَصْرِ وَصَلاَةِ الْفَجْر</big></span></td>
 <td valign="top"><strong>bukhari 555</strong>&nbsp; 0.7290<br><br>Narrated Abu Huraira: Allah's Apostle said, "Angels come to you in succession by night and day and all of them get together at the time of the Fajr and `Asr prayers. Those who have passed the night with you (or stayed with you) ascend (to the Heaven) and Allah asks them, though He knows everything about you, well, "In what state did you leave my slaves?" The angels reply: "When we left them they were praying and when we reached them, they were praying."<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا عَبْدُ اللَّهِ بْنُ يُوسُفَ ، قَالَ حَدَّثَنَا مَالِكٌ ، عَنْ أَبِي الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَتَعَاقَبُونَ فِيكُمْ مَلاَئِكَةٌ بِاللَّيْلِ وَمَلاَئِكَةٌ بِالنَّهَارِ، وَيَجْتَمِعُونَ فِي صَلاَةِ الْفَجْرِ وَ</big></span></td>
-<td valign="top"><strong>mishkat 2096</strong>&nbsp; 0.7580<br><br>Anas reported God's messenger as saying that when lailat al-qadr comes Gabriel descends with a company of angels who invoke blessings on everyone who is standing or sitting and remembering God who is great and glorious. Then when their festival day comes, i.e. the day when they break their fast, God speaks proudly of them to His angels saying, “My angels, what is the reward of a hired servant who has fully accomplished his work?” They reply, “Our Lord, his reward is that he should be paid his wa<br><br><span dir="rtl" lang="ar"><big>وَعَنْ أَنَسٍ قَالَ: قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ: " إِذَا كَانَ لَيْلَةُ الْقَدْرِ نزل جِبْرِيل عَلَيْهِ السَّلَام فِي كُبْكُبَةٍ مِنَ الْمَلَائِكَةِ يُصَلُّونَ عَلَى كُلِّ عَبْدٍ قَائِمٍ أَوْ قَاعِدٍ يَذْكُرُ اللَّهَ عَزَّ وَجَلَّ فَإِذَا كَانَ يَوْمُ عِيدِهِمْ يَعْنِي ي</big></span></td>
+<td valign="top"><strong>bukhari 7501</strong>&nbsp; 0.7564<br><br>Narrated Abu Huraira: Allah's Apostle said, "Allah says, 'If My slave intends to do a bad deed then (O Angels) do not write it unless he does it; if he does it, then write it as it is, but if he refrains from doing it for My Sake, then write it as a good deed (in his account). (On the other hand) if he intends to do a good deed, but does not do it, then write a good deed (in his account), and if he does it, then write it for him (in his account) as ten good deeds up to seven-hundred times.' "<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا قُتَيْبَةُ بْنُ سَعِيدٍ ، حَدَّثَنَا الْمُغِيرَةُ بْنُ عَبْدِ الرَّحْمَنِ ، عَنْ أَبِي الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَقُولُ اللَّهُ إِذَا أَرَادَ عَبْدِي أَنْ يَعْمَلَ سَيِّئَةً فَلاَ تَكْتُبُوهَا عَلَيْهِ حَتَّى</big></span></td>
 <td valign="top"><strong>bukhari 3210</strong>&nbsp; 0.8233<br><br>Narrated `Aisha: I heard Allah's Apostle saying, "The angels descend, the clouds and mention this or that matter decreed in the Heaven. The devils listen stealthily to such a matter, come down to inspire the soothsayers with it, and the latter would add to it one-hundred lies of their own."<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا مُحَمَّدٌ ، حَدَّثَنَا ابْنُ أَبِي مَرْيَمَ ، أَخْبَرَنَا اللَّيْثُ ، حَدَّثَنَا ابْنُ أَبِي جَعْفَرٍ ، عَنْ مُحَمَّدِ بْنِ عَبْدِ الرَّحْمَنِ ، عَنْ عُرْوَةَ بْنِ الزُّبَيْرِ ، عَنْ عَائِشَةَ ـ رضى الله عنها ـ زَوْجِ النَّبِيِّ صلى الله عليه وسلم أَنَّهَا سَمِعَتْ رَسُولَ اللَّهِ صلى الل</big></span></td>
 <td valign="top"><strong>muslim 128 a</strong>&nbsp; 0.8437<br><br>It is narrated on the authority of Abu Huraira that the Messenger of Allah (may peace be upon him) said: The Great and the Glorious Lord said (to angels): Whenever My servant intends to commit an evil, do not record it against him, but if he actually commits it, then write it as one evil. And when he intends to do good but does not do it, then take it down is one act of goodness, but if he does it, then write down ten good deeds (in his record).<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا أَبُو بَكْرِ بْنُ أَبِي شَيْبَةَ، وَزُهَيْرُ بْنُ حَرْبٍ، وَإِسْحَاقُ بْنُ إِبْرَاهِيمَ، - وَاللَّفْظُ لأَبِي بَكْرٍ قَالَ إِسْحَاقُ أَخْبَرَنَا سُفْيَانُ، وَقَالَ الآخَرَانِ، حَدَّثَنَا - ابْنُ عُيَيْنَةَ، عَنْ أَبِي الزِّنَادِ، عَنِ الأَعْرَجِ، عَنْ أَبِي هُرَيْرَةَ، قَالَ قَالَ رَسُولُ</big></span></td>
 <td valign="top"><strong>bukhari 7501</strong>&nbsp; 0.7610<br><br>Narrated Abu Huraira: Allah's Apostle said, "Allah says, 'If My slave intends to do a bad deed then (O Angels) do not write it unless he does it; if he does it, then write it as it is, but if he refrains from doing it for My Sake, then write it as a good deed (in his account). (On the other hand) if he intends to do a good deed, but does not do it, then write a good deed (in his account), and if he does it, then write it for him (in his account) as ten good deeds up to seven-hundred times.' "<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا قُتَيْبَةُ بْنُ سَعِيدٍ ، حَدَّثَنَا الْمُغِيرَةُ بْنُ عَبْدِ الرَّحْمَنِ ، عَنْ أَبِي الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَقُولُ اللَّهُ إِذَا أَرَادَ عَبْدِي أَنْ يَعْمَلَ سَيِّئَةً فَلاَ تَكْتُبُوهَا عَلَيْهِ حَتَّى</big></span></td>
-<td valign="top"><strong>abudawud 1454</strong>&nbsp; 0.7654 <small>· Sahih</small><br><br>'Aishah reported the Prophet (saws) as saying: One who is skilled in the Qur'an is associated with the noble, upright recording angels, and he who falters when he recites the Qur'an and finds it difficult for him will have a double reward.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا مُسْلِمُ بْنُ إِبْرَاهِيمَ، حَدَّثَنَا هِشَامٌ، وَهَمَّامٌ، عَنْ قَتَادَةَ، عَنْ زُرَارَةَ بْنِ أَوْفَى، عَنْ سَعْدِ بْنِ هِشَامٍ، عَنْ عَائِشَةَ، عَنِ النَّبِيِّ صلى الله عليه وسلم قَالَ ‏"‏ الَّذِي يَقْرَأُ الْقُرْآنَ وَهُوَ مَاهِرٌ بِهِ مَعَ السَّفَرَةِ الْكِرَامِ الْبَرَرَةِ وَالَّذِي</big></span></td>
+<td valign="top"><strong>muslim 128 b</strong>&nbsp; 0.7602<br><br>It is narrated on the authority of Abu Huraira that the Messenger of Allah (may peace be upon him) observed: Allah, the Great and Glorious, said: Whenever my bondsman intends to do good, but does not do it, I write one good act for him, but if he puts it into practice I wrote from ten to seven hundred good deeds in favour of him. When he intends to commit an evil, but does not actually do it, do not record it. But if he does it, I write only one evil.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا يَحْيَى بْنُ أَيُّوبَ، وَقُتَيْبَةُ، وَابْنُ، حُجْرٍ قَالُوا حَدَّثَنَا إِسْمَاعِيلُ، - وَهُوَ ابْنُ جَعْفَرٍ - عَنِ الْعَلاَءِ، عَنْ أَبِيهِ، عَنْ أَبِي هُرَيْرَةَ، عَنْ رَسُولِ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ قَالَ اللَّهُ عَزَّ وَجَلَّ إِذَا هَمَّ عَبْدِي بِحَسَنَةٍ وَلَمْ يَعْمَل</big></span></td>
 </tr>
 <tr>
 <td align="center" valign="top"><strong>6</strong></td>
@@ -382,11 +405,11 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 <td valign="top"><strong>mishkat 626</strong>&nbsp; 0.7255<br><br>Abu Huraira reported God’s Messenger as saying: Angels take turns among you by night and by day, and they all assemble at the dawn and the afternoon prayers. Those who spent the night among you then ascend, and their Lord asks them, yet He is best informed about them, “How did you leave My servants?” They reply, “We left them while they were praying, and we came to them while they were praying.” (Bukhari and Muslim.)<br><br><span dir="rtl" lang="ar"><big>وَعَنْ أَبِي هُرَيْرَةَ أَنَّ رَسُولَ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسلم قَالَ: «يَتَعَاقَبُونَ فِيكُمْ مَلَائِكَةٌ بِاللَّيْلِ وَمَلَائِكَةٌ بِالنَّهَارِ وَيَجْتَمِعُونَ فِي صَلَاةِ الْفَجْرِ وَصَلَاةِ الْعَصْرِ ثُمَّ يَعْرُجُ الَّذِينَ بَاتُوا فِيكُمْ فَيَسْأَلُهُمْ رَبُّهُمْ وَهُوَ أَعْلَمُ بِ</big></span></td>
 <td valign="top"><strong>muslim 632 a</strong>&nbsp; 0.7263<br><br>Abu Huraira reported: The Messenger of Allah (may peace be upon him) said: Angels take turns among you by night and by day, and they all assemble at the dawn and afternoon prayers. Those (of the angels) who spend the night among you, then, ascend, and their Lord asks them, though He is the best informed about them: How did you leave My servants? -they say: We left them while they were praying and we came to them while they were praying.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا يَحْيَى بْنُ يَحْيَى، قَالَ قَرَأْتُ عَلَى مَالِكٍ عَنْ أَبِي الزِّنَادِ، عَنِ الأَعْرَجِ، عَنْ أَبِي هُرَيْرَةَ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَتَعَاقَبُونَ فِيكُمْ مَلاَئِكَةٌ بِاللَّيْلِ وَمَلاَئِكَةٌ بِالنَّهَارِ وَيَجْتَمِعُونَ فِي صَلاَةِ الْفَجْرِ وَصَلاَةِ ال</big></span></td>
 <td valign="top"><strong>bukhari 7486</strong>&nbsp; 0.7284<br><br>Narrated Abu Huraira: Allah's Apostle said, "There are angels coming to you in succession at night, and others during the day, and they all gather at the time of `Asr and Fajr prayers. Then the angels who have stayed with you overnight ascend (to the heaven) and He (Allah) asks them though He perfectly knows their affairs. 'In what state have you left my slaves?' They say, 'When we left them, they were praying and when we came to them they were praying.' "<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا قُتَيْبَةُ بْنُ سَعِيدٍ ، عَنْ مَالِكٍ ، عَنْ أَبِي الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَتَعَاقَبُونَ فِيكُمْ مَلاَئِكَةٌ بِاللَّيْلِ وَمَلاَئِكَةٌ بِالنَّهَارِ، وَيَجْتَمِعُونَ فِي صَلاَةِ الْعَصْرِ وَصَلاَةِ الْفَجْر</big></span></td>
-<td valign="top"><strong>bukhari 7501</strong>&nbsp; 0.7564<br><br>Narrated Abu Huraira: Allah's Apostle said, "Allah says, 'If My slave intends to do a bad deed then (O Angels) do not write it unless he does it; if he does it, then write it as it is, but if he refrains from doing it for My Sake, then write it as a good deed (in his account). (On the other hand) if he intends to do a good deed, but does not do it, then write a good deed (in his account), and if he does it, then write it for him (in his account) as ten good deeds up to seven-hundred times.' "<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا قُتَيْبَةُ بْنُ سَعِيدٍ ، حَدَّثَنَا الْمُغِيرَةُ بْنُ عَبْدِ الرَّحْمَنِ ، عَنْ أَبِي الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَقُولُ اللَّهُ إِذَا أَرَادَ عَبْدِي أَنْ يَعْمَلَ سَيِّئَةً فَلاَ تَكْتُبُوهَا عَلَيْهِ حَتَّى</big></span></td>
+<td valign="top"><strong>bukhari 3210</strong>&nbsp; 0.7503<br><br>Narrated `Aisha: I heard Allah's Apostle saying, "The angels descend, the clouds and mention this or that matter decreed in the Heaven. The devils listen stealthily to such a matter, come down to inspire the soothsayers with it, and the latter would add to it one-hundred lies of their own."<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا مُحَمَّدٌ ، حَدَّثَنَا ابْنُ أَبِي مَرْيَمَ ، أَخْبَرَنَا اللَّيْثُ ، حَدَّثَنَا ابْنُ أَبِي جَعْفَرٍ ، عَنْ مُحَمَّدِ بْنِ عَبْدِ الرَّحْمَنِ ، عَنْ عُرْوَةَ بْنِ الزُّبَيْرِ ، عَنْ عَائِشَةَ ـ رضى الله عنها ـ زَوْجِ النَّبِيِّ صلى الله عليه وسلم أَنَّهَا سَمِعَتْ رَسُولَ اللَّهِ صلى الل</big></span></td>
 <td valign="top"><strong>mishkat 2594</strong>&nbsp; 0.8219<br><br>‘A’isha reported God’s messenger as saying, “There is no day when God sets free more servants from hell than the day of ‘Arafa. He draws near, then praises them (Literally, ‘boasts of them.’) to the angels saying, ‘What do these want ?”’(The reference is probably to their undertaking the vicissitudes of the Pilgrimage) Muslim transmitted it.<br><br><span dir="rtl" lang="ar"><big>وَعَنْ عَائِشَةَ قَالَتْ: إِنَّ رَسُولَ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ قَالَ: " مَا مِنْ يَوْمٍ أَكْثَرَ مِنْ أَنْ يُعْتِقَ اللَّهُ فِيهِ عَبْدًا مِنَ النَّارِ مِنْ يَوْمِ عَرَفَةَ وَإِنَّهُ لَيَدْنُو ثُمَّ يُبَاهِي بِهِمُ الْمَلَائِكَةَ فَيَقُولُ: مَا أَرَادَ هَؤُلَاءِ ". رَوَاهُ مُسلم</big></span></td>
 <td valign="top"><strong>bukhari 7429</strong>&nbsp; 0.8430<br><br>Narrated Abu Huraira: Allah's Apostle said, "(A group of) angels stay with you at night and (another group of) angels by daytime, and both groups gather at the time of the 'Asr and Fajr prayers. Then those angels who have stayed with you overnight, ascend (to Heaven) and Allah asks them (about you) ---- and He knows everything about you. "In what state did you leave My slaves?' The angels reply, 'When we left them, they were praying, and when we reached them they were praying.' "<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا إِسْمَاعِيلُ ، حَدَّثَنِي مَالِكٌ ، عَنْ أَبِي الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ـ رضى الله عنه ـ أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَتَعَاقَبُونَ فِيكُمْ مَلاَئِكَةٌ بِاللَّيْلِ وَمَلاَئِكَةٌ بِالنَّهَارِ، وَيَجْتَمِعُونَ فِي صَلاَةِ الْعَصْرِ وَصَلاَة</big></span></td>
 <td valign="top"><strong>mishkat 2096</strong>&nbsp; 0.7602<br><br>Anas reported God's messenger as saying that when lailat al-qadr comes Gabriel descends with a company of angels who invoke blessings on everyone who is standing or sitting and remembering God who is great and glorious. Then when their festival day comes, i.e. the day when they break their fast, God speaks proudly of them to His angels saying, “My angels, what is the reward of a hired servant who has fully accomplished his work?” They reply, “Our Lord, his reward is that he should be paid his wa<br><br><span dir="rtl" lang="ar"><big>وَعَنْ أَنَسٍ قَالَ: قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ: " إِذَا كَانَ لَيْلَةُ الْقَدْرِ نزل جِبْرِيل عَلَيْهِ السَّلَام فِي كُبْكُبَةٍ مِنَ الْمَلَائِكَةِ يُصَلُّونَ عَلَى كُلِّ عَبْدٍ قَائِمٍ أَوْ قَاعِدٍ يَذْكُرُ اللَّهَ عَزَّ وَجَلَّ فَإِذَا كَانَ يَوْمُ عِيدِهِمْ يَعْنِي ي</big></span></td>
-<td valign="top"><strong>muslim 128 b</strong>&nbsp; 0.7602<br><br>It is narrated on the authority of Abu Huraira that the Messenger of Allah (may peace be upon him) observed: Allah, the Great and Glorious, said: Whenever my bondsman intends to do good, but does not do it, I write one good act for him, but if he puts it into practice I wrote from ten to seven hundred good deeds in favour of him. When he intends to commit an evil, but does not actually do it, do not record it. But if he does it, I write only one evil.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا يَحْيَى بْنُ أَيُّوبَ، وَقُتَيْبَةُ، وَابْنُ، حُجْرٍ قَالُوا حَدَّثَنَا إِسْمَاعِيلُ، - وَهُوَ ابْنُ جَعْفَرٍ - عَنِ الْعَلاَءِ، عَنْ أَبِيهِ، عَنْ أَبِي هُرَيْرَةَ، عَنْ رَسُولِ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ قَالَ اللَّهُ عَزَّ وَجَلَّ إِذَا هَمَّ عَبْدِي بِحَسَنَةٍ وَلَمْ يَعْمَل</big></span></td>
+<td valign="top"><strong>mishkat 635</strong>&nbsp; 0.7588<br><br>Concerning God’s words, “The recitation of the dawn is witnessed,” (Al-Qur’an, 17:78). Abu Huraira quoted the Prophet as saying, "The angels of the night and the angels of the day are present at it.” Tirmidhi transmitted it.<br><br><span dir="rtl" lang="ar"><big>وَعَنْ أَبِي هُرَيْرَةَ رَضِيَ اللَّهُ عَنْهُ عَنِ النَّبِيِّ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ فِي قَوْلِهِ تَعَالَى: (إِنَّ قُرْآنَ الْفَجْرِ كَانَ مَشْهُودًا) قَالَ: «تَشْهَدُهُ مَلَائِكَةُ اللَّيْلِ وَمَلَائِكَةُ النَّهَارِ» . رَوَاهُ التِّرْمِذِيّ</big></span></td>
 </tr>
 <tr>
 <td align="center" valign="top"><strong>7</strong></td>
@@ -398,11 +421,11 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 <td valign="top"><strong>bukhari 7486</strong>&nbsp; 0.7255<br><br>Narrated Abu Huraira: Allah's Apostle said, "There are angels coming to you in succession at night, and others during the day, and they all gather at the time of `Asr and Fajr prayers. Then the angels who have stayed with you overnight ascend (to the heaven) and He (Allah) asks them though He perfectly knows their affairs. 'In what state have you left my slaves?' They say, 'When we left them, they were praying and when we came to them they were praying.' "<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا قُتَيْبَةُ بْنُ سَعِيدٍ ، عَنْ مَالِكٍ ، عَنْ أَبِي الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَتَعَاقَبُونَ فِيكُمْ مَلاَئِكَةٌ بِاللَّيْلِ وَمَلاَئِكَةٌ بِالنَّهَارِ، وَيَجْتَمِعُونَ فِي صَلاَةِ الْعَصْرِ وَصَلاَةِ الْفَجْر</big></span></td>
 <td valign="top"><strong>bukhari 555</strong>&nbsp; 0.7262<br><br>Narrated Abu Huraira: Allah's Apostle said, "Angels come to you in succession by night and day and all of them get together at the time of the Fajr and `Asr prayers. Those who have passed the night with you (or stayed with you) ascend (to the Heaven) and Allah asks them, though He knows everything about you, well, "In what state did you leave my slaves?" The angels reply: "When we left them they were praying and when we reached them, they were praying."<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا عَبْدُ اللَّهِ بْنُ يُوسُفَ ، قَالَ حَدَّثَنَا مَالِكٌ ، عَنْ أَبِي الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَتَعَاقَبُونَ فِيكُمْ مَلاَئِكَةٌ بِاللَّيْلِ وَمَلاَئِكَةٌ بِالنَّهَارِ، وَيَجْتَمِعُونَ فِي صَلاَةِ الْفَجْرِ وَ</big></span></td>
 <td valign="top"><strong>muslim 632 a</strong>&nbsp; 0.7261<br><br>Abu Huraira reported: The Messenger of Allah (may peace be upon him) said: Angels take turns among you by night and by day, and they all assemble at the dawn and afternoon prayers. Those (of the angels) who spend the night among you, then, ascend, and their Lord asks them, though He is the best informed about them: How did you leave My servants? -they say: We left them while they were praying and we came to them while they were praying.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا يَحْيَى بْنُ يَحْيَى، قَالَ قَرَأْتُ عَلَى مَالِكٍ عَنْ أَبِي الزِّنَادِ، عَنِ الأَعْرَجِ، عَنْ أَبِي هُرَيْرَةَ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَتَعَاقَبُونَ فِيكُمْ مَلاَئِكَةٌ بِاللَّيْلِ وَمَلاَئِكَةٌ بِالنَّهَارِ وَيَجْتَمِعُونَ فِي صَلاَةِ الْفَجْرِ وَصَلاَةِ ال</big></span></td>
-<td valign="top"><strong>bukhari 3210</strong>&nbsp; 0.7503<br><br>Narrated `Aisha: I heard Allah's Apostle saying, "The angels descend, the clouds and mention this or that matter decreed in the Heaven. The devils listen stealthily to such a matter, come down to inspire the soothsayers with it, and the latter would add to it one-hundred lies of their own."<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا مُحَمَّدٌ ، حَدَّثَنَا ابْنُ أَبِي مَرْيَمَ ، أَخْبَرَنَا اللَّيْثُ ، حَدَّثَنَا ابْنُ أَبِي جَعْفَرٍ ، عَنْ مُحَمَّدِ بْنِ عَبْدِ الرَّحْمَنِ ، عَنْ عُرْوَةَ بْنِ الزُّبَيْرِ ، عَنْ عَائِشَةَ ـ رضى الله عنها ـ زَوْجِ النَّبِيِّ صلى الله عليه وسلم أَنَّهَا سَمِعَتْ رَسُولَ اللَّهِ صلى الل</big></span></td>
+<td valign="top"><strong>bukhari 3223</strong>&nbsp; 0.7483<br><br>Narrated Abu Huraira: The Prophet said, "Angels keep on descending from and ascending to the Heaven in turn, some at night and some by daytime, and all of them assemble together at the time of the Fajr and `Asr prayers. Then those who have stayed with you over-night, ascent unto Allah Who asks them, and He knows the answer better than they, "How have you left My slaves?" They reply, "We have left them praying as we found them praying." If anyone of you says "Amin" (during the Prayer at the end o<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا أَبُو الْيَمَانِ ، أَخْبَرَنَا شُعَيْبٌ ، حَدَّثَنَا أَبُو الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ـ رضى الله عنه ـ قَالَ قَالَ النَّبِيُّ صلى الله عليه وسلم ‏"‏ الْمَلاَئِكَةُ يَتَعَاقَبُونَ، مَلاَئِكَةٌ بِاللَّيْلِ وَمَلاَئِكَةٌ بِالنَّهَارِ، وَيَجْتَمِعُونَ فِي صَلاَةِ الْ</big></span></td>
 <td valign="top"><strong>ibnmajah 76</strong>&nbsp; 0.8214 <small>· Sahih</small><br><br>'Abdullah bin Mas'ud said: "The Messenger of Allah (SAW), the true and truly inspired one, told us that: 'The creation of one of you is put together in his mother's womb for forty days, then it becomes a clot for a similar length of time, then it becomes a chewed lump of flesh for a similar length of time. Then Allah sends the angel to him and commands him to write down four things. He says: "Write down his deeds, his life span, his provision, and whether he is doomed (destined for Hell) or bles<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا عَلِيُّ بْنُ مُحَمَّدٍ، حَدَّثَنَا وَكِيعٌ، وَمُحَمَّدُ بْنُ فُضَيْلٍ، وَأَبُو مُعَاوِيَةَ ح وَحَدَّثَنَا عَلِيُّ بْنُ مَيْمُونٍ الرَّقِّيُّ، حَدَّثَنَا أَبُو مُعَاوِيَةَ، وَمُحَمَّدُ بْنُ عُبَيْدٍ، عَنِ الأَعْمَشِ، عَنْ زَيْدِ بْنِ وَهْبٍ، قَالَ قَالَ عَبْدُ اللَّهِ بْنُ مَسْعُودٍ حَدَّث</big></span></td>
 <td valign="top"><strong>mishkat 924</strong>&nbsp; 0.8423<br><br>He also reported God’s Messenger as saying, “God has angels who travel about in the earth and convey to me greetings from my people.” Nassa’i and Darimi transmitted it.<br><br><span dir="rtl" lang="ar"><big>وَعَنِ ابْنِ مَسْعُودٍ قَالَ: قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ: «إِنَّ لِلَّهِ مَلَائِكَةً سَيَّاحِينَ فِي الْأَرْضِ يُبَلِّغُونِي مِنْ أُمَّتِيَ السَّلَامَ» . رَوَاهُ النَّسَائِيّ والدارمي</big></span></td>
 <td valign="top"><strong>muslim 128 b</strong>&nbsp; 0.7542<br><br>It is narrated on the authority of Abu Huraira that the Messenger of Allah (may peace be upon him) observed: Allah, the Great and Glorious, said: Whenever my bondsman intends to do good, but does not do it, I write one good act for him, but if he puts it into practice I wrote from ten to seven hundred good deeds in favour of him. When he intends to commit an evil, but does not actually do it, do not record it. But if he does it, I write only one evil.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا يَحْيَى بْنُ أَيُّوبَ، وَقُتَيْبَةُ، وَابْنُ، حُجْرٍ قَالُوا حَدَّثَنَا إِسْمَاعِيلُ، - وَهُوَ ابْنُ جَعْفَرٍ - عَنِ الْعَلاَءِ، عَنْ أَبِيهِ، عَنْ أَبِي هُرَيْرَةَ، عَنْ رَسُولِ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ قَالَ اللَّهُ عَزَّ وَجَلَّ إِذَا هَمَّ عَبْدِي بِحَسَنَةٍ وَلَمْ يَعْمَل</big></span></td>
-<td valign="top"><strong>mishkat 635</strong>&nbsp; 0.7588<br><br>Concerning God’s words, “The recitation of the dawn is witnessed,” (Al-Qur’an, 17:78). Abu Huraira quoted the Prophet as saying, "The angels of the night and the angels of the day are present at it.” Tirmidhi transmitted it.<br><br><span dir="rtl" lang="ar"><big>وَعَنْ أَبِي هُرَيْرَةَ رَضِيَ اللَّهُ عَنْهُ عَنِ النَّبِيِّ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ فِي قَوْلِهِ تَعَالَى: (إِنَّ قُرْآنَ الْفَجْرِ كَانَ مَشْهُودًا) قَالَ: «تَشْهَدُهُ مَلَائِكَةُ اللَّيْلِ وَمَلَائِكَةُ النَّهَارِ» . رَوَاهُ التِّرْمِذِيّ</big></span></td>
+<td valign="top"><strong>bukhari 7501</strong>&nbsp; 0.7575<br><br>Narrated Abu Huraira: Allah's Apostle said, "Allah says, 'If My slave intends to do a bad deed then (O Angels) do not write it unless he does it; if he does it, then write it as it is, but if he refrains from doing it for My Sake, then write it as a good deed (in his account). (On the other hand) if he intends to do a good deed, but does not do it, then write a good deed (in his account), and if he does it, then write it for him (in his account) as ten good deeds up to seven-hundred times.' "<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا قُتَيْبَةُ بْنُ سَعِيدٍ ، حَدَّثَنَا الْمُغِيرَةُ بْنُ عَبْدِ الرَّحْمَنِ ، عَنْ أَبِي الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَقُولُ اللَّهُ إِذَا أَرَادَ عَبْدِي أَنْ يَعْمَلَ سَيِّئَةً فَلاَ تَكْتُبُوهَا عَلَيْهِ حَتَّى</big></span></td>
 </tr>
 <tr>
 <td align="center" valign="top"><strong>8</strong></td>
@@ -414,11 +437,11 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 <td valign="top"><strong>mishkat 1559</strong>&nbsp; 0.7252<br><br>‘Abdallah b. ‘Amr reported God’s messenger as saying, “When a servant of God is accustomed to worship Him in a good manner, then becomes ill, the angel who is entrusted with him is told to record for him actions equivalent to those which he did when he was well till God sets him free from his illness or takes him in death.” Transmitted in Sharh as-sunna .<br><br><span dir="rtl" lang="ar"><big>وَعَنْ عَبْدِ اللَّهِ بْنِ عَمْرٍو قَالَ: قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسلم: " إِن الْعَبْدَ إِذَا كَانَ عَلَى طَرِيقَةٍ حَسَنَةٍ مِنَ الْعِبَادَةِ ثُمَّ مَرِضَ قِيلَ لِلْمَلَكِ الْمُوَكَّلِ بِهِ: اكْتُبْ لَهُ مِثْلَ عَمَلِهِ إِذَا كَانَ طَلِيقًا حَتَّى أطلقهُ أَو أكفته إِلَيّ "</big></span></td>
 <td valign="top"><strong>mishkat 3115</strong>&nbsp; 0.7258<br><br>Ibn ‘Umar reported God’s Messenger as saying, "Avoid being naked, for with you are those who never leave you (the recording angels) except when you are relieving yourselves and when a man has intercourse with his wife; so observe modesty before them and honour them.” Tirmidhi transmitted it.<br><br><span dir="rtl" lang="ar"><big>وَعَنِ ابْنِ عُمَرَ قَالَ: قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ: «إِيَّاكُمْ وَالتَّعَرِّيَ فَإِنَّ مَعَكُمْ مَنْ لَا يُفَارِقُكُمْ إِلَّا عِنْدَ الْغَائِطِ وَحِينَ يُفْضِي الرَّجُلُ إِلَى أَهْلِهِ فَاسْتَحْيُوهُمْ وَأَكْرِمُوهُمْ» . رَوَاهُ التِّرْمِذِيّ</big></span></td>
 <td valign="top"><strong>bukhari 1442</strong>&nbsp; 0.7260<br><br>Narrated Abu Huraira: The Prophet said, "Every day two angels come down from Heaven and one of them says, 'O Allah! Compensate every person who spends in Your Cause,' and the other (angel) says, 'O Allah! Destroy every miser.' "<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا إِسْمَاعِيلُ ، قَالَ حَدَّثَنِي أَخِي ، عَنْ سُلَيْمَانَ ، عَنْ مُعَاوِيَةَ بْنِ أَبِي مُزَرِّدٍ ، عَنْ أَبِي الْحُبَابِ ، عَنْ أَبِي هُرَيْرَةَ ـ رضى الله عنه ـ أَنَّ النَّبِيَّ صلى الله عليه وسلم قَالَ ‏"‏ مَا مِنْ يَوْمٍ يُصْبِحُ الْعِبَادُ فِيهِ إِلاَّ مَلَكَانِ يَنْزِلاَنِ فَيَقُولُ </big></span></td>
-<td valign="top"><strong>bukhari 3223</strong>&nbsp; 0.7483<br><br>Narrated Abu Huraira: The Prophet said, "Angels keep on descending from and ascending to the Heaven in turn, some at night and some by daytime, and all of them assemble together at the time of the Fajr and `Asr prayers. Then those who have stayed with you over-night, ascent unto Allah Who asks them, and He knows the answer better than they, "How have you left My slaves?" They reply, "We have left them praying as we found them praying." If anyone of you says "Amin" (during the Prayer at the end o<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا أَبُو الْيَمَانِ ، أَخْبَرَنَا شُعَيْبٌ ، حَدَّثَنَا أَبُو الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ـ رضى الله عنه ـ قَالَ قَالَ النَّبِيُّ صلى الله عليه وسلم ‏"‏ الْمَلاَئِكَةُ يَتَعَاقَبُونَ، مَلاَئِكَةٌ بِاللَّيْلِ وَمَلاَئِكَةٌ بِالنَّهَارِ، وَيَجْتَمِعُونَ فِي صَلاَةِ الْ</big></span></td>
+<td valign="top"><strong>bukhari 7486</strong>&nbsp; 0.7479<br><br>Narrated Abu Huraira: Allah's Apostle said, "There are angels coming to you in succession at night, and others during the day, and they all gather at the time of `Asr and Fajr prayers. Then the angels who have stayed with you overnight ascend (to the heaven) and He (Allah) asks them though He perfectly knows their affairs. 'In what state have you left my slaves?' They say, 'When we left them, they were praying and when we came to them they were praying.' "<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا قُتَيْبَةُ بْنُ سَعِيدٍ ، عَنْ مَالِكٍ ، عَنْ أَبِي الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَتَعَاقَبُونَ فِيكُمْ مَلاَئِكَةٌ بِاللَّيْلِ وَمَلاَئِكَةٌ بِالنَّهَارِ، وَيَجْتَمِعُونَ فِي صَلاَةِ الْعَصْرِ وَصَلاَةِ الْفَجْر</big></span></td>
 <td valign="top"><strong>bukhari 555</strong>&nbsp; 0.8203<br><br>Narrated Abu Huraira: Allah's Apostle said, "Angels come to you in succession by night and day and all of them get together at the time of the Fajr and `Asr prayers. Those who have passed the night with you (or stayed with you) ascend (to the Heaven) and Allah asks them, though He knows everything about you, well, "In what state did you leave my slaves?" The angels reply: "When we left them they were praying and when we reached them, they were praying."<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا عَبْدُ اللَّهِ بْنُ يُوسُفَ ، قَالَ حَدَّثَنَا مَالِكٌ ، عَنْ أَبِي الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَتَعَاقَبُونَ فِيكُمْ مَلاَئِكَةٌ بِاللَّيْلِ وَمَلاَئِكَةٌ بِالنَّهَارِ، وَيَجْتَمِعُونَ فِي صَلاَةِ الْفَجْرِ وَ</big></span></td>
 <td valign="top"><strong>riyadussalihin 547</strong>&nbsp; 0.8419<br><br>Abu Hurairah (May Allah be pleased with him) reported: Messenger of Allah (PBUH) said, "Everyday two angels descend and one of them says, 'O Allah! Compensate (more) to the person who gives (in charity)'; while the other one says, 'O Allah! Destroy the one who withholds (charity, etc)". [Al-Bukhari and Muslim] .<br><br><span dir="rtl" lang="ar"><big>- وعن أبي هريرة رضي الله عنه قال‏:‏ قال رسول الله صلى الله عليه وسلم ‏:‏ ‏"‏ ما من يوم يصبح العباد فيه إلا ملكان ينزلان فيقول أحدهما‏:‏ اللهم أعط منفقاً خلفاً، ويقول الآخر‏:‏ اللهم أعط ممسكاً تلفاً‏"‏ ‏(‏‏(‏متفق عليه‏)‏‏)‏‏.‏</big></span></td>
 <td valign="top"><strong>bukhari 3210</strong>&nbsp; 0.7507<br><br>Narrated `Aisha: I heard Allah's Apostle saying, "The angels descend, the clouds and mention this or that matter decreed in the Heaven. The devils listen stealthily to such a matter, come down to inspire the soothsayers with it, and the latter would add to it one-hundred lies of their own."<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا مُحَمَّدٌ ، حَدَّثَنَا ابْنُ أَبِي مَرْيَمَ ، أَخْبَرَنَا اللَّيْثُ ، حَدَّثَنَا ابْنُ أَبِي جَعْفَرٍ ، عَنْ مُحَمَّدِ بْنِ عَبْدِ الرَّحْمَنِ ، عَنْ عُرْوَةَ بْنِ الزُّبَيْرِ ، عَنْ عَائِشَةَ ـ رضى الله عنها ـ زَوْجِ النَّبِيِّ صلى الله عليه وسلم أَنَّهَا سَمِعَتْ رَسُولَ اللَّهِ صلى الل</big></span></td>
-<td valign="top"><strong>bukhari 7501</strong>&nbsp; 0.7575<br><br>Narrated Abu Huraira: Allah's Apostle said, "Allah says, 'If My slave intends to do a bad deed then (O Angels) do not write it unless he does it; if he does it, then write it as it is, but if he refrains from doing it for My Sake, then write it as a good deed (in his account). (On the other hand) if he intends to do a good deed, but does not do it, then write a good deed (in his account), and if he does it, then write it for him (in his account) as ten good deeds up to seven-hundred times.' "<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا قُتَيْبَةُ بْنُ سَعِيدٍ ، حَدَّثَنَا الْمُغِيرَةُ بْنُ عَبْدِ الرَّحْمَنِ ، عَنْ أَبِي الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَقُولُ اللَّهُ إِذَا أَرَادَ عَبْدِي أَنْ يَعْمَلَ سَيِّئَةً فَلاَ تَكْتُبُوهَا عَلَيْهِ حَتَّى</big></span></td>
+<td valign="top"><strong>muslim 129</strong>&nbsp; 0.7572<br><br>Abu Huraira reported that Muhammad, the Messenger of Allah (may peace be upon him), said: When it occurs to my bondsman that he should do a good deed but he actually does not do it, record one good to him, but if he puts it into practice, I make an entry of ten good acts in his favour. When it occurs to him to do evil, but he does not commit it, I forgive that. But if he commits it, I record one evil against his name. The Messenger of Allah (may peace be upon him) observed. The angels said: That<br><br><span dir="rtl" lang="ar"><big>وَحَدَّثَنَا مُحَمَّدُ بْنُ رَافِعٍ، حَدَّثَنَا عَبْدُ الرَّزَّاقِ، أَخْبَرَنَا مَعْمَرٌ، عَنْ هَمَّامِ بْنِ مُنَبِّهٍ، قَالَ هَذَا مَا حَدَّثَنَا أَبُو هُرَيْرَةَ، عَنْ مُحَمَّدٍ، رَسُولِ اللَّهِ صلى الله عليه وسلم فَذَكَرَ أَحَادِيثَ مِنْهَا قَالَ قَالَ رَسُولُ اللَّهِ صلى الله عليه وسلم ‏"‏ قَالَ</big></span></td>
 </tr>
 <tr>
 <td align="center" valign="top"><strong>9</strong></td>
@@ -430,11 +453,11 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 <td valign="top"><strong>mishkat 3115</strong>&nbsp; 0.7237<br><br>Ibn ‘Umar reported God’s Messenger as saying, "Avoid being naked, for with you are those who never leave you (the recording angels) except when you are relieving yourselves and when a man has intercourse with his wife; so observe modesty before them and honour them.” Tirmidhi transmitted it.<br><br><span dir="rtl" lang="ar"><big>وَعَنِ ابْنِ عُمَرَ قَالَ: قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ: «إِيَّاكُمْ وَالتَّعَرِّيَ فَإِنَّ مَعَكُمْ مَنْ لَا يُفَارِقُكُمْ إِلَّا عِنْدَ الْغَائِطِ وَحِينَ يُفْضِي الرَّجُلُ إِلَى أَهْلِهِ فَاسْتَحْيُوهُمْ وَأَكْرِمُوهُمْ» . رَوَاهُ التِّرْمِذِيّ</big></span></td>
 <td valign="top"><strong>mishkat 1559</strong>&nbsp; 0.7226<br><br>‘Abdallah b. ‘Amr reported God’s messenger as saying, “When a servant of God is accustomed to worship Him in a good manner, then becomes ill, the angel who is entrusted with him is told to record for him actions equivalent to those which he did when he was well till God sets him free from his illness or takes him in death.” Transmitted in Sharh as-sunna .<br><br><span dir="rtl" lang="ar"><big>وَعَنْ عَبْدِ اللَّهِ بْنِ عَمْرٍو قَالَ: قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسلم: " إِن الْعَبْدَ إِذَا كَانَ عَلَى طَرِيقَةٍ حَسَنَةٍ مِنَ الْعِبَادَةِ ثُمَّ مَرِضَ قِيلَ لِلْمَلَكِ الْمُوَكَّلِ بِهِ: اكْتُبْ لَهُ مِثْلَ عَمَلِهِ إِذَا كَانَ طَلِيقًا حَتَّى أطلقهُ أَو أكفته إِلَيّ "</big></span></td>
 <td valign="top"><strong>bukhari 6408</strong>&nbsp; 0.7231<br><br>Narrated Abu Huraira: Allah 's Apostle said, "Allah has some angels who look for those who celebrate the Praises of Allah on the roads and paths. And when they find some people celebrating the Praises of Allah, they call each other, saying, "Come to the object of your pursuit.' " He added, "Then the angels encircle them with their wings up to the sky of the world." He added. "(after those people celebrated the Praises of Allah, and the angels go back), their Lord, asks them (those angels)----tho<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا قُتَيْبَةُ بْنُ سَعِيدٍ ، حَدَّثَنَا جَرِيرٌ ، عَنِ الأَعْمَشِ ، عَنْ أَبِي صَالِحٍ ، عَنْ أَبِي هُرَيْرَةَ ، قَالَ قَالَ رَسُولُ اللَّهِ صلى الله عليه وسلم ‏"‏ إِنَّ لِلَّهِ مَلاَئِكَةً يَطُوفُونَ فِي الطُّرُقِ، يَلْتَمِسُونَ أَهْلَ الذِّكْرِ، فَإِذَا وَجَدُوا قَوْمًا يَذْكُرُونَ اللَّهَ</big></span></td>
-<td valign="top"><strong>bukhari 7486</strong>&nbsp; 0.7479<br><br>Narrated Abu Huraira: Allah's Apostle said, "There are angels coming to you in succession at night, and others during the day, and they all gather at the time of `Asr and Fajr prayers. Then the angels who have stayed with you overnight ascend (to the heaven) and He (Allah) asks them though He perfectly knows their affairs. 'In what state have you left my slaves?' They say, 'When we left them, they were praying and when we came to them they were praying.' "<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا قُتَيْبَةُ بْنُ سَعِيدٍ ، عَنْ مَالِكٍ ، عَنْ أَبِي الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَتَعَاقَبُونَ فِيكُمْ مَلاَئِكَةٌ بِاللَّيْلِ وَمَلاَئِكَةٌ بِالنَّهَارِ، وَيَجْتَمِعُونَ فِي صَلاَةِ الْعَصْرِ وَصَلاَةِ الْفَجْر</big></span></td>
+<td valign="top"><strong>mishkat 635</strong>&nbsp; 0.7465<br><br>Concerning God’s words, “The recitation of the dawn is witnessed,” (Al-Qur’an, 17:78). Abu Huraira quoted the Prophet as saying, "The angels of the night and the angels of the day are present at it.” Tirmidhi transmitted it.<br><br><span dir="rtl" lang="ar"><big>وَعَنْ أَبِي هُرَيْرَةَ رَضِيَ اللَّهُ عَنْهُ عَنِ النَّبِيِّ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ فِي قَوْلِهِ تَعَالَى: (إِنَّ قُرْآنَ الْفَجْرِ كَانَ مَشْهُودًا) قَالَ: «تَشْهَدُهُ مَلَائِكَةُ اللَّيْلِ وَمَلَائِكَةُ النَّهَارِ» . رَوَاهُ التِّرْمِذِيّ</big></span></td>
 <td valign="top"><strong>bukhari 7486</strong>&nbsp; 0.8201<br><br>Narrated Abu Huraira: Allah's Apostle said, "There are angels coming to you in succession at night, and others during the day, and they all gather at the time of `Asr and Fajr prayers. Then the angels who have stayed with you overnight ascend (to the heaven) and He (Allah) asks them though He perfectly knows their affairs. 'In what state have you left my slaves?' They say, 'When we left them, they were praying and when we came to them they were praying.' "<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا قُتَيْبَةُ بْنُ سَعِيدٍ ، عَنْ مَالِكٍ ، عَنْ أَبِي الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَتَعَاقَبُونَ فِيكُمْ مَلاَئِكَةٌ بِاللَّيْلِ وَمَلاَئِكَةٌ بِالنَّهَارِ، وَيَجْتَمِعُونَ فِي صَلاَةِ الْعَصْرِ وَصَلاَةِ الْفَجْر</big></span></td>
 <td valign="top"><strong>bukhari 3210</strong>&nbsp; 0.8415<br><br>Narrated `Aisha: I heard Allah's Apostle saying, "The angels descend, the clouds and mention this or that matter decreed in the Heaven. The devils listen stealthily to such a matter, come down to inspire the soothsayers with it, and the latter would add to it one-hundred lies of their own."<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا مُحَمَّدٌ ، حَدَّثَنَا ابْنُ أَبِي مَرْيَمَ ، أَخْبَرَنَا اللَّيْثُ ، حَدَّثَنَا ابْنُ أَبِي جَعْفَرٍ ، عَنْ مُحَمَّدِ بْنِ عَبْدِ الرَّحْمَنِ ، عَنْ عُرْوَةَ بْنِ الزُّبَيْرِ ، عَنْ عَائِشَةَ ـ رضى الله عنها ـ زَوْجِ النَّبِيِّ صلى الله عليه وسلم أَنَّهَا سَمِعَتْ رَسُولَ اللَّهِ صلى الل</big></span></td>
 <td valign="top"><strong>bukhari 3223</strong>&nbsp; 0.7489<br><br>Narrated Abu Huraira: The Prophet said, "Angels keep on descending from and ascending to the Heaven in turn, some at night and some by daytime, and all of them assemble together at the time of the Fajr and `Asr prayers. Then those who have stayed with you over-night, ascent unto Allah Who asks them, and He knows the answer better than they, "How have you left My slaves?" They reply, "We have left them praying as we found them praying." If anyone of you says "Amin" (during the Prayer at the end o<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا أَبُو الْيَمَانِ ، أَخْبَرَنَا شُعَيْبٌ ، حَدَّثَنَا أَبُو الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ـ رضى الله عنه ـ قَالَ قَالَ النَّبِيُّ صلى الله عليه وسلم ‏"‏ الْمَلاَئِكَةُ يَتَعَاقَبُونَ، مَلاَئِكَةٌ بِاللَّيْلِ وَمَلاَئِكَةٌ بِالنَّهَارِ، وَيَجْتَمِعُونَ فِي صَلاَةِ الْ</big></span></td>
-<td valign="top"><strong>muslim 129</strong>&nbsp; 0.7572<br><br>Abu Huraira reported that Muhammad, the Messenger of Allah (may peace be upon him), said: When it occurs to my bondsman that he should do a good deed but he actually does not do it, record one good to him, but if he puts it into practice, I make an entry of ten good acts in his favour. When it occurs to him to do evil, but he does not commit it, I forgive that. But if he commits it, I record one evil against his name. The Messenger of Allah (may peace be upon him) observed. The angels said: That<br><br><span dir="rtl" lang="ar"><big>وَحَدَّثَنَا مُحَمَّدُ بْنُ رَافِعٍ، حَدَّثَنَا عَبْدُ الرَّزَّاقِ، أَخْبَرَنَا مَعْمَرٌ، عَنْ هَمَّامِ بْنِ مُنَبِّهٍ، قَالَ هَذَا مَا حَدَّثَنَا أَبُو هُرَيْرَةَ، عَنْ مُحَمَّدٍ، رَسُولِ اللَّهِ صلى الله عليه وسلم فَذَكَرَ أَحَادِيثَ مِنْهَا قَالَ قَالَ رَسُولُ اللَّهِ صلى الله عليه وسلم ‏"‏ قَالَ</big></span></td>
+<td valign="top"><strong>bukhari 555</strong>&nbsp; 0.7555<br><br>Narrated Abu Huraira: Allah's Apostle said, "Angels come to you in succession by night and day and all of them get together at the time of the Fajr and `Asr prayers. Those who have passed the night with you (or stayed with you) ascend (to the Heaven) and Allah asks them, though He knows everything about you, well, "In what state did you leave my slaves?" The angels reply: "When we left them they were praying and when we reached them, they were praying."<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا عَبْدُ اللَّهِ بْنُ يُوسُفَ ، قَالَ حَدَّثَنَا مَالِكٌ ، عَنْ أَبِي الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَتَعَاقَبُونَ فِيكُمْ مَلاَئِكَةٌ بِاللَّيْلِ وَمَلاَئِكَةٌ بِالنَّهَارِ، وَيَجْتَمِعُونَ فِي صَلاَةِ الْفَجْرِ وَ</big></span></td>
 </tr>
 <tr>
 <td align="center" valign="top"><strong>10</strong></td>
@@ -446,33 +469,32 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 <td valign="top"><strong>mishkat 1860</strong>&nbsp; 0.7230<br><br>He reported him as saying that two angels come down every morning and one says, "O God, give him who spends something in place of it;” the other says, “O God, give him who withholds destruction.” (Bukhari and Muslim.)<br><br><span dir="rtl" lang="ar"><big>وَعَنْ أَبِي هُرَيْرَةَ رَضِيَ اللَّهُ عَنْهُ قَالَ: قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ: " مَا مِنْ يَوْمٍ يُصْبِحُ الْعِبَادُ فِيهِ إِلَّا مَلَكَانِ يَنْزِلَانِ فَيَقُولُ أَحَدُهُمَا: اللَّهُمَّ أطع مُنْفِقًا خَلَفًا وَيَقُولُ الْآخَرُ: اللَّهُمَّ أَعْطِ مُمْسِكًا تلفا "</big></span></td>
 <td valign="top"><strong>muslim 2112</strong>&nbsp; 0.7206<br><br>Abu Huraira reported Allah's Messenger (may peace be upon him) as saying: Angels do not enter the house in which there are portrayals or pictures.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا أَبُو بَكْرِ بْنُ أَبِي شَيْبَةَ، حَدَّثَنَا خَالِدُ بْنُ مَخْلَدٍ، عَنْ سُلَيْمَانَ بْنِ بِلاَلٍ، عَنْ سُهَيْلٍ، عَنْ أَبِيهِ، عَنْ أَبِي هُرَيْرَةَ، قَالَ قَالَ رَسُولُ اللَّهِ صلى الله عليه وسلم ‏"‏ لاَ تَدْخُلُ الْمَلاَئِكَةُ بَيْتًا فِيهِ تَمَاثِيلُ أَوْ تَصَاوِيرُ ‏"‏ ‏.‏</big></span></td>
 <td valign="top"><strong>muslim 2689</strong>&nbsp; 0.7227<br><br>Abu Huraira reported Allah's Apostle (may peace be upon him) as saying Allah has mobile (squads) of angels, who have no other work (to attend to but) to follow the assemblies of Dhikr and when they find such assemblies in which there is Dhikr (of Allah) they sit in them and some of them surround the others with their wings till the space between them and the sky of the world is fully covered, and when they disperse (after the assembly of Dhikr is adjourned) they go upward to the heaven and Allah<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا مُحَمَّدُ بْنُ حَاتِمِ بْنِ مَيْمُونٍ، حَدَّثَنَا بَهْزٌ، حَدَّثَنَا وُهَيْبٌ، حَدَّثَنَا سُهَيْلٌ، عَنْ أَبِيهِ، عَنْ أَبِي هُرَيْرَةَ، عَنِ النَّبِيِّ صلى الله عليه وسلم قَالَ ‏"‏ إِنَّ لِلَّهِ تَبَارَكَ وَتَعَالَى مَلاَئِكَةً سَيَّارَةً فُضْلاً يَتَبَّعُونَ مَجَالِسَ الذِّكْرِ فَإِذَا </big></span></td>
-<td valign="top"><strong>mishkat 635</strong>&nbsp; 0.7465<br><br>Concerning God’s words, “The recitation of the dawn is witnessed,” (Al-Qur’an, 17:78). Abu Huraira quoted the Prophet as saying, "The angels of the night and the angels of the day are present at it.” Tirmidhi transmitted it.<br><br><span dir="rtl" lang="ar"><big>وَعَنْ أَبِي هُرَيْرَةَ رَضِيَ اللَّهُ عَنْهُ عَنِ النَّبِيِّ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ فِي قَوْلِهِ تَعَالَى: (إِنَّ قُرْآنَ الْفَجْرِ كَانَ مَشْهُودًا) قَالَ: «تَشْهَدُهُ مَلَائِكَةُ اللَّيْلِ وَمَلَائِكَةُ النَّهَارِ» . رَوَاهُ التِّرْمِذِيّ</big></span></td>
+<td valign="top"><strong>bukhari 3332</strong>&nbsp; 0.7462<br><br>Narrated `Abdullah: Allah's Apostle, the true and truly inspired said, "(as regards your creation), every one of you is collected in the womb of his mother for the first forty days, and then he becomes a clot for another forty days, and then a piece of flesh for another forty days. Then Allah sends an angel to write four items: He writes his deeds, time of his death, means of his livelihood, and whether he will be wretched or blessed (in religion). Then the soul is breathed into his body. So a m<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا عُمَرُ بْنُ حَفْصٍ ، حَدَّثَنَا أَبِي ، حَدَّثَنَا الأَعْمَشُ ، حَدَّثَنَا زَيْدُ بْنُ وَهْبٍ ، حَدَّثَنَا عَبْدُ اللَّهِ ، حَدَّثَنَا رَسُولُ اللَّهِ صلى الله عليه وسلم وَهْوَ [name role="rasul"]الصَّادِقُ الْمَصْدُوقُ [/name]‏"‏ إِنَّ أَحَدَكُمْ يُجْمَعُ فِي بَطْنِ أُمِّهِ أَرْبَعِينَ ي</big></span></td>
 <td valign="top"><strong>muslim 632 a</strong>&nbsp; 0.8199<br><br>Abu Huraira reported: The Messenger of Allah (may peace be upon him) said: Angels take turns among you by night and by day, and they all assemble at the dawn and afternoon prayers. Those (of the angels) who spend the night among you, then, ascend, and their Lord asks them, though He is the best informed about them: How did you leave My servants? -they say: We left them while they were praying and we came to them while they were praying.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا يَحْيَى بْنُ يَحْيَى، قَالَ قَرَأْتُ عَلَى مَالِكٍ عَنْ أَبِي الزِّنَادِ، عَنِ الأَعْرَجِ، عَنْ أَبِي هُرَيْرَةَ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَتَعَاقَبُونَ فِيكُمْ مَلاَئِكَةٌ بِاللَّيْلِ وَمَلاَئِكَةٌ بِالنَّهَارِ وَيَجْتَمِعُونَ فِي صَلاَةِ الْفَجْرِ وَصَلاَةِ ال</big></span></td>
 <td valign="top"><strong>bukhari 555</strong>&nbsp; 0.8405<br><br>Narrated Abu Huraira: Allah's Apostle said, "Angels come to you in succession by night and day and all of them get together at the time of the Fajr and `Asr prayers. Those who have passed the night with you (or stayed with you) ascend (to the Heaven) and Allah asks them, though He knows everything about you, well, "In what state did you leave my slaves?" The angels reply: "When we left them they were praying and when we reached them, they were praying."<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا عَبْدُ اللَّهِ بْنُ يُوسُفَ ، قَالَ حَدَّثَنَا مَالِكٌ ، عَنْ أَبِي الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَتَعَاقَبُونَ فِيكُمْ مَلاَئِكَةٌ بِاللَّيْلِ وَمَلاَئِكَةٌ بِالنَّهَارِ، وَيَجْتَمِعُونَ فِي صَلاَةِ الْفَجْرِ وَ</big></span></td>
 <td valign="top"><strong>bukhari 3332</strong>&nbsp; 0.7485<br><br>Narrated `Abdullah: Allah's Apostle, the true and truly inspired said, "(as regards your creation), every one of you is collected in the womb of his mother for the first forty days, and then he becomes a clot for another forty days, and then a piece of flesh for another forty days. Then Allah sends an angel to write four items: He writes his deeds, time of his death, means of his livelihood, and whether he will be wretched or blessed (in religion). Then the soul is breathed into his body. So a m<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا عُمَرُ بْنُ حَفْصٍ ، حَدَّثَنَا أَبِي ، حَدَّثَنَا الأَعْمَشُ ، حَدَّثَنَا زَيْدُ بْنُ وَهْبٍ ، حَدَّثَنَا عَبْدُ اللَّهِ ، حَدَّثَنَا رَسُولُ اللَّهِ صلى الله عليه وسلم وَهْوَ [name role="rasul"]الصَّادِقُ الْمَصْدُوقُ [/name]‏"‏ إِنَّ أَحَدَكُمْ يُجْمَعُ فِي بَطْنِ أُمِّهِ أَرْبَعِينَ ي</big></span></td>
-<td valign="top"><strong>bukhari 555</strong>&nbsp; 0.7555<br><br>Narrated Abu Huraira: Allah's Apostle said, "Angels come to you in succession by night and day and all of them get together at the time of the Fajr and `Asr prayers. Those who have passed the night with you (or stayed with you) ascend (to the Heaven) and Allah asks them, though He knows everything about you, well, "In what state did you leave my slaves?" The angels reply: "When we left them they were praying and when we reached them, they were praying."<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا عَبْدُ اللَّهِ بْنُ يُوسُفَ ، قَالَ حَدَّثَنَا مَالِكٌ ، عَنْ أَبِي الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ يَتَعَاقَبُونَ فِيكُمْ مَلاَئِكَةٌ بِاللَّيْلِ وَمَلاَئِكَةٌ بِالنَّهَارِ، وَيَجْتَمِعُونَ فِي صَلاَةِ الْفَجْرِ وَ</big></span></td>
+<td valign="top"><strong>bukhari 3210</strong>&nbsp; 0.7554<br><br>Narrated `Aisha: I heard Allah's Apostle saying, "The angels descend, the clouds and mention this or that matter decreed in the Heaven. The devils listen stealthily to such a matter, come down to inspire the soothsayers with it, and the latter would add to it one-hundred lies of their own."<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا مُحَمَّدٌ ، حَدَّثَنَا ابْنُ أَبِي مَرْيَمَ ، أَخْبَرَنَا اللَّيْثُ ، حَدَّثَنَا ابْنُ أَبِي جَعْفَرٍ ، عَنْ مُحَمَّدِ بْنِ عَبْدِ الرَّحْمَنِ ، عَنْ عُرْوَةَ بْنِ الزُّبَيْرِ ، عَنْ عَائِشَةَ ـ رضى الله عنها ـ زَوْجِ النَّبِيِّ صلى الله عليه وسلم أَنَّهَا سَمِعَتْ رَسُولَ اللَّهِ صلى الل</big></span></td>
 </tr>
 </tbody></table>
 
 ---
 
-<a name="hadithtext-prayer-at-night"></a>
-## Query: "prayer at night"
+## hadithText: prayer at night
 
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 17ms |
-| mxbai-embed-large | 496ms | 105ms |
-| nomic-embed-text | 56ms | 93ms |
-| snowflake-arctic-embed:m | 36ms | 82ms |
-| all-MiniLM-L6-v2 | 455ms | 102ms |
-| embeddinggemma-300m | 75ms | 78ms |
-| embeddinggemma-300m-qat-q8 | 64ms | 80ms |
-| embeddinggemma-300m-qat-q4 | 76ms | 79ms |
-| mxbai-embed-xsmall-v1 | 11ms | 78ms |
-| mxbai-embed-large (Q4_K_M) | 489ms | 105ms |
-| mxbai-embed-large (INT8 ONNX) | 26ms | 82ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 82ms |
+| mxbai-embed-large | 500ms | 102ms |
+| nomic-embed-text | 51ms | 82ms |
+| snowflake-arctic-embed:m | 38ms | 81ms |
+| all-MiniLM-L6-v2 | 455ms | 106ms |
+| embeddinggemma-300m | 62ms | 80ms |
+| embeddinggemma-300m-qat-q8 | 74ms | 79ms |
+| embeddinggemma-300m-qat-q4 | 73ms | 79ms |
+| mxbai-embed-xsmall-v1 | 13ms | 81ms |
+| mxbai-embed-large (Q4_K_M) | 475ms | 106ms |
+| mxbai-embed-large (INT8 ONNX) | 27ms | 81ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 81ms |
 | mxbai-embed-xsmall (INT4 ONNX) | 6ms | 80ms |
 
 <table width="100%"><thead><tr>
@@ -655,24 +677,23 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 
 ---
 
-<a name="hadithtext-forgiving-someone-who-wronged-you"></a>
-## Query: "forgiving someone who wronged you"
+## hadithText: forgiving someone who wronged you
 
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 14ms |
-| mxbai-embed-large | 511ms | 105ms |
-| nomic-embed-text | 58ms | 83ms |
-| snowflake-arctic-embed:m | 51ms | 82ms |
-| all-MiniLM-L6-v2 | 465ms | 91ms |
-| embeddinggemma-300m | 71ms | 86ms |
-| embeddinggemma-300m-qat-q8 | 78ms | 82ms |
-| embeddinggemma-300m-qat-q4 | 70ms | 80ms |
-| mxbai-embed-xsmall-v1 | 10ms | 79ms |
-| mxbai-embed-large (Q4_K_M) | 489ms | 105ms |
-| mxbai-embed-large (INT8 ONNX) | 28ms | 81ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 7ms | 79ms |
-| mxbai-embed-xsmall (INT4 ONNX) | 7ms | 78ms |
+| mxbai-embed-large | 487ms | 96ms |
+| nomic-embed-text | 64ms | 83ms |
+| snowflake-arctic-embed:m | 49ms | 88ms |
+| all-MiniLM-L6-v2 | 457ms | 100ms |
+| embeddinggemma-300m | 89ms | 81ms |
+| embeddinggemma-300m-qat-q8 | 73ms | 82ms |
+| embeddinggemma-300m-qat-q4 | 83ms | 82ms |
+| mxbai-embed-xsmall-v1 | 13ms | 78ms |
+| mxbai-embed-large (Q4_K_M) | 453ms | 105ms |
+| mxbai-embed-large (INT8 ONNX) | 29ms | 81ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 82ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 14ms | 81ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -854,23 +875,22 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 
 ---
 
-<a name="hadithtext-comparing-yourself-to-others"></a>
-## Query: "comparing yourself to others"
+## hadithText: comparing yourself to others
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 10ms |
-| mxbai-embed-large | 471ms | 104ms |
-| nomic-embed-text | 47ms | 83ms |
-| snowflake-arctic-embed:m | 51ms | 81ms |
-| all-MiniLM-L6-v2 | 467ms | 92ms |
-| embeddinggemma-300m | 72ms | 80ms |
-| embeddinggemma-300m-qat-q8 | 67ms | 81ms |
-| embeddinggemma-300m-qat-q4 | 85ms | 93ms |
-| mxbai-embed-xsmall-v1 | 16ms | 81ms |
-| mxbai-embed-large (Q4_K_M) | 460ms | 105ms |
-| mxbai-embed-large (INT8 ONNX) | 20ms | 84ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 81ms |
+| BM25 Lexical | — | 11ms |
+| mxbai-embed-large | 492ms | 108ms |
+| nomic-embed-text | 49ms | 83ms |
+| snowflake-arctic-embed:m | 49ms | 82ms |
+| all-MiniLM-L6-v2 | 473ms | 105ms |
+| embeddinggemma-300m | 58ms | 95ms |
+| embeddinggemma-300m-qat-q8 | 89ms | 83ms |
+| embeddinggemma-300m-qat-q4 | 65ms | 80ms |
+| mxbai-embed-xsmall-v1 | 9ms | 80ms |
+| mxbai-embed-large (Q4_K_M) | 464ms | 91ms |
+| mxbai-embed-large (INT8 ONNX) | 24ms | 82ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 4ms | 83ms |
 | mxbai-embed-xsmall (INT4 ONNX) | 6ms | 82ms |
 
 <table width="100%"><thead><tr>
@@ -994,7 +1014,7 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 <td valign="top"><strong>muslim 2762 b</strong>&nbsp; 0.6763<br><br>Asma' reported that Allah's Apostle (may peace be upon him) said: There is none more self-respecting than Allah, the Exalted and Glorious.<br><br><span dir="rtl" lang="ar"><big>وَحَدَّثَنَا مُحَمَّدُ بْنُ أَبِي بَكْرٍ الْمُقَدَّمِيُّ، حَدَّثَنَا بِشْرُ بْنُ الْمُفَضَّلِ، عَنْ هِشَامٍ، عَنْ يَحْيَى، بْنِ أَبِي كَثِيرٍ عَنْ أَبِي سَلَمَةَ، عَنْ عُرْوَةَ، عَنْ أَسْمَاءَ، عَنِ النَّبِيِّ صلى الله عليه وسلم أَنَّهُ قَالَ ‏"‏ لاَ شَىْءَ أَغْيَرُ مِنَ اللَّهِ عَزَّ وَجَلَّ ‏"‏ ‏.</big></span></td>
 <td valign="top"><strong>forty 17</strong>&nbsp; 0.7001<br><br>Richness lies in the richness of the soul.<br><br><span dir="rtl" lang="ar"><big>الْغِنَى غِنَى النَّفْسِ</big></span></td>
 <td valign="top"><strong>muslim 2963 c</strong>&nbsp; 0.7050<br><br>Abu Huraira reported Allah's Messenger (may peace be upon him) as saying: Look at those who stand at a lower level than you but don't look at those who stand at a higher level than you, for that is better-suited that you do not disparage Allah's favors. In the chain narrated by Abu Mu'awiya's he said: Upon you.<br><br><span dir="rtl" lang="ar"><big>وَحَدَّثَنِي زُهَيْرُ بْنُ حَرْبٍ، حَدَّثَنَا جَرِيرٌ، ح وَحَدَّثَنَا أَبُو كُرَيْبٍ، حَدَّثَنَا أَبُو مُعَاوِيَةَ، ح وَحَدَّثَنَا أَبُو بَكْرِ بْنُ أَبِي شَيْبَةَ، - وَاللَّفْظُ لَهُ - حَدَّثَنَا أَبُو مُعَاوِيَةَ، وَوَكِيعٌ، عَنِ الأَعْمَشِ، عَنْ أَبِي صَالِحٍ، عَنْ أَبِي هُرَيْرَةَ، قَالَ قَالَ ر</big></span></td>
-<td valign="top"><strong>muslim 2963 a</strong>&nbsp; 0.7055<br><br>Abu Huraira reported that Allah's Messenger (may peace be upon him) said: When one of you looks at one who stands at a higher level than you in regard to wealth and physical structure he should also see one who stands at a lower level than you in regard to these things (in which he stands) at a higher level (as compared to him).<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا يَحْيَى بْنُ يَحْيَى، وَقُتَيْبَةُ بْنُ سَعِيدٍ، قَالَ قُتَيْبَةُ حَدَّثَنَا وَقَالَ، يَحْيَى أَخْبَرَنَا الْمُغِيرَةُ بْنُ عَبْدِ الرَّحْمَنِ الْحِزَامِيُّ، عَنْ أَبِي الزِّنَادِ، عَنِ الأَعْرَجِ، عَنْ أَبِي هُرَيْرَةَ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ إِذَا نَظَرَ أَحَ</big></span></td>
+<td valign="top"><strong>nasai 384b</strong>&nbsp; 0.7079<br><br>(Another chain) with similarity.<br><br><span dir="rtl" lang="ar"><big>قَالَ إِسْحَاقُ أَنْبَأَنَا أَبُو مُعَاوِيَةَ، عَنِ الأَعْمَشِ، بِهَذَا الإِسْنَادِ مِثْلَهُ ‏.‏</big></span></td>
 <td valign="top"><strong>riyadussalihin 997</strong>&nbsp; 0.7047<br><br>Ibn 'Umar (May Allah be pleased with them) reported: The Prophet (PBUH) said: "Envy is justified in regard to two types of persons only: a man whom Allah has given knowledge of the Qur'an, and so he recites it during the night and during the day; and a man whom Allah has given wealth and so he spends from it during the night and during the day." [Al-Bukhari and Muslim] .<br><br><span dir="rtl" lang="ar"><big>- وعن ابن عمر رضي الله عنهما‏:‏ عن النبي صلى الله عليه وسلم قال ‏:‏‏"‏ لا حسد إلا في اثنتين‏:‏ رجل آتاه الله القرآن، فهو يقوم به آناء الليل وآناء النهار، ورجل آتاه الله مالا، فهو ينفقه آناء الليل وآناء النهارِ‏"‏ ‏(‏‏(‏متفق عليه‏)‏‏)‏‏.‏ (1) ‏.‏</big></span></td>
 <td valign="top"><strong>abudawud 4092</strong>&nbsp; 0.7838 <small>· Sahih in chain</small><br><br>Narrated AbuHurayrah: A man who was beautiful came to the Prophet (saws). He said: Messenger of Allah, I am a man who likes beauty, and I have been given some of it, as you see. And I do not like that anyone excels me (in respect of beauty). Perhaps he said: "even to the extent of thong of my sandal (shirak na'li)", or he he said: "to the extent of strap of my sandal (shis'i na'li)". Is it pride? He replied: No, pride is disdaining what is true and despising people.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا أَبُو مُوسَى، مُحَمَّدُ بْنُ الْمُثَنَّى حَدَّثَنَا عَبْدُ الْوَهَّابِ، حَدَّثَنَا هِشَامٌ، عَنْ مُحَمَّدٍ، عَنْ أَبِي هُرَيْرَةَ، أَنَّ رَجُلاً، أَتَى النَّبِيَّ صلى الله عليه وسلم - وَكَانَ رَجُلاً جَمِيلاً - فَقَالَ يَا رَسُولَ اللَّهِ إِنِّي رَجُلٌ حُبِّبَ إِلَىَّ الْجَمَالُ وَأُعْطِي</big></span></td>
 <td valign="top"><strong>muslim 2536</strong>&nbsp; 0.8273<br><br>'A'isha reported that a person asked Allah's Apostle (may peace be upon him) as to who amongst the people were the best. He said: Of the generation to which I belong, then of the second generation (generation adjacent to my generation), then of the third generation (generation adjacent to the second generation).<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا أَبُو بَكْرِ بْنُ أَبِي شَيْبَةَ، وَشُجَاعُ بْنُ مَخْلَدٍ، - وَاللَّفْظُ لأَبِي بَكْرٍ - قَالاَ حَدَّثَنَا حُسَيْنٌ، - وَهُوَ ابْنُ عَلِيٍّ الْجُعْفِيُّ - عَنْ زَائِدَةَ، عَنِ السُّدِّيِّ، عَنْ عَبْدِ اللَّهِ الْبَهِيِّ، عَنْ عَائِشَةَ، قَالَتْ سَأَلَ رَجُلٌ النَّبِيَّ صلى الله عليه وسلم </big></span></td>
@@ -1010,7 +1030,7 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 <td valign="top"><strong>bukhari 3336</strong>&nbsp; 0.6750<br><br>Narrated Aishah (ra): I heard the Prophet (saws), "Souls are like recruited troops: Those who are like qualities are inclined to each other, but those who have dissimilar qualities, differ."<br><br><span dir="rtl" lang="ar"><big>قَالَ قَالَ اللَّيْثُ عَنْ يَحْيَى بْنِ سَعِيدٍ ، عَنْ عَمْرَةَ ، عَنْ عَائِشَةَ ، رضى الله عنها قَالَتْ سَمِعْتُ النَّبِيَّ صلى الله عليه وسلم يَقُولُ ‏"‏ الأَرْوَاحُ جُنُودٌ مُجَنَّدَةٌ، فَمَا تَعَارَفَ مِنْهَا ائْتَلَفَ، وَمَا تَنَاكَرَ مِنْهَا اخْتَلَفَ ‏" [postmatn]‏‏.‏ وَقَالَ يَحْيَى بْنُ أَي</big></span></td>
 <td valign="top"><strong>forty 9</strong>&nbsp; 0.6998<br><br>Modesty is entirely good.<br><br><span dir="rtl" lang="ar"><big>الْحَیَاءُ خَیْرٌ کُلُّهُ</big></span></td>
 <td valign="top"><strong>forty 9</strong>&nbsp; 0.7045<br><br>Modesty is entirely good.<br><br><span dir="rtl" lang="ar"><big>الْحَیَاءُ خَیْرٌ کُلُّهُ</big></span></td>
-<td valign="top"><strong>forty 28</strong>&nbsp; 0.7010<br><br>One who repents from sin is like someone without sin.<br><br><span dir="rtl" lang="ar"><big>الْتَّائِبُ مِنَ الذَّنْبِ کَمَنْ لَا ذَنْبَ لَهُ</big></span></td>
+<td valign="top"><strong>muslim 2963 a</strong>&nbsp; 0.7055<br><br>Abu Huraira reported that Allah's Messenger (may peace be upon him) said: When one of you looks at one who stands at a higher level than you in regard to wealth and physical structure he should also see one who stands at a lower level than you in regard to these things (in which he stands) at a higher level (as compared to him).<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا يَحْيَى بْنُ يَحْيَى، وَقُتَيْبَةُ بْنُ سَعِيدٍ، قَالَ قُتَيْبَةُ حَدَّثَنَا وَقَالَ، يَحْيَى أَخْبَرَنَا الْمُغِيرَةُ بْنُ عَبْدِ الرَّحْمَنِ الْحِزَامِيُّ، عَنْ أَبِي الزِّنَادِ، عَنِ الأَعْرَجِ، عَنْ أَبِي هُرَيْرَةَ، أَنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ إِذَا نَظَرَ أَحَ</big></span></td>
 <td valign="top"><strong>muslim 816</strong>&nbsp; 0.7037<br><br>'Abdullah b. Mas'ud reported Allah's Messenger (may peace be upon him) as saying: There should be no envy but only in case of two persons: one having been endowed with wealth and power to spend it in the cause of Truth, and (the other) who has been endowed with wisdom and he decides cases with the help of it and teaches it (to others).<br><br><span dir="rtl" lang="ar"><big>وَحَدَّثَنَا أَبُو بَكْرِ بْنُ أَبِي شَيْبَةَ، حَدَّثَنَا وَكِيعٌ، عَنْ إِسْمَاعِيلَ، عَنْ قَيْسٍ، قَالَ قَالَ عَبْدُ اللَّهِ بْنُ مَسْعُودٍ ح وَحَدَّثَنَا ابْنُ نُمَيْرٍ، حَدَّثَنَا أَبِي وَمُحَمَّدُ بْنُ بِشْرٍ، قَالاَ حَدَّثَنَا إِسْمَاعِيلُ، عَنْ قَيْسٍ، قَالَ سَمِعْتُ عَبْدَ اللَّهِ بْنَ مَسْعُ</big></span></td>
 <td valign="top"><strong>muslim 2536</strong>&nbsp; 0.7812<br><br>'A'isha reported that a person asked Allah's Apostle (may peace be upon him) as to who amongst the people were the best. He said: Of the generation to which I belong, then of the second generation (generation adjacent to my generation), then of the third generation (generation adjacent to the second generation).<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا أَبُو بَكْرِ بْنُ أَبِي شَيْبَةَ، وَشُجَاعُ بْنُ مَخْلَدٍ، - وَاللَّفْظُ لأَبِي بَكْرٍ - قَالاَ حَدَّثَنَا حُسَيْنٌ، - وَهُوَ ابْنُ عَلِيٍّ الْجُعْفِيُّ - عَنْ زَائِدَةَ، عَنِ السُّدِّيِّ، عَنْ عَبْدِ اللَّهِ الْبَهِيِّ، عَنْ عَائِشَةَ، قَالَتْ سَأَلَ رَجُلٌ النَّبِيَّ صلى الله عليه وسلم </big></span></td>
 <td valign="top"><strong>forty 3</strong>&nbsp; 0.8208<br><br>A Muslim is a mirror of the Muslim.<br><br><span dir="rtl" lang="ar"><big>الْمُسْلِمُ مِرْآةُ الْمُسْلِمِ</big></span></td>
@@ -1020,13 +1040,13 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 <tr>
 <td align="center" valign="top"><strong>9</strong></td>
 <td valign="top"><strong>bukhari 4816</strong>&nbsp; 9.8959 <small>· Sahih</small><br><br><em><small>⛓ Narrated Ibn Mas`ud:</small></em><br><br>(regarding) the Verse: 'And you have not been screening against yourself lest your ears, and your eyes and your skins should testify against you..' (41.22) While two persons from Quraish and their brotherin- law from Thaqif (or two persons from Thaqif and their brother-in-law from Quraish) were in a house, they said to each other, "Do you think that Allah hears our talks?" Some said, "He hears a portion thereof" Others said, "If He can hear a portion of it, He can hear all of it." Then the follo<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا الصَّلْتُ بْنُ مُحَمَّدٍ ، حَدَّثَنَا يَزِيدُ بْنُ زُرَيْعٍ ، عَنْ رَوْحِ بْنِ الْقَاسِمِ ، عَنْ مَنْصُورٍ ، عَنْ مُجَاهِدٍ ، عَنْ أَبِي مَعْمَرٍ ، عَنِ ابْنِ مَسْعُودٍ ، ‏ {‏وَمَا كُنْتُمْ تَسْتَتِرُونَ أَنْ يَشْهَدَ، عَلَيْكُمْ سَمْعُكُمْ‏} ‏ الآيَةَ كَانَ رَجُلاَنِ مِنْ قُرَيْشٍ وَخَتَ</big></span></td>
-<td valign="top"><strong>abudawud 4092</strong>&nbsp; 0.7815 <small>· Sahih in chain</small><br><br>Narrated AbuHurayrah: A man who was beautiful came to the Prophet (saws). He said: Messenger of Allah, I am a man who likes beauty, and I have been given some of it, as you see. And I do not like that anyone excels me (in respect of beauty). Perhaps he said: "even to the extent of thong of my sandal (shirak na'li)", or he he said: "to the extent of strap of my sandal (shis'i na'li)". Is it pride? He replied: No, pride is disdaining what is true and despising people.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا أَبُو مُوسَى، مُحَمَّدُ بْنُ الْمُثَنَّى حَدَّثَنَا عَبْدُ الْوَهَّابِ، حَدَّثَنَا هِشَامٌ، عَنْ مُحَمَّدٍ، عَنْ أَبِي هُرَيْرَةَ، أَنَّ رَجُلاً، أَتَى النَّبِيَّ صلى الله عليه وسلم - وَكَانَ رَجُلاً جَمِيلاً - فَقَالَ يَا رَسُولَ اللَّهِ إِنِّي رَجُلٌ حُبِّبَ إِلَىَّ الْجَمَالُ وَأُعْطِي</big></span></td>
+<td valign="top"><strong>nasai 384b</strong>&nbsp; 0.7822<br><br>(Another chain) with similarity.<br><br><span dir="rtl" lang="ar"><big>قَالَ إِسْحَاقُ أَنْبَأَنَا أَبُو مُعَاوِيَةَ، عَنِ الأَعْمَشِ، بِهَذَا الإِسْنَادِ مِثْلَهُ ‏.‏</big></span></td>
 <td valign="top"><strong>abudawud 4627</strong>&nbsp; 0.8041 <small>· Sahih</small><br><br>Ibn ‘Umar said: We used to say in the times of the Prophet (saws): We do not compare anyone with Abu Bakr. ’Umar came next and then ‘Uthman. We then would leave (rest of) the companions of the Prophet (saws) without treating any as superior to other.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا عُثْمَانُ بْنُ أَبِي شَيْبَةَ، حَدَّثَنَا أَسْوَدُ بْنُ عَامِرٍ، حَدَّثَنَا عَبْدُ الْعَزِيزِ بْنُ أَبِي سَلَمَةَ، عَنْ عُبَيْدِ اللَّهِ، عَنْ نَافِعٍ، عَنِ ابْنِ عُمَرَ، قَالَ كُنَّا نَقُولُ فِي زَمَنِ النَّبِيِّ صلى الله عليه وسلم لاَ نَعْدِلُ بِأَبِي بَكْرٍ أَحَدًا ثُمَّ عُمَرَ ثُمَّ ع</big></span></td>
 <td valign="top"><strong>tirmidhi 226</strong>&nbsp; 0.8126<br><br>Narrator not mentioned: A Similar narration<br><br><span dir="rtl" lang="ar"><big>وَحَدَّثَنَا قُتَيْبَةُ، عَنْ مَالِكٍ، نَحْوَهُ ‏.‏</big></span></td>
 <td valign="top"><strong>adab 783</strong>&nbsp; 0.6745 <small>· Sahih</small><br><br>Ibn 'Abbas said, "A man said, to the Prophet, 'Whatever Allah wills and you will.' He said, 'You have put an equal with Allah. It is what Allah alone wills.'"<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا أَبُو نُعَيْمٍ، قَالَ‏:‏ حَدَّثَنَا سُفْيَانُ، عَنِ الأَجْلَحِ، عَنْ يَزِيدَ، عَنِ ابْنِ عَبَّاسٍ‏:‏ قَالَ رَجُلٌ لِلنَّبِيِّ صلى الله عليه وسلم‏:‏ مَا شَاءَ اللَّهُ وَشِئْتَ، قَالَ‏:‏ جَعَلْتَ لِلَّهِ نِدًّا، مَا شَاءَ اللَّهُ وَحْدَهُ‏.‏</big></span></td>
 <td valign="top"><strong>forty 14</strong>&nbsp; 0.6987<br><br>Someone who takes back his gift is like someone who eats his vomit.<br><br><span dir="rtl" lang="ar"><big>الرَّاجِعُ فِيْ هِبَتِهِ کَالرَّاجِعِ فِيْ قَیْئِهِ</big></span></td>
 <td valign="top"><strong>bukhari 6490</strong>&nbsp; 0.7036<br><br>Narrated Abu Huraira: Allah's Apostle said, "If anyone of you looked at a person who was made superior to him in property and (in good) appearance, then he should also look at the one who is inferior to him.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا إِسْمَاعِيلُ ، قَالَ حَدَّثَنِي مَالِكٌ ، عَنْ أَبِي الزِّنَادِ ، عَنِ الأَعْرَجِ ، عَنْ أَبِي هُرَيْرَةَ ، عَنْ رَسُولِ اللَّهِ صلى الله عليه وسلم قَالَ ‏"‏ إِذَا نَظَرَ أَحَدُكُمْ إِلَى مَنْ فُضِّلَ عَلَيْهِ فِي الْمَالِ وَالْخَلْقِ، فَلْيَنْظُرْ إِلَى مَنْ هُوَ أَسْفَلَ مِنْهُ ‏" ‏‏.‏</big></span></td>
-<td valign="top"><strong>forty 9</strong>&nbsp; 0.7003<br><br>Modesty is entirely good.<br><br><span dir="rtl" lang="ar"><big>الْحَیَاءُ خَیْرٌ کُلُّهُ</big></span></td>
+<td valign="top"><strong>forty 28</strong>&nbsp; 0.7010<br><br>One who repents from sin is like someone without sin.<br><br><span dir="rtl" lang="ar"><big>الْتَّائِبُ مِنَ الذَّنْبِ کَمَنْ لَا ذَنْبَ لَهُ</big></span></td>
 <td valign="top"><strong>bulugh 1527</strong>&nbsp; 0.7013<br><br>’Iyad bin Himar (RAA) narrated that the Messenger of Allah (P.B.U.H.) said, “Allah, the Most High has revealed to me that you (people) should be humble, so that no one transgresses another, or boasts to the other.” Related by Muslim.<br><br><span dir="rtl" lang="ar"><big>وَعَنْ عِيَاضِ بْنِ حِمَارٍ ‏- رضى الله عنه ‏- قَالَ: قَالَ رَسُولُ اَللَّهِ ‏- صلى الله عليه وسلم ‏-{ إِنَّ اَللَّهَ أَوْحَى إِلَيَّ أَنْ تَوَاضَعُوا, حَتَّى لَا يَبْغِيَ أَحَدٌ عَلَى أَحَدٍ, وَلَا يَفْخَرَ أَحَدٌ عَلَى أَحَدٍ } أَخْرَجَهُ مُسْلِمٌ .‏ 1 ‏ .‏</big></span></td>
 <td valign="top"><strong>tirmidhi 2513</strong>&nbsp; 0.7812 <small>· Sahih</small><br><br>Abu Hurairah narrated that the Messenger of Allah (s.a.w) said: "Look to one who is lower than you, and do not look to one who is above you. For indeed that is more worthy(so that you will) not belittle Allah's favors upon you."<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا أَبُو كُرَيْبٍ، حَدَّثَنَا أَبُو مُعَاوِيَةَ، وَوَكِيعٌ، عَنِ الأَعْمَشِ، عَنْ أَبِي صَالِحٍ، عَنْ أَبِي هُرَيْرَةَ، قَالَ قَالَ رَسُولُ اللَّهِ صلى الله عليه وسلم ‏"‏ انْظُرُوا إِلَى مَنْ هُوَ أَسْفَلَ مِنْكُمْ وَلاَ تَنْظُرُوا إِلَى مَنْ هُوَ فَوْقَكُمْ فَإِنَّهُ أَجْدَرُ أَنْ لاَ تَزْد</big></span></td>
 <td valign="top"><strong>muslim 2963 c</strong>&nbsp; 0.8200<br><br>Abu Huraira reported Allah's Messenger (may peace be upon him) as saying: Look at those who stand at a lower level than you but don't look at those who stand at a higher level than you, for that is better-suited that you do not disparage Allah's favors. In the chain narrated by Abu Mu'awiya's he said: Upon you.<br><br><span dir="rtl" lang="ar"><big>وَحَدَّثَنِي زُهَيْرُ بْنُ حَرْبٍ، حَدَّثَنَا جَرِيرٌ، ح وَحَدَّثَنَا أَبُو كُرَيْبٍ، حَدَّثَنَا أَبُو مُعَاوِيَةَ، ح وَحَدَّثَنَا أَبُو بَكْرِ بْنُ أَبِي شَيْبَةَ، - وَاللَّفْظُ لَهُ - حَدَّثَنَا أَبُو مُعَاوِيَةَ، وَوَكِيعٌ، عَنِ الأَعْمَشِ، عَنْ أَبِي صَالِحٍ، عَنْ أَبِي هُرَيْرَةَ، قَالَ قَالَ ر</big></span></td>
@@ -1036,13 +1056,13 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 <tr>
 <td align="center" valign="top"><strong>10</strong></td>
 <td valign="top"><strong>mishkat 2757</strong>&nbsp; 9.3983 <small>· Uncategorized</small><br><br>Yahya b. Sa'id said that God’s messenger was sitting when a grave was being dug in Medina. A man looked down into the grave and said, "What a bad-resting-place for a believer!" God’s messenger thereupon retorted, "What a bad thing you have said!" and the man replied, "I did not mean that; I meant that being killed in God’s path [is more excellent]." God’s messenger said, "Nothing compares with being killed in God’s path. There is no other region in the earth in which I would prefer my grave to b<br><br><span dir="rtl" lang="ar"><big>لإرساله وَعَنْ يَحْيَى بْنِ سَعِيدٍ أَنَّ رَسُولَ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ كَانَ جَالِسًا وَقَبْرٌ يُحْفَرُ بِالْمَدِينَةِ فَاطَّلَعَ رَجُلٌ فِي الْقَبْرِ فَقَالَ: بِئْسَ مَضْجَعِ الْمُؤْمِنِ فَقَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ: «بئس مَا قُلْتَ» قَالَ الرَّجُلُ</big></span></td>
-<td valign="top"><strong>adab 898</strong>&nbsp; 0.7814 <small>· Sahih</small><br><br>Ibn 'Abbas said, "I do not know anyone who acts by this ayat: 'Mankind! We created you from a male and a female, and made you into peoples and tribes so that you might come to know each other. The noblest among you in Allah's sight is the one with the most taqwa.' (49:13) One man says to another man, 'I am more noble than you are.' No one is nobler than another person except by taqwa."<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا عَبْدُ الرَّحْمَنِ بْنُ الْمُبَارَكِ، قَالَ‏:‏ حَدَّثَنَا يَحْيَى بْنُ سَعِيدٍ، قَالَ‏:‏ حَدَّثَنَا عَبْدُ الْمَلِكِ، قَالَ‏:‏ حَدَّثَنَا عَطَاءٌ، عَنِ ابْنِ عَبَّاسٍ قَالَ‏:‏ لاَ أَرَى أَحَدًا يَعْمَلُ بِهَذِهِ الْآيَةِ‏:‏ ‏{‏يَا أَيُّهَا النَّاسُ إِنَّا خَلَقْنَاكُمْ مِنْ ذَكَرٍ وَأُنْث</big></span></td>
+<td valign="top"><strong>abudawud 4092</strong>&nbsp; 0.7815 <small>· Sahih in chain</small><br><br>Narrated AbuHurayrah: A man who was beautiful came to the Prophet (saws). He said: Messenger of Allah, I am a man who likes beauty, and I have been given some of it, as you see. And I do not like that anyone excels me (in respect of beauty). Perhaps he said: "even to the extent of thong of my sandal (shirak na'li)", or he he said: "to the extent of strap of my sandal (shis'i na'li)". Is it pride? He replied: No, pride is disdaining what is true and despising people.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا أَبُو مُوسَى، مُحَمَّدُ بْنُ الْمُثَنَّى حَدَّثَنَا عَبْدُ الْوَهَّابِ، حَدَّثَنَا هِشَامٌ، عَنْ مُحَمَّدٍ، عَنْ أَبِي هُرَيْرَةَ، أَنَّ رَجُلاً، أَتَى النَّبِيَّ صلى الله عليه وسلم - وَكَانَ رَجُلاً جَمِيلاً - فَقَالَ يَا رَسُولَ اللَّهِ إِنِّي رَجُلٌ حُبِّبَ إِلَىَّ الْجَمَالُ وَأُعْطِي</big></span></td>
 <td valign="top"><strong>nasai 3948</strong>&nbsp; 0.8039 <small>· hasan</small><br><br>It was narrated from 'Aishah that the Prophet said: "The superiority of 'Aishah to other women is like the superiority of Tharid to other kinds of food."<br><br><span dir="rtl" lang="ar"><big>أَخْبَرَنَا عَلِيُّ بْنُ خَشْرَمٍ، قَالَ أَنْبَأَنَا عِيسَى بْنُ يُونُسَ، عَنِ ابْنِ أَبِي ذِئْبٍ، عَنِ الْحَارِثِ بْنِ عَبْدِ الرَّحْمَنِ، عَنْ أَبِي سَلَمَةَ، عَنْ عَائِشَةَ، أَنَّ النَّبِيَّ صلى الله عليه وسلم قَالَ ‏"‏ فَضْلُ عَائِشَةَ عَلَى النِّسَاءِ كَفَضْلِ الثَّرِيدِ عَلَى سَائِرِ الطَّعَام</big></span></td>
 <td valign="top"><strong>forty 22</strong>&nbsp; 0.8125<br><br>A man who knows his worth will not be ruined.<br><br><span dir="rtl" lang="ar"><big>مَا هَلَكَ إمْرُؤٌ عَرَفَ قَدْرَهُ</big></span></td>
 <td valign="top"><strong>muslim 3000 b</strong>&nbsp; 0.6717<br><br>Abd al-Rahman b. Abu Bakra reported on the authority of his father that a person was mentioned in the presence of Allah's Apostle (may peace be upon him), and a person said: Allah's Messenger, no person is more excellent than he after Allah's Messenger (may peace be upon him). Thereupon Allah's Apostle (may peace be upon him) said: Woe be to thee, you have broken the neck of your friend, and he said this twice. Then Allah's Messenger (may peace be upon him) said: If anyone has to praise his brot<br><br><span dir="rtl" lang="ar"><big>وَحَدَّثَنِي مُحَمَّدُ بْنُ عَمْرِو بْنِ عَبَّادِ بْنِ جَبَلَةَ بْنِ أَبِي رَوَّادٍ، حَدَّثَنَا مُحَمَّدُ بْنُ جَعْفَرٍ، ح وَحَدَّثَنِي أَبُو بَكْرِ بْنُ نَافِعٍ، أَخْبَرَنَا غُنْدَرٌ، قَالَ شُعْبَةُ حَدَّثَنَا عَنْ خَالِدٍ الْحَذَّاءِ، عَنْ عَبْدِ، الرَّحْمَنِ بْنِ أَبِي بَكْرَةَ عَنْ أَبِيهِ، عَنِ</big></span></td>
 <td valign="top"><strong>adab 328</strong>&nbsp; 0.6976 <small>· Da'if</small><br><br>Ibn 'Abbas said, "When you want to mention your companion's faults, remember your own faults."<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا مُحَمَّدٍ، قَالَ‏:‏ حَدَّثَنَا بِشْرُ بْنُ مُحَمَّدٍ، قَالَ‏:‏ حَدَّثَنَا عَبْدُ اللهِ، قَالَ‏:‏ حَدَّثَنَا إِسْرَائِيلُ بْنُ أَبِي إِسْحَاقَ، عَنْ أَبِي إِسْحَاقَ، عَنْ أَبِي يَحْيَى، عَنْ مُجَاهِدٍ، عَنِ ابْنِ عَبَّاسٍ قَالَ‏:‏ إِذَا أَرَدْتَ أَنْ تَذْكُرَ عُيُوبَ صَاحِبِكَ، فَاذْكُرْ ع</big></span></td>
 <td valign="top"><strong>forty 1</strong>&nbsp; 0.6996<br><br>The report is not like witnessing.<br><br><span dir="rtl" lang="ar"><big>لَیْسَ الْخَبَرُ کَالْمُعَایَنَةِ</big></span></td>
-<td valign="top"><strong>adab 328</strong>&nbsp; 0.6992 <small>· Da'if</small><br><br>Ibn 'Abbas said, "When you want to mention your companion's faults, remember your own faults."<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا مُحَمَّدٍ، قَالَ‏:‏ حَدَّثَنَا بِشْرُ بْنُ مُحَمَّدٍ، قَالَ‏:‏ حَدَّثَنَا عَبْدُ اللهِ، قَالَ‏:‏ حَدَّثَنَا إِسْرَائِيلُ بْنُ أَبِي إِسْحَاقَ، عَنْ أَبِي إِسْحَاقَ، عَنْ أَبِي يَحْيَى، عَنْ مُجَاهِدٍ، عَنِ ابْنِ عَبَّاسٍ قَالَ‏:‏ إِذَا أَرَدْتَ أَنْ تَذْكُرَ عُيُوبَ صَاحِبِكَ، فَاذْكُرْ ع</big></span></td>
+<td valign="top"><strong>forty 9</strong>&nbsp; 0.7003<br><br>Modesty is entirely good.<br><br><span dir="rtl" lang="ar"><big>الْحَیَاءُ خَیْرٌ کُلُّهُ</big></span></td>
 <td valign="top"><strong>riyadussalihin 466</strong>&nbsp; 0.6986<br><br>Abu Hurairah (May allah be pleased with him) reported: Messenger of Allah (PBUH) said, "Look at those who are inferior to you and do not look at those who are superior to you, for this will keep you from belittling Allah's favour to you." This is the wording in Sahih Muslim. [Al-Bukhari and Muslim] . The narration in Al-Bukhari is: Messenger of Allah (PBUH) said: "When one of you looks at someone who is superior to him in property and appearance, he should look at someone who is inferior to him"<br><br><span dir="rtl" lang="ar"><big>- وعنه قال‏:‏ قال رسول الله صلى الله عليه وسلم انظروا إلى من هو أسفل منكم ولا تنظروا إلى من هو فوقكم فهو أجدر أن لا تزدروا نعمة الله عليكم‏"‏ ‏(‏‏(‏متفق عليه وهذا لفظ مسلم‏)‏‏)‏‏.‏ وفي رواية البخاري‏:‏ ‏"‏إذا نظر أحدكم إلى من فضل عليه في المال والخلق، فلينظر إلى من هو أسفل منه‏"‏‏.‏ وفي رواية البخار</big></span></td>
 <td valign="top"><strong>adab 898</strong>&nbsp; 0.7778 <small>· Sahih</small><br><br>Ibn 'Abbas said, "I do not know anyone who acts by this ayat: 'Mankind! We created you from a male and a female, and made you into peoples and tribes so that you might come to know each other. The noblest among you in Allah's sight is the one with the most taqwa.' (49:13) One man says to another man, 'I am more noble than you are.' No one is nobler than another person except by taqwa."<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا عَبْدُ الرَّحْمَنِ بْنُ الْمُبَارَكِ، قَالَ‏:‏ حَدَّثَنَا يَحْيَى بْنُ سَعِيدٍ، قَالَ‏:‏ حَدَّثَنَا عَبْدُ الْمَلِكِ، قَالَ‏:‏ حَدَّثَنَا عَطَاءٌ، عَنِ ابْنِ عَبَّاسٍ قَالَ‏:‏ لاَ أَرَى أَحَدًا يَعْمَلُ بِهَذِهِ الْآيَةِ‏:‏ ‏{‏يَا أَيُّهَا النَّاسُ إِنَّا خَلَقْنَاكُمْ مِنْ ذَكَرٍ وَأُنْث</big></span></td>
 <td valign="top"><strong>adab 898</strong>&nbsp; 0.8200 <small>· Sahih</small><br><br>Ibn 'Abbas said, "I do not know anyone who acts by this ayat: 'Mankind! We created you from a male and a female, and made you into peoples and tribes so that you might come to know each other. The noblest among you in Allah's sight is the one with the most taqwa.' (49:13) One man says to another man, 'I am more noble than you are.' No one is nobler than another person except by taqwa."<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا عَبْدُ الرَّحْمَنِ بْنُ الْمُبَارَكِ، قَالَ‏:‏ حَدَّثَنَا يَحْيَى بْنُ سَعِيدٍ، قَالَ‏:‏ حَدَّثَنَا عَبْدُ الْمَلِكِ، قَالَ‏:‏ حَدَّثَنَا عَطَاءٌ، عَنِ ابْنِ عَبَّاسٍ قَالَ‏:‏ لاَ أَرَى أَحَدًا يَعْمَلُ بِهَذِهِ الْآيَةِ‏:‏ ‏{‏يَا أَيُّهَا النَّاسُ إِنَّا خَلَقْنَاكُمْ مِنْ ذَكَرٍ وَأُنْث</big></span></td>
@@ -1053,24 +1073,23 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 
 ---
 
-<a name="hadithtext-aisha"></a>
-## Query: "aisha"
+## hadithText: aisha
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 9ms |
-| mxbai-embed-large | 475ms | 106ms |
-| nomic-embed-text | 65ms | 85ms |
-| snowflake-arctic-embed:m | 39ms | 82ms |
-| all-MiniLM-L6-v2 | 459ms | 107ms |
-| embeddinggemma-300m | 110ms | 82ms |
-| embeddinggemma-300m-qat-q8 | 92ms | 82ms |
-| embeddinggemma-300m-qat-q4 | 61ms | 80ms |
-| mxbai-embed-xsmall-v1 | 23ms | 81ms |
-| mxbai-embed-large (Q4_K_M) | 488ms | 104ms |
-| mxbai-embed-large (INT8 ONNX) | 20ms | 84ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 83ms |
-| mxbai-embed-xsmall (INT4 ONNX) | 5ms | 81ms |
+| BM25 Lexical | — | 10ms |
+| mxbai-embed-large | 493ms | 107ms |
+| nomic-embed-text | 56ms | 86ms |
+| snowflake-arctic-embed:m | 40ms | 82ms |
+| all-MiniLM-L6-v2 | 456ms | 107ms |
+| embeddinggemma-300m | 87ms | 79ms |
+| embeddinggemma-300m-qat-q8 | 74ms | 81ms |
+| embeddinggemma-300m-qat-q4 | 60ms | 82ms |
+| mxbai-embed-xsmall-v1 | 8ms | 87ms |
+| mxbai-embed-large (Q4_K_M) | 490ms | 108ms |
+| mxbai-embed-large (INT8 ONNX) | 21ms | 85ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 82ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 2ms | 83ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -1175,7 +1194,7 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 <td valign="top"><strong>adab 280</strong>&nbsp; 0.7742 <small>· Sahih</small><br><br>'Abdullah ibn az-Zubayr said, "I have never seen two women more generous than 'A'isha and Asma'. Their generosity was different. 'A'isha used to gather things and after they had been collected together, she would share them out. Asma' would not keep anything for the next day."<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا فَرْوَةُ بْنُ أَبِي الْمَغْرَاءِ، قَالَ‏:‏ حَدَّثَنَا عَلِيُّ بْنُ مُسْهِرٍ، عَنْ هِشَامِ بْنِ عُرْوَةَ قَالَ‏:‏ أَخْبَرَنِي الْقَاسِمُ بْنُ مُحَمَّدٍ، عَنْ عَبْدِ اللهِ بْنِ الزُّبَيْرِ قَالَ‏:‏ مَا رَأَيْتُ امْرَأَتَيْنِ أَجْوَدَ مِنْ عَائِشَةَ، وَأَسْمَاءَ، وَجُودُهُمَا مُخْتَلِفٌ، أَم</big></span></td>
 <td valign="top"><strong>adab 796</strong>&nbsp; 0.9143 <small>· Sahih</small><br><br>See 772.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا أَحْمَدُ بْنُ خَالِدٍ، قَالَ‏:‏ حَدَّثَنَا مُحَمَّدُ بْنُ إِسْحَاقَ، عَنْ عَمِّهِ مُوسَى بْنِ يَسَارٍ، عَنْ أَبِي هُرَيْرَةَ، مَرَّ النَّبِيُّ صلى الله عليه وسلم بِرَجُلٍ يَسُوقُ بَدَنَةً، فَقَالَ‏:‏ ارْكَبْهَا، فَقَالَ‏:‏ يَا رَسُولَ اللهِ، إِنَّهَا بَدَنَةٌ، فَقَالَ‏:‏ ارْكَبْهَا، قَالَ</big></span></td>
 <td valign="top"><strong>tirmidhi 3884</strong>&nbsp; 0.7503 <small>· Da'if</small><br><br>Narrated Musa bin Talhah: "I have not seen anyone clearer (in speech) than 'Aishah."<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا الْقَاسِمُ بْنُ دِينَارٍ الْكُوفِيُّ، قَالَ حَدَّثَنَا مُعَاوِيَةُ بْنُ عَمْرٍو، عَنْ زَائِدَةَ، عَنْ عَبْدِ الْمَلِكِ بْنِ عُمَيْرٍ، عَنْ مُوسَى بْنِ طَلْحَةَ، قَالَ مَا رَأَيْتُ أَحَدًا أَفْصَحَ مِنْ عَائِشَةَ ‏.‏ هَذَا حَدِيثٌ حَسَنٌ صَحِيحٌ غَرِيبٌ ‏.‏</big></span></td>
-<td valign="top"><strong>bukhari 1444</strong>&nbsp; 0.7396<br><br>See previous hadith.<br><br><span dir="rtl" lang="ar"><big>وَقَالَ حَنْظَلَةُ عَنْ طَاوُسٍ، ‏"‏ جُنَّتَانِ ‏"‏‏.‏ وَقَالَ اللَّيْثُ حَدَّثَنِي جَعْفَرٌ، عَنِ ابْنِ هُرْمُزٍ، سَمِعْتُ أَبَا هُرَيْرَةَ ـ رضى الله عنه ـ عَنِ النَّبِيِّ صلى الله عليه وسلم ‏"‏ جُنَّتَانِ ‏"‏‏.‏</big></span></td>
+<td valign="top"><strong>adab 810</strong>&nbsp; 0.7359 <small>· Sahih</small><br><br>Same with another isnad.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا عَبْدُ اللهِ قَالَ‏:‏ حَدَّثَنِي اللَّيْثُ قَالَ‏:‏ حَدَّثَنِي يُونُسُ، عَنِ ابْنِ شِهَابٍ، عَنْ أَبِي أُمَامَة َ، عَنْ أَبِيهِ، عَنْ رَسُولِ اللهِ صلى الله عليه وسلم قَالَ‏:‏ لاَ يَقُولَنَّ أَحَدُكُمْ‏:‏ خَبُثَتْ نَفْسِي، وَلْيَقُلْ‏:‏ لَقِسَتْ نَفْسِي‏.‏</big></span></td>
 <td valign="top"><strong>bulugh 1006</strong>&nbsp; 0.7364<br><br>Muslim has from 'Aishah (RA): "Her husband was a slave."<br><br><span dir="rtl" lang="ar"><big>وَلِمُسْلِمٍ عَنْهَا : { أَنَّ زَوْجَهَا كَانَ عَبْدًا } 1 ‏ .‏</big></span></td>
 <td valign="top"><strong>nasai 3379</strong>&nbsp; 0.7351 <small>· hasan</small><br><br>It was narrated that 'Aishah said: "The Messenger of Allah married me when I was six, and consummated the marriage with me when I was nine."<br><br><span dir="rtl" lang="ar"><big>أَخْبَرَنَا أَحْمَدُ بْنُ سَعْدِ بْنِ الْحَكَمِ بْنِ أَبِي مَرْيَمَ، قَالَ حَدَّثَنَا عَمِّي، قَالَ حَدَّثَنَا يَحْيَى بْنُ أَيُّوبَ، قَالَ أَخْبَرَنِي عُمَارَةُ بْنُ غَزِيَّةَ، عَنْ مُحَمَّدِ بْنِ إِبْرَاهِيمَ، عَنْ أَبِي سَلَمَةَ بْنِ عَبْدِ الرَّحْمَنِ، عَنْ عَائِشَةَ، قَالَتْ تَزَوَّجَنِي رَسُول</big></span></td>
 <td valign="top"><strong>shamail 173</strong>&nbsp; 0.8112 <small>· Sahih Isnād</small><br><br>Abu Musa al-Ash'ari said that the Prophet said (Allah bless him and give him peace): “The superiority of 'Aisha over all other women is like the superiority of tharid [a dish of sopped bread, meat and broth] over all other food.”<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا مُحَمَّدُ بْنُ الْمُثَنَّى، قَالَ‏:‏ حَدَّثَنَا مُحَمَّدُ بْنُ جَعْفَرٍ، قَالَ‏:‏ حَدَّثَنَا شُعْبَةُ، عَنْ عَمْرِو بْنِ مُرَّةَ، عَنْ مُرَّةَ الْهَمْدَانِيِّ، عَنْ أَبِي مُوسَى الأَشْعَرِيِّ، عَنِ النَّبِيِّ صلى الله عليه وسلم، قَالَ‏:‏ فَضْلُ عَائِشَةَ عَلَى النِّسَاءِ كَفَضْلِ الثَّرِي</big></span></td>
@@ -1191,7 +1210,7 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 <td valign="top"><strong>muslim 1211 ac</strong>&nbsp; 0.7736<br><br>Abd al-Rahman b. al Qasim narrated on the authority of 'A'isha (Allah be pleased with her) that she made a mention to Allah's Messenger (may peace be upon him) that Safiyyah had entered the period of menses. The rest of the hadith is the same.<br><br><span dir="rtl" lang="ar"><big>وَحَدَّثَنَا قُتَيْبَةُ، - يَعْنِي ابْنَ سَعِيدٍ - حَدَّثَنَا لَيْثٌ، ح وَحَدَّثَنَا زُهَيْرُ بْنُ حَرْبٍ، حَدَّثَنَا سُفْيَانُ، ح وَحَدَّثَنِي مُحَمَّدُ بْنُ الْمُثَنَّى، حَدَّثَنَا عَبْدُ الْوَهَّابِ، حَدَّثَنَا أَيُّوبُ، كُلُّهُمْ عَنْ عَبْدِ الرَّحْمَنِ، بْنِ الْقَاسِمِ عَنْ أَبِيهِ، عَنْ عَائِش</big></span></td>
 <td valign="top"><strong>adab 1127</strong>&nbsp; 0.9122 <small>· Hasan</small><br><br>See 1122.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا إِسْمَاعِيلُ قَالَ‏:‏ حَدَّثَنِي ابْنُ أَبِي الزِّنَادِ، عَنْ أَبِيهِ، عَنْ خَارِجَةَ بْنِ زَيْدٍ، عَنْ كُبَرَاءِ آلِ زَيْدٍ، أَنَّ زَيْدًا كَتَبَ بِهَذِهِ الرِّسَالَةِ‏:‏ لِعَبْدِ اللهِ مُعَاوِيَةَ أَمِيرِ الْمُؤْمِنِينَ، مِنْ زَيْدِ بْنِ ثَابِتٍ‏:‏ سَلاَمٌ عَلَيْكَ أَمِيرَ الْمُؤْمِنِين</big></span></td>
 <td valign="top"><strong>tirmidhi 3889</strong>&nbsp; 0.7483 <small>· Sahih</small><br><br>Narrated 'Ammar bin Yasir: "She is his wife in the world and in the Hereafter." - meaning: 'Aishah [may Allah be pleased with her].<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا مُحَمَّدُ بْنُ بَشَّارٍ، قَالَ حَدَّثَنَا عَبْدُ الرَّحْمَنِ بْنُ مَهْدِيٍّ، قَالَ حَدَّثَنَا أَبُو بَكْرِ بْنُ عَيَّاشٍ، عَنْ أَبِي حُصَيْنٍ، عَنْ عَبْدِ اللَّهِ بْنِ زِيَادٍ الأَسَدِيِّ، قَالَ سَمِعْتُ عَمَّارَ بْنَ يَاسِرٍ، يَقُولُ هِيَ زَوْجَتُهُ فِي الدُّنْيَا وَالآخِرَةِ ‏.‏ يَعْنِي</big></span></td>
-<td valign="top"><strong>adab 810</strong>&nbsp; 0.7359 <small>· Sahih</small><br><br>Same with another isnad.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا عَبْدُ اللهِ قَالَ‏:‏ حَدَّثَنِي اللَّيْثُ قَالَ‏:‏ حَدَّثَنِي يُونُسُ، عَنِ ابْنِ شِهَابٍ، عَنْ أَبِي أُمَامَة َ، عَنْ أَبِيهِ، عَنْ رَسُولِ اللهِ صلى الله عليه وسلم قَالَ‏:‏ لاَ يَقُولَنَّ أَحَدُكُمْ‏:‏ خَبُثَتْ نَفْسِي، وَلْيَقُلْ‏:‏ لَقِسَتْ نَفْسِي‏.‏</big></span></td>
+<td valign="top"><strong>riyadussalihin 1643</strong>&nbsp; 0.7348<br><br>A similar narration was narrated on the authority of 'Aishah.<br><br><span dir="rtl" lang="ar"><big>وعَنْ عائشة رضي اللَّه عنْهَا نَحْوُهُ، متفقٌ عليه.</big></span></td>
 <td valign="top"><strong>muslim 1092 d</strong>&nbsp; 0.7357<br><br>A hadith like this has been transmitted on the authority of 'A'isha (Allah be pleased with her).<br><br><span dir="rtl" lang="ar"><big>وَحَدَّثَنَا ابْنُ نُمَيْرٍ، حَدَّثَنَا أَبِي، حَدَّثَنَا عُبَيْدُ اللَّهِ، حَدَّثَنَا الْقَاسِمُ، عَنْ عَائِشَةَ، - رضى الله عنها - عَنِ النَّبِيِّ صلى الله عليه وسلم بِمِثْلِهِ ‏.‏</big></span></td>
 <td valign="top"><strong>adab 585</strong>&nbsp; 0.7343<br><br>(As hadith above)<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا عَلِيُّ بْنُ أَبِي هَاشِمٍ، قَالَ‏:‏ حَدَّثَنَا إِسْمَاعِيلُ، قَالَ‏:‏ حَدَّثَنَا سَعِيدُ بْنُ أَبِي عَرُوبَةَ، عَنْ قَتَادَةَ، قَالَ‏:‏ حَدَّثَنَا مَنْ لَقِيَ الْوَفْدَ الَّذِينَ قَدِمُوا عَلَى النَّبِيِّ صلى الله عليه وسلم مِنْ عَبْدِ الْقَيْسِ، وَذَكَرَ قَتَادَةُ أَبَا نَضْرَةَ، عَنْ أ</big></span></td>
 <td valign="top"><strong>bukhari 3768</strong>&nbsp; 0.8094<br><br>Narrated Abu Salama: `Aisha said, "Once Allah's Apostle said (to me), 'O Aish (`Aisha)! This is Gabriel greeting you.' I said, 'Peace and Allah's Mercy and Blessings be on him, you see what I don't see' " She was addressing Allah 's Apostle.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا يَحْيَى بْنُ بُكَيْرٍ ، حَدَّثَنَا اللَّيْثُ ، عَنْ يُونُسَ ، عَنِ ابْنِ شِهَابٍ ، قَالَ أَبُو سَلَمَةَ إِنَّ عَائِشَةَ ـ رضى الله عنها ـ قَالَتْ قَالَ رَسُولُ اللَّهِ صلى الله عليه وسلم يَوْمًا ‏ "‏ يَا عَائِشَ، هَذَا [name role="angel"]جِبْرِيلُ [/name]يُقْرِئُكِ السَّلاَمَ ‏"‏‏.‏ فَقُل</big></span></td>
@@ -1207,7 +1226,7 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 <td valign="top"><strong>muslim 785 b</strong>&nbsp; 0.7734<br><br>'A'isha said: The Messenger of Allah (may peace be upon him) came to me when a woman was sitting with me. He said: Who is she? I said: She is a woman who does not sleep but prays. He said: Do such acts which you are capable of doing. By Allah, Allah does not grow weary but you will grow weary. The religious act most pleasing to Him is one the doer of which does it continuously. (And in the hadith transmitted by Abu Usama [the words are]:" She was a woman from Banu Asad." )<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا أَبُو بَكْرِ بْنُ أَبِي شَيْبَةَ، وَأَبُو كُرَيْبٍ قَالَ حَدَّثَنَا أَبُو أُسَامَةَ، عَنْ هِشَامِ بْنِ، عُرْوَةَ ح وَحَدَّثَنِي زُهَيْرُ بْنُ حَرْبٍ، - وَاللَّفْظُ لَهُ - حَدَّثَنَا يَحْيَى بْنُ سَعِيدٍ، عَنْ هِشَامٍ، قَالَ أَخْبَرَنِي أَبِي، عَنْ عَائِشَةَ، قَالَتْ دَخَلَ عَلَىَّ رَسُولُ</big></span></td>
 <td valign="top"><strong>adab 1249</strong>&nbsp; 0.9115 <small>· Da'if</small><br><br>See 1245.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا مُوسَى، قَالَ‏:‏ حَدَّثَنَا عَبْدُ الْوَاحِدِ بْنُ زِيَادٍ قَالَ‏:‏ حَدَّثَتْنَا عَجُوزٌ مِنْ أَهْلِ الْكُوفَةِ جَدَّةُ عَلِيِّ بْنِ غُرَابٍ قَالَتْ‏:‏ حَدَّثَتْنِي أُمُّ الْمُهَاجِرِ قَالَتْ‏:‏ سُبِيتُ وَجَوَارِي مِنَ الرُّومِ، فَعَرَضَ عَلَيْنَا عُثْمَانُ الإِسْلاَمَ، فَلَمْ يُسْلِمْ مِ</big></span></td>
 <td valign="top"><strong>bulugh 1124</strong>&nbsp; 0.7474<br><br>The aforesaid Hadith is also a part of 'Aishah's Hadith in the course of a story.<br><br><span dir="rtl" lang="ar"><big>وَمِنْ حَدِيثِ عَائِشَةَ فِي قِصَّةٍ 1 ‏ .‏</big></span></td>
-<td valign="top"><strong>riyadussalihin 1643</strong>&nbsp; 0.7348<br><br>A similar narration was narrated on the authority of 'Aishah.<br><br><span dir="rtl" lang="ar"><big>وعَنْ عائشة رضي اللَّه عنْهَا نَحْوُهُ، متفقٌ عليه.</big></span></td>
+<td valign="top"><strong>mishkat 3129</strong>&nbsp; 0.7278<br><br>‘A’isha said that the Prophet married her when she was seven, she was brought to live with him when she was nine bringing her toys with her, and he died when she was eighteen. Muslim transmitted it.<br><br><span dir="rtl" lang="ar"><big>وَعَنْ عَائِشَةَ أَنَّ النَّبِيَّ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ تَزَوَّجَهَا وَهِيَ بِنْتُ سَبْعِ سِنِينَ وَزُفَّتْ إِلَيْهِ وَهِيَ بِنْتُ تِسْعِ سِنِينَ وَلُعَبُهَا مَعَهَا وَمَاتَ عَنْهَا وَهِيَ بِنْتُ ثَمَانِيَ عَشْرَةَ. رَوَاهُ مُسلم</big></span></td>
 <td valign="top"><strong>muslim 1422 b</strong>&nbsp; 0.7334<br><br>'A'isha (Allah be pleased with her) reported: Allah's Apostle (may peace be upon him) married me when I was six years old, and I was admitted to his house when I was nine years old.<br><br><span dir="rtl" lang="ar"><big>وَحَدَّثَنَا يَحْيَى بْنُ يَحْيَى، أَخْبَرَنَا أَبُو مُعَاوِيَةَ، عَنْ هِشَامِ بْنِ عُرْوَةَ، ح وَحَدَّثَنَا ابْنُ نُمَيْرٍ، - وَاللَّفْظُ لَهُ - حَدَّثَنَا عَبْدَةُ، - هُوَ ابْنُ سُلَيْمَانَ - عَنْ هِشَامٍ، عَنْ أَبِيهِ، عَنْ عَائِشَةَ، قَالَتْ تَزَوَّجَنِي النَّبِيُّ صلى الله عليه وسلم وَأَنَا بِن</big></span></td>
 <td valign="top"><strong>adab 586</strong>&nbsp; 0.7343<br><br>(As hadith above)<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا عَبْدُ اللهِ بْنُ عَبْدِ الْوَهَّابِ، قَالَ‏:‏ أَخْبَرَنَا بِشْرُ بْنُ الْمُفَضَّلِ، قَالَ‏:‏ حَدَّثَنَا قُرَّةُ، عَنْ أَبِي جَمْرَةَ، عَنِ ابْنِ عَبَّاسٍ قَالَ‏:‏ قَالَ النَّبِيُّ صلى الله عليه وسلم لِلأَشَجِّ أَشَجِّ عَبْدِ الْقَيْسِ‏:‏ إِنَّ فِيكَ لَخَصْلَتَيْنِ يُحِبُّهُمَا اللَّهُ‏:‏</big></span></td>
 <td valign="top"><strong>bukhari 3771</strong>&nbsp; 0.8082<br><br>Narrated Al-Qasim bin Muhammad: Once `Aisha became sick and Ibn `Abbas went to see her and said, "O mother of the believers! You are leaving for truthful fore-runners i.e. for Allah's Apostle and Abu Bakr.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنِي مُحَمَّدُ بْنُ بَشَّارٍ ، حَدَّثَنَا عَبْدُ الْوَهَّابِ بْنُ عَبْدِ الْمَجِيدِ ، حَدَّثَنَا ابْنُ عَوْنٍ ، عَنِ الْقَاسِمِ بْنِ مُحَمَّدٍ ، أَنَّ عَائِشَةَ، اشْتَكَتْ، فَجَاءَ ابْنُ عَبَّاسٍ فَقَالَ يَا أُمَّ الْمُؤْمِنِينَ، تَقْدَمِينَ عَلَى فَرَطِ صِدْقٍ عَلَى رَسُولِ اللَّهِ صلى الله ع</big></span></td>
@@ -1223,7 +1242,7 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 <td valign="top"><strong>bulugh 1103</strong>&nbsp; 0.7730<br><br>Narrated al-Miswar bin Makhramah (RA): Some nights after her husband's death, Subai'ah al-Aslamiyah (RA) gave birth to a child. Then she went to the Prophet (SAW) and asked permission to marry. He gave her permission and she married. [Reported by al-Bukhari].<br><br><span dir="rtl" lang="ar"><big>عَنْ اَلْمِسْوَرِ بْنِ مَخْرَمَةَ ‏- رضى الله عنه ‏- { أَنَّ سُبَيْعَةَ الْأَسْلَمِيَّةَ ‏-رَضِيَ اَللَّهُ عَنْهَا‏- نُفِسَتْ بَعْدَ وَفَاةِ زَوْجِهَا بِلَيَالٍ, فَجَاءَتْ اَلنَّبِيَّ ‏- صلى الله عليه وسلم ‏-فَاسْتَأْذَنَتْهُ أَنْ تَنْكِحَ, فَأَذِنَ لَهَا, فَنَكَحَتْ.‏ } رَوَاهُ اَلْبُخَارِيُّ 1 ‏</big></span></td>
 <td valign="top"><strong>adab 585</strong>&nbsp; 0.9081<br><br>(As hadith above)<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا عَلِيُّ بْنُ أَبِي هَاشِمٍ، قَالَ‏:‏ حَدَّثَنَا إِسْمَاعِيلُ، قَالَ‏:‏ حَدَّثَنَا سَعِيدُ بْنُ أَبِي عَرُوبَةَ، عَنْ قَتَادَةَ، قَالَ‏:‏ حَدَّثَنَا مَنْ لَقِيَ الْوَفْدَ الَّذِينَ قَدِمُوا عَلَى النَّبِيِّ صلى الله عليه وسلم مِنْ عَبْدِ الْقَيْسِ، وَذَكَرَ قَتَادَةُ أَبَا نَضْرَةَ، عَنْ أ</big></span></td>
 <td valign="top"><strong>tirmidhi 580</strong>&nbsp; 0.7454 <small>· Da'if</small><br><br>Aisha narrated: "When the Messenger of Allah would prostrate (for recitation of) the Qur'an, he would say: (Sajada wajhiya lilladhi khalaqahu wa shaqqa sam'ahu wa basarahu bihawlihi wa quwwatihi.) (I have prostrated my face to the One Who created it, and made its hearing and vision, though His ability and power.)"<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا مُحَمَّدُ بْنُ بَشَّارٍ، حَدَّثَنَا عَبْدُ الْوَهَّابِ الثَّقَفِيُّ، حَدَّثَنَا خَالِدٌ الْحَذَّاءُ، عَنْ أَبِي الْعَالِيَةِ، عَنْ عَائِشَةَ، قَالَتْ كَانَ رَسُولُ اللَّهِ صلى الله عليه وسلم يَقُولُ فِي سُجُودِ الْقُرْآنِ بِاللَّيْلِ ‏"‏ سَجَدَ وَجْهِيَ لِلَّذِي خَلَقَهُ وَشَقَّ سَمْعَهُ </big></span></td>
-<td valign="top"><strong>mishkat 3129</strong>&nbsp; 0.7278<br><br>‘A’isha said that the Prophet married her when she was seven, she was brought to live with him when she was nine bringing her toys with her, and he died when she was eighteen. Muslim transmitted it.<br><br><span dir="rtl" lang="ar"><big>وَعَنْ عَائِشَةَ أَنَّ النَّبِيَّ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ تَزَوَّجَهَا وَهِيَ بِنْتُ سَبْعِ سِنِينَ وَزُفَّتْ إِلَيْهِ وَهِيَ بِنْتُ تِسْعِ سِنِينَ وَلُعَبُهَا مَعَهَا وَمَاتَ عَنْهَا وَهِيَ بِنْتُ ثَمَانِيَ عَشْرَةَ. رَوَاهُ مُسلم</big></span></td>
+<td valign="top"><strong>shamail 389</strong>&nbsp; 0.7277 <small>· Hasan</small><br><br>'A’isha said: "No more will I envy anyone for an easy death now that I have seen how the Messenger of Allah (Allah bless him and give him peace) suffered in his passing.”<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا الْحَسَنُ بْنُ الصَّبَّاحِ الْبَزَّازُ، قَالَ‏:‏ حَدَّثَنَا مُبَشِّرُ بْنُ إِسْمَاعِيلَ، عَنْ عَبْدِ الرَّحْمَنِ بْنِ الْعَلاءِ، عَنْ أَبِيهِ، عَنِ ابْنِ عُمَرَ، عَنْ عَائِشَةَ، قَالَتْ‏:‏ لا أَغْبِطُ أَحَدًا بَهَوْنِ مَوْتٍ بَعْدَ الَّذِي رَأَيْتُ مِنْ شِدَّةِ مَوْتِ رَسُولِ اللهِ صلى ال</big></span></td>
 <td valign="top"><strong>bukhari 5918</strong>&nbsp; 0.7333<br><br>Narrated `Aisha: As if I am now looking at the shine of the hair parting of the Prophet while he was in the state of lhram.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا أَبُو الْوَلِيدِ ، وَعَبْدُ اللَّهِ بْنُ رَجَاءٍ ، قَالاَ حَدَّثَنَا شُعْبَةُ ، عَنِ الْحَكَمِ ، عَنْ إِبْرَاهِيمَ ، عَنِ الأَسْوَدِ ، عَنْ عَائِشَةَ ـ رضى الله عنها ـ قَالَتْ كَأَنِّي أَنْظُرُ إِلَى وَبِيصِ الطِّيبِ فِي مَفَارِقِ النَّبِيِّ صلى الله عليه وسلم وَهْوَ مُحْرِمٌ‏.‏ قَالَ عَب</big></span></td>
 <td valign="top"><strong>tirmidhi 1179</strong>&nbsp; 0.7330 <small>· Sahih</small><br><br>Aishah said: "The Messenger of Allah gave us the choice, so we chose him. So was that a divorce?"<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا مُحَمَّدُ بْنُ بَشَّارٍ، حَدَّثَنَا عَبْدُ الرَّحْمَنِ بْنُ مَهْدِيٍّ، حَدَّثَنَا سُفْيَانُ، عَنْ إِسْمَاعِيلَ بْنِ أَبِي خَالِدٍ، عَنِ الشَّعْبِيِّ، عَنْ مَسْرُوقٍ، عَنْ عَائِشَةَ، قَالَتْ خَيَّرَنَا رَسُولُ اللَّهِ صلى الله عليه وسلم فَاخْتَرْنَاهُ أَفَكَانَ طَلاَقًا؟ حَدَّثَنَا مُحَمَّ</big></span></td>
 <td valign="top"><strong>bukhari 3388</strong>&nbsp; 0.8052<br><br>Narrated Masruq: I asked Um Ruman, `Aisha's mother about the accusation forged against `Aisha. She said, "While I was sitting with `Aisha, an Ansari woman came to us and said, 'Let Allah condemn such-and-such person.' I asked her, 'Why do you say so?' She replied, 'For he has spread the (slanderous) story.' `Aisha said, 'What story?' The woman then told her the story. `Aisha asked, 'Have Abu Bakr and Allah's Apostle heard about it ?' She said, 'Yes.' `Aisha fell down senseless (on hearing that),<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا مُحَمَّدُ بْنُ سَلاَمٍ ، أَخْبَرَنَا ابْنُ فُضَيْلٍ ، حَدَّثَنَا حُصَيْنٌ ، عَنْ شَقِيقٍ ، عَنْ مَسْرُوقٍ ، قَالَ سَأَلْتُ أُمَّ رُومَانَ ، وَهْىَ أُمُّ عَائِشَةَ، عَمَّا قِيلَ فِيهَا مَا قِيلَ قَالَتْ بَيْنَمَا أَنَا مَعَ عَائِشَةَ جَالِسَتَانِ، إِذْ وَلَجَتْ عَلَيْنَا امْرَأَةٌ مِنَ الأ</big></span></td>
@@ -1239,7 +1258,7 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 <td valign="top"><strong>muslim 334 f</strong>&nbsp; 0.7729<br><br>'A'isha, the wife of the Apostle (may peace be upon him), said: Umm Habiba b. Jahsh who was the spouse of Abd al- Rahman b. Auf made a complaint to the Messenger of Allah (may peace be upon him) about blood (which flows beyond the menstrual period). He said to her: Remain away (from prayer) equal (to the length of time) that your menstruation holds you back. After this, bathe yourself. And she washed herself before every prayer.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنِي مُوسَى بْنُ قُرَيْشٍ التَّمِيمِيُّ، حَدَّثَنَا إِسْحَاقُ بْنُ بَكْرِ بْنِ مُضَرَ، حَدَّثَنِي أَبِي، حَدَّثَنِي جَعْفَرُ بْنُ رَبِيعَةَ، عَنْ عِرَاكِ بْنِ مَالِكٍ، عَنْ عُرْوَةَ بْنِ الزُّبَيْرِ، عَنْ عَائِشَةَ، زَوْجِ النَّبِيِّ صلى الله عليه وسلم أَنَّهَا قَالَتْ إِنَّ أُمَّ حَبِيبَةَ بِ</big></span></td>
 <td valign="top"><strong>adab 586</strong>&nbsp; 0.9081<br><br>(As hadith above)<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا عَبْدُ اللهِ بْنُ عَبْدِ الْوَهَّابِ، قَالَ‏:‏ أَخْبَرَنَا بِشْرُ بْنُ الْمُفَضَّلِ، قَالَ‏:‏ حَدَّثَنَا قُرَّةُ، عَنْ أَبِي جَمْرَةَ، عَنِ ابْنِ عَبَّاسٍ قَالَ‏:‏ قَالَ النَّبِيُّ صلى الله عليه وسلم لِلأَشَجِّ أَشَجِّ عَبْدِ الْقَيْسِ‏:‏ إِنَّ فِيكَ لَخَصْلَتَيْنِ يُحِبُّهُمَا اللَّهُ‏:‏</big></span></td>
 <td valign="top"><strong>riyadussalihin 1643</strong>&nbsp; 0.7451<br><br>A similar narration was narrated on the authority of 'Aishah.<br><br><span dir="rtl" lang="ar"><big>وعَنْ عائشة رضي اللَّه عنْهَا نَحْوُهُ، متفقٌ عليه.</big></span></td>
-<td valign="top"><strong>shamail 389</strong>&nbsp; 0.7277 <small>· Hasan</small><br><br>'A’isha said: "No more will I envy anyone for an easy death now that I have seen how the Messenger of Allah (Allah bless him and give him peace) suffered in his passing.”<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا الْحَسَنُ بْنُ الصَّبَّاحِ الْبَزَّازُ، قَالَ‏:‏ حَدَّثَنَا مُبَشِّرُ بْنُ إِسْمَاعِيلَ، عَنْ عَبْدِ الرَّحْمَنِ بْنِ الْعَلاءِ، عَنْ أَبِيهِ، عَنِ ابْنِ عُمَرَ، عَنْ عَائِشَةَ، قَالَتْ‏:‏ لا أَغْبِطُ أَحَدًا بَهَوْنِ مَوْتٍ بَعْدَ الَّذِي رَأَيْتُ مِنْ شِدَّةِ مَوْتِ رَسُولِ اللهِ صلى ال</big></span></td>
+<td valign="top"><strong>abudawud 2383</strong>&nbsp; 0.7276 <small>· Sahih</small><br><br>Narrated 'Aishah: The Prophet (saws) used to kiss (me) during the month of fasting.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا أَبُو تَوْبَةَ الرَّبِيعُ بْنُ نَافِعٍ، حَدَّثَنَا أَبُو الأَحْوَصِ، عَنْ زِيَادِ بْنِ عِلاَقَةَ، عَنْ عَمْرِو بْنِ مَيْمُونٍ، عَنْ عَائِشَةَ، قَالَتْ كَانَ رَسُولُ اللَّهِ صلى الله عليه وسلم يُقَبِّلُ فِي شَهْرِ الصَّوْمِ ‏.‏</big></span></td>
 <td valign="top"><strong>adab 585</strong>&nbsp; 0.7328<br><br>(As hadith above)<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا عَلِيُّ بْنُ أَبِي هَاشِمٍ، قَالَ‏:‏ حَدَّثَنَا إِسْمَاعِيلُ، قَالَ‏:‏ حَدَّثَنَا سَعِيدُ بْنُ أَبِي عَرُوبَةَ، عَنْ قَتَادَةَ، قَالَ‏:‏ حَدَّثَنَا مَنْ لَقِيَ الْوَفْدَ الَّذِينَ قَدِمُوا عَلَى النَّبِيِّ صلى الله عليه وسلم مِنْ عَبْدِ الْقَيْسِ، وَذَكَرَ قَتَادَةُ أَبَا نَضْرَةَ، عَنْ أ</big></span></td>
 <td valign="top"><strong>abudawud 2121</strong>&nbsp; 0.7323 <small>· Sahih</small><br><br>Narrated 'Aishah: The Messenger of Allah (saws) married me when I was seven years old. The narrator Sulaiman said: or Six years. He had intercourse with me when I was nine years old.<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا سُلَيْمَانُ بْنُ حَرْبٍ، وَأَبُو كَامِلٍ قَالاَ حَدَّثَنَا حَمَّادُ بْنُ زَيْدٍ، عَنْ هِشَامِ بْنِ عُرْوَةَ، عَنْ أَبِيهِ، عَنْ عَائِشَةَ، قَالَتْ تَزَوَّجَنِي رَسُولُ اللَّهِ صلى الله عليه وسلم وَأَنَا بِنْتُ سَبْعٍ - قَالَ سُلَيْمَانُ أَوْ سِتٍّ - وَدَخَلَ بِي وَأَنَا بِنْتُ تِسْعٍ ‏.‏</big></span></td>
 <td valign="top"><strong>bukhari 3770</strong>&nbsp; 0.8047<br><br>Narrated Anas bin Malik: Allah's Apostle said, "The superiority of `Aisha over other women is like the superiority of Tharid to other meals."<br><br><span dir="rtl" lang="ar"><big>حَدَّثَنَا عَبْدُ الْعَزِيزِ بْنُ عَبْدِ اللَّهِ ، حَدَّثَنِي مُحَمَّدُ بْنُ جَعْفَرٍ ، عَنْ عَبْدِ اللَّهِ بْنِ عَبْدِ الرَّحْمَنِ ، أَنَّهُ سَمِعَ أَنَسَ بْنَ مَالِكٍ ـ رضى الله عنه ـ يَقُولُ سَمِعْتُ رَسُولَ اللَّهِ صلى الله عليه وسلم يَقُولُ ‏ "‏ فَضْلُ عَائِشَةَ عَلَى النِّسَاءِ كَفَضْلِ الثَّر</big></span></td>
@@ -1252,24 +1271,23 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 
 ---
 
-<a name="hadithtext-fasting-expiation-sins"></a>
-## Query: "fasting expiation sins"
+## hadithText: fasting expiation sins
 
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 11ms |
-| mxbai-embed-large | 493ms | 88ms |
-| nomic-embed-text | 48ms | 85ms |
-| snowflake-arctic-embed:m | 39ms | 82ms |
-| all-MiniLM-L6-v2 | 469ms | 107ms |
-| embeddinggemma-300m | 82ms | 84ms |
-| embeddinggemma-300m-qat-q8 | 76ms | 83ms |
-| embeddinggemma-300m-qat-q4 | 63ms | 82ms |
-| mxbai-embed-xsmall-v1 | 13ms | 79ms |
-| mxbai-embed-large (Q4_K_M) | 501ms | 109ms |
-| mxbai-embed-large (INT8 ONNX) | 19ms | 83ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 83ms |
-| mxbai-embed-xsmall (INT4 ONNX) | 6ms | 96ms |
+| mxbai-embed-large | 491ms | 107ms |
+| nomic-embed-text | 51ms | 84ms |
+| snowflake-arctic-embed:m | 46ms | 82ms |
+| all-MiniLM-L6-v2 | 445ms | 106ms |
+| embeddinggemma-300m | 66ms | 82ms |
+| embeddinggemma-300m-qat-q8 | 64ms | 83ms |
+| embeddinggemma-300m-qat-q4 | 70ms | 83ms |
+| mxbai-embed-xsmall-v1 | 10ms | 81ms |
+| mxbai-embed-large (Q4_K_M) | 471ms | 104ms |
+| mxbai-embed-large (INT8 ONNX) | 27ms | 95ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 5ms | 83ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 5ms | 80ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -1451,24 +1469,23 @@ Input: raw `hadithText` (isnad + matn). Same field for all models.
 
 ---
 
-<a name="hadithtext-neighbor-rights"></a>
-## Query: "neighbor rights"
+## hadithText: neighbor rights
 
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 9ms |
-| mxbai-embed-large | 481ms | 107ms |
-| nomic-embed-text | 53ms | 84ms |
-| snowflake-arctic-embed:m | 41ms | 82ms |
-| all-MiniLM-L6-v2 | 498ms | 98ms |
-| embeddinggemma-300m | 70ms | 82ms |
-| embeddinggemma-300m-qat-q8 | 64ms | 80ms |
-| embeddinggemma-300m-qat-q4 | 67ms | 82ms |
-| mxbai-embed-xsmall-v1 | 9ms | 80ms |
-| mxbai-embed-large (Q4_K_M) | 489ms | 102ms |
-| mxbai-embed-large (INT8 ONNX) | 19ms | 81ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 83ms |
-| mxbai-embed-xsmall (INT4 ONNX) | 5ms | 82ms |
+| mxbai-embed-large | 490ms | 109ms |
+| nomic-embed-text | 53ms | 85ms |
+| snowflake-arctic-embed:m | 36ms | 81ms |
+| all-MiniLM-L6-v2 | 435ms | 105ms |
+| embeddinggemma-300m | 74ms | 82ms |
+| embeddinggemma-300m-qat-q8 | 68ms | 81ms |
+| embeddinggemma-300m-qat-q4 | 68ms | 82ms |
+| mxbai-embed-xsmall-v1 | 13ms | 82ms |
+| mxbai-embed-large (Q4_K_M) | 468ms | 106ms |
+| mxbai-embed-large (INT8 ONNX) | 19ms | 83ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 84ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 2ms | 86ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -1677,24 +1694,23 @@ Compare with the hadithText section to see how much isnad noise affects retrieva
 
 ---
 
-<a name="englishmatn-good-character-and-manners"></a>
-## Query: "good character and manners"
+## englishMatn: good character and manners
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 25ms |
-| mxbai-embed-large [matn] | 491ms | 105ms |
-| nomic-embed-text [matn] | 46ms | 84ms |
-| snowflake-arctic-embed:m [matn] | 38ms | 84ms |
-| all-MiniLM-L6-v2 [matn] | 474ms | 103ms |
-| embeddinggemma-300m [matn] | 73ms | 82ms |
-| embeddinggemma-300m-qat-q8 [matn] | 68ms | 83ms |
-| embeddinggemma-300m-qat-q4 [matn] | 82ms | 82ms |
-| mxbai-embed-xsmall-v1 [matn] | 11ms | 79ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 497ms | 94ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 26ms | 83ms |
-| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 83ms |
-| mxbai-embed-xsmall (INT4 ONNX) [matn] | 6ms | 81ms |
+| BM25 Lexical | — | 28ms |
+| mxbai-embed-large [matn] | 493ms | 108ms |
+| nomic-embed-text [matn] | 50ms | 84ms |
+| snowflake-arctic-embed:m [matn] | 47ms | 84ms |
+| all-MiniLM-L6-v2 [matn] | 448ms | 109ms |
+| embeddinggemma-300m [matn] | 67ms | 81ms |
+| embeddinggemma-300m-qat-q8 [matn] | 89ms | 81ms |
+| embeddinggemma-300m-qat-q4 [matn] | 72ms | 83ms |
+| mxbai-embed-xsmall-v1 [matn] | 10ms | 81ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 503ms | 104ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 25ms | 83ms |
+| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 81ms |
+| mxbai-embed-xsmall (INT4 ONNX) [matn] | 6ms | 82ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -1876,24 +1892,23 @@ Compare with the hadithText section to see how much isnad noise affects retrieva
 
 ---
 
-<a name="englishmatn-angels-recording-deeds"></a>
-## Query: "angels recording deeds"
+## englishMatn: angels recording deeds
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 14ms |
-| mxbai-embed-large [matn] | 490ms | 96ms |
-| nomic-embed-text [matn] | 47ms | 81ms |
-| snowflake-arctic-embed:m [matn] | 34ms | 81ms |
-| all-MiniLM-L6-v2 [matn] | 436ms | 106ms |
-| embeddinggemma-300m [matn] | 65ms | 81ms |
-| embeddinggemma-300m-qat-q8 [matn] | 61ms | 81ms |
-| embeddinggemma-300m-qat-q4 [matn] | 74ms | 81ms |
-| mxbai-embed-xsmall-v1 [matn] | 11ms | 79ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 496ms | 99ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 18ms | 81ms |
+| BM25 Lexical | — | 15ms |
+| mxbai-embed-large [matn] | 477ms | 96ms |
+| nomic-embed-text [matn] | 50ms | 79ms |
+| snowflake-arctic-embed:m [matn] | 36ms | 83ms |
+| all-MiniLM-L6-v2 [matn] | 458ms | 107ms |
+| embeddinggemma-300m [matn] | 69ms | 81ms |
+| embeddinggemma-300m-qat-q8 [matn] | 73ms | 81ms |
+| embeddinggemma-300m-qat-q4 [matn] | 75ms | 82ms |
+| mxbai-embed-xsmall-v1 [matn] | 12ms | 77ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 489ms | 107ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 21ms | 81ms |
 | mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 81ms |
-| mxbai-embed-xsmall (INT4 ONNX) [matn] | 6ms | 80ms |
+| mxbai-embed-xsmall (INT4 ONNX) [matn] | 6ms | 81ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -2075,24 +2090,23 @@ Compare with the hadithText section to see how much isnad noise affects retrieva
 
 ---
 
-<a name="englishmatn-prayer-at-night"></a>
-## Query: "prayer at night"
+## englishMatn: prayer at night
 
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 17ms |
-| mxbai-embed-large [matn] | 507ms | 104ms |
-| nomic-embed-text [matn] | 47ms | 82ms |
-| snowflake-arctic-embed:m [matn] | 43ms | 83ms |
-| all-MiniLM-L6-v2 [matn] | 467ms | 105ms |
-| embeddinggemma-300m [matn] | 71ms | 80ms |
-| embeddinggemma-300m-qat-q8 [matn] | 70ms | 80ms |
-| embeddinggemma-300m-qat-q4 [matn] | 64ms | 81ms |
-| mxbai-embed-xsmall-v1 [matn] | 12ms | 80ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 457ms | 85ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 28ms | 83ms |
-| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 81ms |
-| mxbai-embed-xsmall (INT4 ONNX) [matn] | 5ms | 80ms |
+| mxbai-embed-large [matn] | 499ms | 105ms |
+| nomic-embed-text [matn] | 52ms | 81ms |
+| snowflake-arctic-embed:m [matn] | 38ms | 84ms |
+| all-MiniLM-L6-v2 [matn] | 441ms | 102ms |
+| embeddinggemma-300m [matn] | 71ms | 82ms |
+| embeddinggemma-300m-qat-q8 [matn] | 64ms | 79ms |
+| embeddinggemma-300m-qat-q4 [matn] | 74ms | 85ms |
+| mxbai-embed-xsmall-v1 [matn] | 14ms | 78ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 468ms | 106ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 24ms | 81ms |
+| mxbai-embed-xsmall (INT8 ONNX) [matn] | 4ms | 80ms |
+| mxbai-embed-xsmall (INT4 ONNX) [matn] | 6ms | 79ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -2274,23 +2288,22 @@ Compare with the hadithText section to see how much isnad noise affects retrieva
 
 ---
 
-<a name="englishmatn-forgiving-someone-who-wronged-you"></a>
-## Query: "forgiving someone who wronged you"
+## englishMatn: forgiving someone who wronged you
 
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 14ms |
-| mxbai-embed-large [matn] | 489ms | 101ms |
-| nomic-embed-text [matn] | 51ms | 83ms |
-| snowflake-arctic-embed:m [matn] | 49ms | 84ms |
-| all-MiniLM-L6-v2 [matn] | 470ms | 98ms |
-| embeddinggemma-300m [matn] | 64ms | 82ms |
-| embeddinggemma-300m-qat-q8 [matn] | 108ms | 81ms |
-| embeddinggemma-300m-qat-q4 [matn] | 69ms | 81ms |
-| mxbai-embed-xsmall-v1 [matn] | 10ms | 76ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 496ms | 108ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 21ms | 81ms |
-| mxbai-embed-xsmall (INT8 ONNX) [matn] | 5ms | 79ms |
+| mxbai-embed-large [matn] | 506ms | 108ms |
+| nomic-embed-text [matn] | 55ms | 80ms |
+| snowflake-arctic-embed:m [matn] | 45ms | 83ms |
+| all-MiniLM-L6-v2 [matn] | 475ms | 107ms |
+| embeddinggemma-300m [matn] | 81ms | 81ms |
+| embeddinggemma-300m-qat-q8 [matn] | 88ms | 81ms |
+| embeddinggemma-300m-qat-q4 [matn] | 70ms | 82ms |
+| mxbai-embed-xsmall-v1 [matn] | 10ms | 77ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 472ms | 108ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 35ms | 82ms |
+| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 81ms |
 | mxbai-embed-xsmall (INT4 ONNX) [matn] | 7ms | 80ms |
 
 <table width="100%"><thead><tr>
@@ -2473,24 +2486,23 @@ Compare with the hadithText section to see how much isnad noise affects retrieva
 
 ---
 
-<a name="englishmatn-comparing-yourself-to-others"></a>
-## Query: "comparing yourself to others"
+## englishMatn: comparing yourself to others
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 10ms |
-| mxbai-embed-large [matn] | 500ms | 103ms |
-| nomic-embed-text [matn] | 51ms | 84ms |
-| snowflake-arctic-embed:m [matn] | 46ms | 81ms |
-| all-MiniLM-L6-v2 [matn] | 461ms | 104ms |
-| embeddinggemma-300m [matn] | 67ms | 80ms |
-| embeddinggemma-300m-qat-q8 [matn] | 79ms | 80ms |
-| embeddinggemma-300m-qat-q4 [matn] | 82ms | 81ms |
-| mxbai-embed-xsmall-v1 [matn] | 14ms | 80ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 480ms | 107ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 26ms | 84ms |
-| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 82ms |
-| mxbai-embed-xsmall (INT4 ONNX) [matn] | 6ms | 82ms |
+| BM25 Lexical | — | 11ms |
+| mxbai-embed-large [matn] | 478ms | 101ms |
+| nomic-embed-text [matn] | 53ms | 84ms |
+| snowflake-arctic-embed:m [matn] | 45ms | 83ms |
+| all-MiniLM-L6-v2 [matn] | 449ms | 106ms |
+| embeddinggemma-300m [matn] | 67ms | 81ms |
+| embeddinggemma-300m-qat-q8 [matn] | 61ms | 82ms |
+| embeddinggemma-300m-qat-q4 [matn] | 77ms | 80ms |
+| mxbai-embed-xsmall-v1 [matn] | 10ms | 79ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 495ms | 105ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 29ms | 82ms |
+| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 84ms |
+| mxbai-embed-xsmall (INT4 ONNX) [matn] | 6ms | 83ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -2672,24 +2684,23 @@ Compare with the hadithText section to see how much isnad noise affects retrieva
 
 ---
 
-<a name="englishmatn-aisha"></a>
-## Query: "aisha"
+## englishMatn: aisha
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 9ms |
-| mxbai-embed-large [matn] | 484ms | 108ms |
-| nomic-embed-text [matn] | 51ms | 83ms |
-| snowflake-arctic-embed:m [matn] | 42ms | 83ms |
-| all-MiniLM-L6-v2 [matn] | 469ms | 107ms |
-| embeddinggemma-300m [matn] | 59ms | 82ms |
-| embeddinggemma-300m-qat-q8 [matn] | 77ms | 81ms |
-| embeddinggemma-300m-qat-q4 [matn] | 86ms | 81ms |
-| mxbai-embed-xsmall-v1 [matn] | 10ms | 81ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 464ms | 100ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 21ms | 83ms |
-| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 84ms |
-| mxbai-embed-xsmall (INT4 ONNX) [matn] | 5ms | 81ms |
+| BM25 Lexical | — | 10ms |
+| mxbai-embed-large [matn] | 463ms | 100ms |
+| nomic-embed-text [matn] | 51ms | 84ms |
+| snowflake-arctic-embed:m [matn] | 44ms | 83ms |
+| all-MiniLM-L6-v2 [matn] | 465ms | 109ms |
+| embeddinggemma-300m [matn] | 66ms | 82ms |
+| embeddinggemma-300m-qat-q8 [matn] | 73ms | 82ms |
+| embeddinggemma-300m-qat-q4 [matn] | 76ms | 82ms |
+| mxbai-embed-xsmall-v1 [matn] | 13ms | 83ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 494ms | 100ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 20ms | 85ms |
+| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 81ms |
+| mxbai-embed-xsmall (INT4 ONNX) [matn] | 3ms | 83ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -2871,24 +2882,23 @@ Compare with the hadithText section to see how much isnad noise affects retrieva
 
 ---
 
-<a name="englishmatn-fasting-expiation-sins"></a>
-## Query: "fasting expiation sins"
+## englishMatn: fasting expiation sins
 
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 11ms |
-| mxbai-embed-large [matn] | 515ms | 109ms |
-| nomic-embed-text [matn] | 49ms | 85ms |
-| snowflake-arctic-embed:m [matn] | 48ms | 84ms |
-| all-MiniLM-L6-v2 [matn] | 464ms | 107ms |
-| embeddinggemma-300m [matn] | 74ms | 81ms |
-| embeddinggemma-300m-qat-q8 [matn] | 65ms | 82ms |
-| embeddinggemma-300m-qat-q4 [matn] | 69ms | 82ms |
-| mxbai-embed-xsmall-v1 [matn] | 9ms | 80ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 499ms | 105ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 40ms | 84ms |
+| mxbai-embed-large [matn] | 466ms | 99ms |
+| nomic-embed-text [matn] | 45ms | 84ms |
+| snowflake-arctic-embed:m [matn] | 41ms | 83ms |
+| all-MiniLM-L6-v2 [matn] | 429ms | 103ms |
+| embeddinggemma-300m [matn] | 61ms | 84ms |
+| embeddinggemma-300m-qat-q8 [matn] | 81ms | 81ms |
+| embeddinggemma-300m-qat-q4 [matn] | 85ms | 81ms |
+| mxbai-embed-xsmall-v1 [matn] | 12ms | 81ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 476ms | 94ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 38ms | 82ms |
 | mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 83ms |
-| mxbai-embed-xsmall (INT4 ONNX) [matn] | 6ms | 82ms |
+| mxbai-embed-xsmall (INT4 ONNX) [matn] | 6ms | 83ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -3070,24 +3080,23 @@ Compare with the hadithText section to see how much isnad noise affects retrieva
 
 ---
 
-<a name="englishmatn-neighbor-rights"></a>
-## Query: "neighbor rights"
+## englishMatn: neighbor rights
 
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 9ms |
-| mxbai-embed-large [matn] | 489ms | 103ms |
-| nomic-embed-text [matn] | 48ms | 89ms |
-| snowflake-arctic-embed:m [matn] | 38ms | 82ms |
-| all-MiniLM-L6-v2 [matn] | 460ms | 104ms |
-| embeddinggemma-300m [matn] | 74ms | 82ms |
-| embeddinggemma-300m-qat-q8 [matn] | 60ms | 82ms |
-| embeddinggemma-300m-qat-q4 [matn] | 64ms | 80ms |
-| mxbai-embed-xsmall-v1 [matn] | 36ms | 82ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 483ms | 106ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 19ms | 84ms |
-| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 82ms |
-| mxbai-embed-xsmall (INT4 ONNX) [matn] | 5ms | 82ms |
+| mxbai-embed-large [matn] | 460ms | 102ms |
+| nomic-embed-text [matn] | 55ms | 85ms |
+| snowflake-arctic-embed:m [matn] | 41ms | 83ms |
+| all-MiniLM-L6-v2 [matn] | 462ms | 105ms |
+| embeddinggemma-300m [matn] | 68ms | 82ms |
+| embeddinggemma-300m-qat-q8 [matn] | 66ms | 82ms |
+| embeddinggemma-300m-qat-q4 [matn] | 74ms | 81ms |
+| mxbai-embed-xsmall-v1 [matn] | 25ms | 83ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 503ms | 106ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 21ms | 83ms |
+| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 83ms |
+| mxbai-embed-xsmall (INT4 ONNX) [matn] | 2ms | 84ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -3287,15 +3296,14 @@ Compare with the hadithText section to see how much isnad noise affects retrieva
 
 ---
 
-<a name="hf-serverless-api-good-character-and-manners"></a>
-## Query: "good character and manners"
+## HF Serverless API: good character and manners
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 25ms |
-| mxbai-embed-large (HF API) | 411ms | 102ms |
-| snowflake-arctic-embed:m (HF API) | 2556ms | 102ms |
-| all-MiniLM-L6-v2 (HF API) | 183ms | 99ms |
+| BM25 Lexical | — | 28ms |
+| mxbai-embed-large (HF API) | 252ms | 116ms |
+| snowflake-arctic-embed:m (HF API) | 884ms | 103ms |
+| all-MiniLM-L6-v2 (HF API) | 172ms | 98ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -3378,15 +3386,14 @@ Compare with the hadithText section to see how much isnad noise affects retrieva
 
 ---
 
-<a name="hf-serverless-api-angels-recording-deeds"></a>
-## Query: "angels recording deeds"
+## HF Serverless API: angels recording deeds
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 14ms |
-| mxbai-embed-large (HF API) | 229ms | 102ms |
-| snowflake-arctic-embed:m (HF API) | 2431ms | 104ms |
-| all-MiniLM-L6-v2 (HF API) | 187ms | 100ms |
+| BM25 Lexical | — | 15ms |
+| mxbai-embed-large (HF API) | 221ms | 99ms |
+| snowflake-arctic-embed:m (HF API) | 259ms | 103ms |
+| all-MiniLM-L6-v2 (HF API) | 169ms | 99ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -3469,15 +3476,14 @@ Compare with the hadithText section to see how much isnad noise affects retrieva
 
 ---
 
-<a name="hf-serverless-api-prayer-at-night"></a>
-## Query: "prayer at night"
+## HF Serverless API: prayer at night
 
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 17ms |
-| mxbai-embed-large (HF API) | 226ms | 101ms |
-| snowflake-arctic-embed:m (HF API) | 2020ms | 101ms |
-| all-MiniLM-L6-v2 (HF API) | 180ms | 95ms |
+| mxbai-embed-large (HF API) | 223ms | 101ms |
+| snowflake-arctic-embed:m (HF API) | 234ms | 101ms |
+| all-MiniLM-L6-v2 (HF API) | 154ms | 95ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -3560,15 +3566,14 @@ Compare with the hadithText section to see how much isnad noise affects retrieva
 
 ---
 
-<a name="hf-serverless-api-forgiving-someone-who-wronged-you"></a>
-## Query: "forgiving someone who wronged you"
+## HF Serverless API: forgiving someone who wronged you
 
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 14ms |
-| mxbai-embed-large (HF API) | 235ms | 100ms |
-| snowflake-arctic-embed:m (HF API) | 207ms | 92ms |
-| all-MiniLM-L6-v2 (HF API) | 189ms | 97ms |
+| mxbai-embed-large (HF API) | 203ms | 95ms |
+| snowflake-arctic-embed:m (HF API) | 1571ms | 96ms |
+| all-MiniLM-L6-v2 (HF API) | 184ms | 98ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -3651,15 +3656,14 @@ Compare with the hadithText section to see how much isnad noise affects retrieva
 
 ---
 
-<a name="hf-serverless-api-comparing-yourself-to-others"></a>
-## Query: "comparing yourself to others"
+## HF Serverless API: comparing yourself to others
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 10ms |
-| mxbai-embed-large (HF API) | 226ms | 100ms |
-| snowflake-arctic-embed:m (HF API) | 196ms | 99ms |
-| all-MiniLM-L6-v2 (HF API) | 169ms | 97ms |
+| BM25 Lexical | — | 11ms |
+| mxbai-embed-large (HF API) | 240ms | 103ms |
+| snowflake-arctic-embed:m (HF API) | 291ms | 105ms |
+| all-MiniLM-L6-v2 (HF API) | 187ms | 96ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -3742,15 +3746,14 @@ Compare with the hadithText section to see how much isnad noise affects retrieva
 
 ---
 
-<a name="hf-serverless-api-aisha"></a>
-## Query: "aisha"
+## HF Serverless API: aisha
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 9ms |
-| mxbai-embed-large (HF API) | 232ms | 100ms |
-| snowflake-arctic-embed:m (HF API) | 199ms | 95ms |
-| all-MiniLM-L6-v2 (HF API) | 166ms | 91ms |
+| BM25 Lexical | — | 10ms |
+| mxbai-embed-large (HF API) | 217ms | 97ms |
+| snowflake-arctic-embed:m (HF API) | 1227ms | 102ms |
+| all-MiniLM-L6-v2 (HF API) | 179ms | 97ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -3833,15 +3836,14 @@ Compare with the hadithText section to see how much isnad noise affects retrieva
 
 ---
 
-<a name="hf-serverless-api-fasting-expiation-sins"></a>
-## Query: "fasting expiation sins"
+## HF Serverless API: fasting expiation sins
 
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 11ms |
-| mxbai-embed-large (HF API) | 384ms | 104ms |
-| snowflake-arctic-embed:m (HF API) | 196ms | 98ms |
-| all-MiniLM-L6-v2 (HF API) | 182ms | 96ms |
+| mxbai-embed-large (HF API) | 224ms | 104ms |
+| snowflake-arctic-embed:m (HF API) | 696ms | 97ms |
+| all-MiniLM-L6-v2 (HF API) | 183ms | 92ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -3924,15 +3926,14 @@ Compare with the hadithText section to see how much isnad noise affects retrieva
 
 ---
 
-<a name="hf-serverless-api-neighbor-rights"></a>
-## Query: "neighbor rights"
+## HF Serverless API: neighbor rights
 
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 9ms |
-| mxbai-embed-large (HF API) | 315ms | 98ms |
-| snowflake-arctic-embed:m (HF API) | 350ms | 100ms |
-| all-MiniLM-L6-v2 (HF API) | 173ms | 96ms |
+| mxbai-embed-large (HF API) | 231ms | 101ms |
+| snowflake-arctic-embed:m (HF API) | 2326ms | 101ms |
+| all-MiniLM-L6-v2 (HF API) | 193ms | 96ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
