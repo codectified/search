@@ -42,7 +42,7 @@ os.environ.setdefault("HF_HOME", _HF_CACHE)
 os.environ.setdefault("HUGGINGFACE_HUB_CACHE", _HF_CACHE)
 os.environ.setdefault("TRANSFORMERS_CACHE", _HF_CACHE)
 
-HF_TOKEN   = os.environ.get("HF_TOKEN", "")
+HF_TOKEN   = os.environ.get("HUGGING_FACE_KEY") or os.environ.get("HF_TOKEN", "")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://host.docker.internal:11434")
 ES_HOST    = "http://172.31.250.10:9200"
 EVAL_IDX      = "small-model-eval"
@@ -174,6 +174,36 @@ for _m in MODELS:
     _mm["vec_field"] = _m["vec_field"] + "_matn"
     MODELS_MATN.append(_mm)
 
+# ── HF Serverless API variants ────────────────────────────────────────────────
+# Same vec_fields as Ollama counterparts — only the query embed path differs.
+# Used to compare local Ollama latency vs HF GPU-backed inference latency.
+HF_MODELS = [
+    {
+        "key":       "mxbai_hf",
+        "label":     "mxbai-embed-large (HF API)",
+        "sublabel":  "1024-dim · 335M · HF Serverless",
+        "embed_fn":  "hf_api",
+        "embed_id":  "mixedbread-ai/mxbai-embed-large-v1",
+        "vec_field": "vec_mxbai",
+    },
+    {
+        "key":       "snowflake_hf",
+        "label":     "snowflake-arctic-embed:m (HF API)",
+        "sublabel":  "768-dim · 110M · HF Serverless",
+        "embed_fn":  "hf_api",
+        "embed_id":  "Snowflake/snowflake-arctic-embed-m",
+        "vec_field": "vec_snowflake",
+    },
+    {
+        "key":       "miniLM_hf",
+        "label":     "all-MiniLM-L6-v2 (HF API)",
+        "sublabel":  "384-dim · 22M · HF Serverless",
+        "embed_fn":  "hf_api",
+        "embed_id":  "sentence-transformers/all-MiniLM-L6-v2",
+        "vec_field": "vec_miniLM",
+    },
+]
+
 # ── Queries ───────────────────────────────────────────────────────────────────
 
 QUERIES = [
@@ -224,6 +254,27 @@ def embed_ollama(model_id, query):
     with urllib.request.urlopen(req, timeout=30) as r:
         body = json.loads(r.read())
     return _norm(body["data"][0]["embedding"])
+
+
+def embed_hf_api(model_id, query):
+    """HuggingFace Serverless Inference API — feature-extraction pipeline.
+    Uses GPU-backed inference on HF's servers; latency includes network round-trip."""
+    if not HF_TOKEN:
+        raise RuntimeError("HUGGING_FACE_KEY not set")
+    payload = json.dumps({"inputs": query}).encode()
+    req = urllib.request.Request(
+        f"https://router.huggingface.co/hf-inference/models/{model_id}/pipeline/feature-extraction",
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {HF_TOKEN}",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=60) as r:
+        body = json.loads(r.read())
+    # HF returns [[vec]] for batch=1 or [vec] for single input
+    vec = body[0] if isinstance(body[0], list) else body
+    return _norm(vec)
 
 
 # Lazy-loaded ST/ONNX state: one model at a time per process
@@ -305,6 +356,8 @@ def embed_query(model_def, query):
         return embed_st(model_def, query)
     elif fn == "onnx":
         return embed_onnx(model_def, query)
+    elif fn == "hf_api":
+        return embed_hf_api(model_def["embed_id"], query)
     raise ValueError(f"Unknown embed_fn: {fn}")
 
 
@@ -395,6 +448,10 @@ else:
 ALL_MODEL_SETS = [("hadithText", MODELS)]
 if USE_MATN:
     ALL_MODEL_SETS.append(("englishMatn", MODELS_MATN))
+if HF_TOKEN:
+    ALL_MODEL_SETS.append(("HF Serverless API", HF_MODELS))
+else:
+    print("HUGGING_FACE_KEY not set — skipping HF API section.")
 
 # ── Warmup — load model weights before timing ─────────────────────────────────
 # Pass 1: load ST/ONNX models into Python cache (expensive first-time download).
@@ -418,7 +475,7 @@ print("Re-touching Ollama models (eviction fix) ...")
 _ollama_warmed = set()
 for _il, ms in ALL_MODEL_SETS:
     for m in ms:
-        if m["embed_fn"] == "ollama":
+        if m["embed_fn"] == "ollama" and m["key"] in {_m["key"] for _m in MODELS}:
             eid = m.get("embed_id", "")
             if eid not in _ollama_warmed:
                 try:
@@ -573,7 +630,7 @@ def build_table(q, model_set):
 
 
 def build_section(input_label, model_set):
-    backend_labels = {"ollama": "Ollama", "st": "sentence_transformers", "onnx": "ONNX Runtime"}
+    backend_labels = {"ollama": "Ollama", "st": "sentence_transformers", "onnx": "ONNX Runtime", "hf_api": "HF Serverless API"}
     W(f"# Small Model Comparison — {input_label}")
     W("")
     if input_label == "hadithText":
