@@ -101,7 +101,12 @@ matters. Running it through a semantic model would ignore that signal and return
 (`U+0600–U+06FF`). A single Arabic character is enough — even a mixed query
 like `aisha عائشة` routes here.
 
-**ES query:** `match` on `arabicText` using the `custom_arabic` analyser.
+**ES query:** Same `function_score` + `cross_fields` structure as standard BM25.
+`query_string` is used across `["hadithNumber^2", "hadithText", "arabicText",
+"collection^2"]` with `type: cross_fields`. ES uses each field's mapped analyzer
+automatically — `arabicText` is mapped with `custom_arabic`, so Arabic tokens get
+correct morphological analysis without explicit annotation. The Arabic route differs
+from standard BM25 only in `_meta.route`.
 
 Example for query `صلاة الليل`:
 
@@ -109,25 +114,26 @@ Example for query `صلاة الليل`:
 GET /english-mxbai/_search
 {
   "query": {
-    "bool": {
-      "must": [
-        {"match": {"arabicText": {"query": "صلاة الليل", "analyzer": "custom_arabic"}}}
-      ]
-    }
-  }
-}
-```
-
-Example for mixed query `aisha عائشة` (Arabic chars present → Arabic route):
-
-```json
-GET /english-mxbai/_search
-{
-  "query": {
-    "bool": {
-      "must": [
-        {"match": {"arabicText": {"query": "aisha عائشة", "analyzer": "custom_arabic"}}}
-      ]
+    "function_score": {
+      "query": {
+        "bool": {
+          "must": [
+            {"query_string": {
+              "query": "صلاة الليل",
+              "fields": ["hadithNumber^2", "hadithText", "arabicText", "collection^2"],
+              "type": "cross_fields"
+            }}
+          ]
+        }
+      },
+      "functions": [
+        {"filter": {"term": {"collection": "bukhari"}},         "weight": 3.5},
+        {"filter": {"term": {"collection": "muslim"}},          "weight": 3.5},
+        {"filter": {"term": {"collection": "forty"}},           "weight": 3.3},
+        {"filter": {"term": {"collection": "riyadussalihin"}},  "weight": 3.3}
+      ],
+      "score_mode": "sum",
+      "boost_mode": "sum"
     }
   }
 }
