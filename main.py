@@ -1193,24 +1193,28 @@ def build_semantic_query(query, filter_clauses):
 
 
 _ARABIC_RE = re.compile(r"[؀-ۿ]")
+# Matches "word digits[optional-letter]" — e.g. "bukhari 1", "nasai 59a".
+# Multi-word collection names (abu dawud) fall through to standard lexical and
+# still surface correctly via hadithNumber^2 + collection^2 boosts.
+_REF_RE = re.compile(r"^\w+\s+\d+[a-z]?\s*$", re.IGNORECASE)
 
 
 def _route_query(query, mode):
     """Classify the query and return (route, variant, extra).
 
     route   — "lexical" | mode (passes through for semantic/lexical)
-    variant — None | "phrase" | "arabic"
+    variant — None | "phrase" | "arabic" | "reference"
     extra   — always {}
 
-    Rules (applied in order; phrase and arabic always override mode):
-      1. Quoted → lexical phrase search (match_phrase)
-      2. Any Arabic character → lexical BM25 on arabicText
-      3. Otherwise → mode as requested (lexical BM25 or semantic)
+    Rules (applied in order — earlier rules always win):
+      1. Quoted (≥3 chars) → lexical phrase (match_phrase)
+      2. Any Arabic character → lexical arabic BM25, full corpus
+      3. collection+number pattern → lexical reference (same BM25, tagged)
+      4. Otherwise → mode as requested (lexical BM25 or semantic)
 
-    Collection+number queries ("bukhari 1") fall through to standard lexical
-    BM25 — hadithNumber and collection are both boosted fields (^2) so the
-    correct hadith surfaces naturally, and misspellings degrade gracefully
-    rather than returning zero results.
+    Rule 3 forces lexical for reference lookups regardless of ?mode=. This
+    matters when semantic becomes the default — semantic returns garbage for
+    "bukhari 1"-style queries (tested: 0/9 correct in top 10).
     """
     q = query.strip()
 
@@ -1219,6 +1223,9 @@ def _route_query(query, mode):
 
     if _ARABIC_RE.search(q):
         return "lexical", "arabic", {}
+
+    if _REF_RE.match(q):
+        return "lexical", "reference", {}
 
     return mode, None, {}
 
@@ -1282,12 +1289,14 @@ def search(language):
             log_route = "lexical_phrase"
         elif variant == "arabic":
             log_route = "lexical_arabic"
+        elif variant == "reference":
+            log_route = "lexical_reference"
         elif route == "lexical":
             log_route = "lexical"
         else:
             log_route = str(route)
 
-        # overridden = True when phrase/arabic forced lexical despite mode=semantic
+        # overridden = True when phrase/arabic/reference forced lexical despite mode=semantic
         overridden = route == "lexical" and mode == SearchMode.SEMANTIC
         access_log.info(
             "router_decision",
@@ -1398,7 +1407,8 @@ def search(language):
         result.body,
         lexical_ms,
     )
-    result.body.setdefault("_meta", {})["route"] = "lexical"
+    route_tag = "lexical_reference" if variant == "reference" else "lexical"
+    result.body.setdefault("_meta", {})["route"] = route_tag
     return jsonify(result.body)
 
 

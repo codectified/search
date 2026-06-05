@@ -17,6 +17,9 @@ query string
     ├─ contains any Arabic Unicode character?
     │       → route: lexical  │  variant: arabic
     │
+    ├─ matches /^\w+\s+\d+[a-z]?\s*$/ (collection+number)?
+    │       → route: lexical  │  variant: reference
+    │
     └─ otherwise
             → route: mode (whatever ?mode= says, default lexical)
                     variant: None
@@ -26,6 +29,7 @@ query string
 
 ```python
 _ARABIC_RE = re.compile(r'[؀-ۿ]')
+_REF_RE    = re.compile(r'^\w+\s+\d+[a-z]?\s*$', re.IGNORECASE)
 
 def _route_query(query, mode):
     q = query.strip()
@@ -33,13 +37,15 @@ def _route_query(query, mode):
         return "lexical", "phrase", {"phrase_text": q[1:-1]}
     if _ARABIC_RE.search(q):
         return "lexical", "arabic", {}
+    if _REF_RE.match(q):
+        return "lexical", "reference", {}
     return mode, None, {}
 ```
 
-Priority is absolute: Arabic text inside quotes (`"صلاة"`) routes to phrase, not Arabic.
-An Arabic query with `?mode=semantic` still routes to `lexical_arabic`.
-
-**Collection+number queries** (`bukhari 1`, `nasai 200`) fall through to standard lexical BM25. Both `hadithNumber^2` and `collection^2` are boosted fields in the cross-field query, and each collection carries an additional `function_score` weight, so the correct hadith reliably surfaces at or near rank 1. Misspellings (`bukahri 1`) degrade gracefully via BM25 rather than returning zero results.
+Priority is absolute. All three variants force `route: lexical` regardless of `?mode=`.
+The reference rule catches single-word collection slugs followed by a number (`bukhari 1`,
+`nasai 59a`). Multi-word names (`abu dawud 1`) don't match and fall through to standard
+lexical, where `hadithNumber^2` + `collection^2` boosts still surface the right hadith.
 
 ---
 
@@ -202,7 +208,7 @@ lift authoritative collections above identical term matches in weaker ones.
 ## Route: `semantic`
 
 **Triggered by:** `?mode=semantic` (or `hybrid`) in the request, AND the query
-didn't match phrase or Arabic rules (those always override mode).
+didn't match phrase, Arabic, or reference rules (those always override mode).
 
 **ES query:** `semantic` query on the `semantic_text` field, which calls the
 configured inference endpoint (Ollama → mxbai-embed-large) at query time.
@@ -238,8 +244,9 @@ Every response includes `_meta.route`. Values:
 | Value | Path |
 |-------|------|
 | `lexical_phrase` | `match_phrase` on quoted query |
-| `lexical_arabic` | Arabic analyser BM25 on `arabicText` |
-| `lexical` | Standard cross-field BM25 with collection boosts (including collection+number queries) |
+| `lexical_arabic` | cross-fields BM25, full corpus (Arabic variant) |
+| `lexical_reference` | cross-fields BM25, English docs (collection+number queries — same query as `lexical`, forced off semantic) |
+| `lexical` | cross-fields BM25, English docs (standard path) |
 | `semantic` | Vector similarity via inference endpoint |
 
 ---
@@ -274,16 +281,15 @@ The router is a pure code change — no index rebuild required. The `english-mxb
 
 ---
 
-## Collection+number queries and BM25
+## Collection+number queries (`lexical_reference`)
 
-`bukhari 1`, `nasai 200`, and similar queries are handled by standard lexical BM25. The cross-field query includes `hadithNumber^2` and `collection^2` as boosted fields, and each collection carries an additional `function_score` weight (Bukhari/Muslim: 3.5×, Nawawi 40/Riyad: 3.3×, etc.).
+`bukhari 1`, `nasai 200`, and similar queries are detected by `_REF_RE` and forced to `lexical_reference` — the same cross-fields BM25 as the standard `lexical` path, but tagged separately and always kept off semantic.
 
-For specific numbers (e.g. `bukhari 7563`) this is highly precise — few docs in any collection have that exact number. For common numbers (`bukhari 1`) the collection boost keeps Bukhari ranked first even when "1" appears throughout `hadithText`. Misspellings (`bukahri 1`) fall through to the same BM25 path and return imperfect-but-non-empty results, which is strictly better than a dedicated filter path that returns zero on any mismatch.
+**Why detection matters:** When semantic is the default mode, `bukhari 1` would go to vector search and return completely unrelated hadiths (empirically tested: 0/9 correct in top 10 across all collection+number queries). Detection ensures these queries always stay on BM25 regardless of mode.
 
-An earlier design had a dedicated reference route (exact term filter). It was removed because:
-- Misspellings silently returned zero results
-- BM25 with field boosts is accurate enough for well-formed queries
-- Fewer code paths means fewer edge cases to test and maintain
+**Why BM25 without a term filter:** `hadithNumber^2` and `collection^2` boosts, plus the `function_score` collection weights (Bukhari/Muslim 3.5×, etc.), reliably surface the correct hadith at rank 1. For specific numbers (`bukhari 7563`) this is highly precise. For common numbers (`bukhari 1`) the collection boost keeps Bukhari ranked first. Misspellings (`bukahri 1`) don't match the regex and fall through to standard `lexical` BM25, still returning sensible results rather than zero.
+
+An earlier design used an exact `term` filter on `collection` + `hadithNumber`. It was removed because misspellings silently returned zero results.
 
 ---
 
@@ -294,4 +300,4 @@ An earlier design had a dedicated reference route (exact term filter). It was re
 | Dagger alef (`الرحمٰن`) not normalised | 0 results for that spelling | Known gap, not addressed |
 | Single Arabic character routes to Arabic path | `aisha عائشة` goes Arabic even though intent may be English | Acceptable — Arabic tokens dominate intent |
 | `query_string` → `simple_query_string` fallback is silent | Client can't tell which was used | Logged server-side |
-| Multi-word collection names not handled | `abu dawud 1` or `ibn majah 1` go to standard BM25 (same as all other queries); BM25 field boosts still surface the right hadith near rank 1 | Acceptable — no silent zero-results |
+| Multi-word collection names not detected | `abu dawud 1`, `ibn majah 1` don't match `_REF_RE` and fall through to standard `lexical` BM25; field boosts still surface the right hadith near rank 1; if semantic ever becomes default these would need separate handling | Low impact while lexical is default |
