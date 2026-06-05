@@ -1,23 +1,5 @@
 # Query Router — Design Document
 
-## Problem
-
-Before the router, every query went through a single code path regardless of its
-nature. This caused three concrete problems:
-
-1. **Collection + number queries** (`bukhari 1`, `nasai 200`) returned BM25 results
-   ranked by term frequency — the correct hadith was usually in the top 10 but not
-   always at rank 1, and irrelevant hadiths scored alongside it.
-
-2. **Quoted phrases** (`"actions are by intention"`) were treated as unquoted BM25
-   queries — the phrase was tokenised and each word competed independently, so
-   results could match any subset of the words in any order.
-
-3. **Arabic text** was processed by the English analyser — tokenised incorrectly,
-   stemming broken, no Arabic-specific normalisation applied.
-
----
-
 ## How it works
 
 `_route_query(query, mode)` runs once per request before any ES call. It inspects
@@ -92,8 +74,6 @@ matters. Running it through a semantic model would ignore that signal and return
 
 **Response `_meta`:** `{"route": "lexical_phrase"}`
 
-**Facet aggs:** Included — phrase results are a real search population.
-
 ---
 
 ## Route: `lexical` / variant `arabic`
@@ -157,8 +137,6 @@ not yet addressed.
 
 **Response `_meta`:** `{"route": "lexical_arabic"}`
 
-**Facet aggs:** Included.
-
 ---
 
 ## Route: `lexical` (standard BM25)
@@ -219,8 +197,6 @@ lift authoritative collections above identical term matches in weaker ones.
 
 **Response `_meta`:** `{"route": "lexical"}`
 
-**Facet aggs:** Included.
-
 ---
 
 ## Route: `semantic`
@@ -253,8 +229,6 @@ query string at search time using the same model used at index time
 
 **Response `_meta`:** `{"route": "semantic"}`
 
-**Facet aggs:** Not included on this branch. Added by the facets branch.
-
 ---
 
 ## `_meta.route` field
@@ -267,19 +241,6 @@ Every response includes `_meta.route`. Values:
 | `lexical_arabic` | Arabic analyser BM25 on `arabicText` |
 | `lexical` | Standard cross-field BM25 with collection boosts (including collection+number queries) |
 | `semantic` | Vector similarity via inference endpoint |
-
----
-
-## What downstream branches add
-
-This document covers what `feature/query-router` ships. Subsequent branches layer on additional features:
-
-| Branch | Adds |
-|--------|------|
-| `feature/corpus-normalization` | `isChainRef: true` exclusion filter on all routes; `dupGroup` dedup in semantic; `gradeNorm` normalisation backfill |
-| `feature/facets` | `gradeNorm` and `collection` facet aggregations on all routes; `?gradeNorm=` filter param |
-
-The ES query examples above are accurate for this branch only. With corpus-normalization merged, every query gains a `must_not: {term: {isChainRef: true}}` clause. With facets merged, all routes gain `aggs: {gradeNorm: …, collection: …}`.
 
 ---
 
