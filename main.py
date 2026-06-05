@@ -1270,6 +1270,13 @@ def search(language):
 
     route, variant, extra = _route_query(query, mode)
 
+    # Arabic queries search the full corpus — Arabic-only docs (lang:ar) have
+    # arabicText but no hadithText, so a lang filter would exclude valid matches.
+    # All other routes restrict to the language in the URL path.
+    _LANG_MAP = {"english": "en", "arabic": "ar"}
+    if variant != "arabic" and (lang_code := _LANG_MAP.get(language)):
+        filters = filters + [{"term": {"lang": lang_code}}]
+
     if ROUTER_LOG:
         if variant == "phrase":
             log_route = "lexical_phrase"
@@ -1339,7 +1346,8 @@ def search(language):
     # Arabic BM25 and standard BM25 share the same cross-fields query structure.
     # arabicText is mapped with custom_arabic — query_string uses each field's own
     # analyzer automatically, so Arabic tokens get correct morphological analysis
-    # without explicit annotation. The Arabic route differs only in _meta.route.
+    # without explicit annotation. The Arabic route skips the lang filter (full corpus)
+    # and sets _meta.route: lexical_arabic; standard BM25 restricts to lang:en.
     fields = ["hadithNumber^2", "hadithText", "arabicText", "collection^2"]
 
     def build_lexical(query_type):
