@@ -453,15 +453,16 @@ if HF_TOKEN:
 else:
     print("HUGGING_FACE_KEY not set — skipping HF API section.")
 
-# ── Warmup — load model weights before timing ─────────────────────────────────
-# Pass 1: load ST/ONNX models into Python cache (expensive first-time download).
-# Pass 2: re-touch every Ollama model immediately before timed runs — Ollama
-# evicts models from its loaded-model cache as others load, so re-touching right
-# before measurement ensures each model is already resident.
-print("Warming up models (loading weights into memory before timing) ...")
+# ── Warmup — load ST/ONNX weights into Python cache ──────────────────────────
+# Only ST/ONNX and HF models are warmed here. Ollama models are re-touched
+# immediately before each model's own query batch (see model-major loop below),
+# so they never compete with each other during timed runs.
+print("Loading ST/ONNX models into cache ...")
 _warmed = set()
 for _il, ms in ALL_MODEL_SETS:
     for m in ms:
+        if m["embed_fn"] in ("ollama", "hf_api"):
+            continue
         wk = (m["embed_fn"], m.get("embed_id", ""), m.get("onnx_file", ""))
         if wk not in _warmed:
             try:
@@ -470,27 +471,14 @@ for _il, ms in ALL_MODEL_SETS:
             except Exception as e:
                 print(f"  warmup ERROR [{m['key']}]: {e}")
             _warmed.add(wk)
+print("ST/ONNX loaded. Ollama models will be touched before each batch.")
+print("")
 
-print("Re-touching Ollama models (eviction fix) ...")
-_ollama_warmed = set()
-for _il, ms in ALL_MODEL_SETS:
-    for m in ms:
-        if m["embed_fn"] == "ollama" and m["key"] in {_m["key"] for _m in MODELS}:
-            eid = m.get("embed_id", "")
-            if eid not in _ollama_warmed:
-                try:
-                    embed_query(m, "prayer")
-                    print(f"  touched [{m['key']:14s}]")
-                except Exception as e:
-                    print(f"  touch ERROR [{m['key']}]: {e}")
-                _ollama_warmed.add(eid)
-print("Warmup complete. Starting timed runs ...")
-
-all_results = {}   # {query: {model_key: {hits, embed_ms, search_ms, error}}}
+all_results = {q: {} for q in QUERIES}
 
 # ── BM25 baseline — no embedding, query_string on lexical index ───────────────
+print("BM25 baseline ...")
 for q in QUERIES:
-    all_results[q] = {}
     t1 = time.perf_counter()
     try:
         hits = bm25_search(q, FETCH)
@@ -506,32 +494,42 @@ for q in QUERIES:
         }
         print(f"  ERROR [bm25] '{q}': {e}")
 
-# ── Semantic models ───────────────────────────────────────────────────────────
-print("Embedding queries and searching ...")
-for q in QUERIES:
-    for _input_label, model_set in ALL_MODEL_SETS:
-      for m in model_set:
-        try:
-            t0 = time.perf_counter()
-            vec = embed_query(m, q)
-            embed_ms = round((time.perf_counter() - t0) * 1000)
+# ── Semantic models — model-major order ───────────────────────────────────────
+# Running all queries for one model before switching means each Ollama model
+# stays resident in Ollama's cache for its entire batch. Eviction only happens
+# between models, not between queries — matching single-model production latency.
+print("")
+for _input_label, model_set in ALL_MODEL_SETS:
+    for m in model_set:
+        # Re-touch Ollama model immediately before its batch so it's warm for q[0]
+        if m["embed_fn"] == "ollama":
+            try:
+                embed_query(m, "prayer")
+                print(f"  [{m['key']:14s}] Ollama ready")
+            except Exception as e:
+                print(f"  [{m['key']:14s}] warmup ERROR: {e}")
+        for q in QUERIES:
+            try:
+                t0 = time.perf_counter()
+                vec = embed_query(m, q)
+                embed_ms = round((time.perf_counter() - t0) * 1000)
 
-            t1 = time.perf_counter()
-            hits = knn_search(m["vec_field"], vec, FETCH)
-            search_ms = round((time.perf_counter() - t1) * 1000)
+                t1 = time.perf_counter()
+                hits = knn_search(m["vec_field"], vec, FETCH)
+                search_ms = round((time.perf_counter() - t1) * 1000)
 
-            hits = dedup(hits, N)
-            all_results[q][m["key"]] = {
-                "hits": hits, "embed_ms": embed_ms,
-                "search_ms": search_ms, "error": None,
-            }
-            print(f"  [{m['key']:14s}] '{q[:35]}' → {len(hits)} hits "
-                  f"| embed={embed_ms}ms search={search_ms}ms")
-        except Exception as e:
-            all_results[q][m["key"]] = {
-                "hits": [], "embed_ms": 0, "search_ms": 0, "error": str(e)
-            }
-            print(f"  ERROR [{m['key']}] '{q}': {e}")
+                hits = dedup(hits, N)
+                all_results[q][m["key"]] = {
+                    "hits": hits, "embed_ms": embed_ms,
+                    "search_ms": search_ms, "error": None,
+                }
+                print(f"  [{m['key']:14s}] '{q[:35]}' → {len(hits)} hits "
+                      f"| embed={embed_ms}ms search={search_ms}ms")
+            except Exception as e:
+                all_results[q][m["key"]] = {
+                    "hits": [], "embed_ms": 0, "search_ms": 0, "error": str(e)
+                }
+                print(f"  ERROR [{m['key']}] '{q}': {e}")
 
 
 # ── Report ────────────────────────────────────────────────────────────────────

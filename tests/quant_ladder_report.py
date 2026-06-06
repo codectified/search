@@ -269,10 +269,12 @@ def dedup(hits, n):
     merged.sort(key=lambda h: h["_score"], reverse=True)
     return merged[:n]
 
-# ── Warmup ────────────────────────────────────────────────────────────────────
-print("Warming up models ...")
+# ── Warmup — load ST/ONNX weights into Python cache ──────────────────────────
+print("Loading ST/ONNX models into cache ...")
 _warmed = set()
 for m in LADDER:
+    if m["embed_fn"] == "ollama":
+        continue
     wk = (m["embed_fn"], m.get("embed_id", ""), m.get("onnx_file", ""))
     if wk not in _warmed:
         try:
@@ -281,26 +283,16 @@ for m in LADDER:
         except Exception as e:
             print(f"  ERROR   [{m['key']}]: {e}")
         _warmed.add(wk)
+print("ST/ONNX loaded. Ollama models will be touched before each batch.")
+print("")
 
-print("Re-touching Ollama models (eviction fix) ...")
-_ollama_seen = set()
-for m in LADDER:
-    if m["embed_fn"] == "ollama":
-        eid = m["embed_id"]
-        if eid not in _ollama_seen:
-            try:
-                embed_query(m, "prayer")
-                print(f"  touched [{m['key']:10s}]")
-            except Exception as e:
-                print(f"  ERROR   [{m['key']}]: {e}")
-            _ollama_seen.add(eid)
-print("Warmup complete. Running queries ...")
+# ── Run all queries — model-major order ───────────────────────────────────────
+# Each model runs all 8 queries before switching, so Ollama never evicts a model
+# mid-batch. Re-touch immediately before each Ollama model's batch.
+results = {q: {} for q in QUERIES}
 
-# ── Run all queries ───────────────────────────────────────────────────────────
-results = {}   # {query: {"bm25": {...}, key: {...}, ...}}
-
+print("BM25 baseline ...")
 for q in QUERIES:
-    results[q] = {}
     t0 = time.perf_counter()
     try:
         hits = bm25_search(q, FETCH)
@@ -311,7 +303,15 @@ for q in QUERIES:
     except Exception as e:
         results[q]["bm25"] = {"hits": [], "embed_ms": None, "search_ms": 0, "error": str(e)}
 
-    for m in LADDER:
+print("")
+for m in LADDER:
+    if m["embed_fn"] == "ollama":
+        try:
+            embed_query(m, "prayer")
+            print(f"  [{m['key']:10s}] Ollama ready")
+        except Exception as e:
+            print(f"  [{m['key']:10s}] warmup ERROR: {e}")
+    for q in QUERIES:
         try:
             t0 = time.perf_counter()
             vec = embed_query(m, q)
