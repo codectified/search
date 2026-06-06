@@ -152,7 +152,6 @@ EMBEDDING_MODELS = {
         "index": "english-mxbai",
         "inference_id": "mxbai-embed-large",
         "multilingual": False,
-        "embed_field": "hadithText",  # full hadith text including isnad prefix
         # ES inference endpoint — always bound to local Ollama (query-time embedding).
         # Ollama exposes an OpenAI-compatible API; ES 8.16 has no native ollama service.
         "service": "openai",
@@ -169,33 +168,13 @@ EMBEDDING_MODELS = {
         # ES inference endpoint above (local Ollama).
         "remote_inference": _build_remote_mxbai_inference(),
     },
-    # Evaluation model: same mxbai-embed-large, but vectors derived from englishMatn
-    # (isnad-stripped body only) instead of hadithText. Used to measure whether
-    # stripping narrator chains improves semantic retrieval quality.
-    # Compare against "mxbai" with tests/report_clean_vs_noisy.py.
-    "mxbai-matn": {
-        "label": "mxbai-embed-large (englishMatn)",
-        "index": "english-mxbai-matn",
-        "inference_id": "mxbai-embed-large",  # shared endpoint — same model, different text
-        "multilingual": False,
-        "embed_field": "englishMatn",  # isnad-stripped matn only
-        "service": "openai",
-        "service_settings": {
-            "api_key": "ollama",
-            "url": f"{_OLLAMA_URL}/v1/embeddings",
-            "model_id": "mxbai-embed-large",
-            "similarity": "cosine",
-        },
-        "remote_inference": _build_remote_mxbai_inference(),
-    },
 }
 
 _ENABLED_MODELS = EMBEDDING_MODELS if SEMANTIC_ENABLED else {}
 
 # Which model `/search?mode=semantic` picks when no `model=` param is given.
-# Set explicitly rather than reading the first dict key, so adding another
-# semantic model doesn't accidentally change which one is the default.
-DEFAULT_SEMANTIC_MODEL = "mxbai"
+# Override via SEMANTIC_MODEL in .env to switch index without changing code.
+DEFAULT_SEMANTIC_MODEL = os.environ.get("SEMANTIC_MODEL", "mxbai")
 
 
 # ── Shadow sampling ─────────────────────────────────────────────────────────
@@ -1026,16 +1005,13 @@ def index():
     models_to_index = {k: v for k, v in _ENABLED_MODELS.items() if k in targets}
     for model_key, model in models_to_index.items():
         _ensure_inference_endpoint(model)
-        embed_field = model.get("embed_field", "hadithText")
         if model.get("multilingual"):
             # Full corpus: every Arabic doc embeds Arabic text, every English doc embeds English.
-            en_docs = [(doc, doc.get(embed_field) or doc["hadithText"]) for doc in englishHadiths]
+            en_docs = [(doc, doc["hadithText"]) for doc in englishHadiths]
             ar_docs = [(doc, doc["arabicText"]) for doc in arabicHadiths]
             paired = en_docs + ar_docs
         else:
-            # embed_field controls which text the semantic vector is derived from.
-            # Default: hadithText (full text). Alternatives: englishMatn (isnad-stripped body).
-            paired = [(doc, doc.get(embed_field) or doc["hadithText"]) for doc in englishHadiths]
+            paired = [(doc, doc["hadithText"]) for doc in englishHadiths]
 
         model_docs = _attach_semantic_field(paired)
         results[model_key] = _index_one(
