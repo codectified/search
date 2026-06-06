@@ -556,16 +556,21 @@ W("---")
 W("")
 
 # ── Latency summary ───────────────────────────────────────────────────────────
+_BACKEND_LABELS = {"ollama": "Ollama", "st": "SentenceTransformers",
+                   "onnx": "ONNX Runtime", "hf_api": "HF Serverless", "bm25": "ES query_string"}
+
 W("## Latency Summary")
 W("")
-W("Average embed + ES search time across all 8 queries (post-warmup steady state).")
+W("All times are post-warmup averages across 8 queries. Models run in model-major order so")
+W("each Ollama model stays resident in Ollama's single-model cache for its entire batch —")
+W("no inter-query eviction, matching single-model production latency.")
 W("")
-W("| Model | Avg Embed | Avg Search | Avg Total |")
-W("|---|---|---|---|")
+W("| Model | Dims | Backend | Avg Embed | Avg Search | Avg Total |")
+W("|---|---|---|---|---|---|")
 _bm25_s = [all_results[q]["bm25"]["search_ms"] for q in QUERIES
            if not all_results[q]["bm25"].get("error")]
 _avg_bm25 = round(sum(_bm25_s) / len(_bm25_s)) if _bm25_s else "?"
-W(f"| BM25 Lexical | — | {_avg_bm25}ms | {_avg_bm25}ms |")
+W(f"| BM25 Lexical | — | ES query_string | — | {_avg_bm25}ms | {_avg_bm25}ms |")
 _hf_set = next((ms for lbl, ms in ALL_MODEL_SETS if lbl == "HF Serverless API"), [])
 for _m in list(ALL_MODEL_SETS[0][1]) + list(_hf_set):
     _et = [all_results[q][_m["key"]]["embed_ms"]  for q in QUERIES
@@ -573,10 +578,13 @@ for _m in list(ALL_MODEL_SETS[0][1]) + list(_hf_set):
     _st = [all_results[q][_m["key"]]["search_ms"] for q in QUERIES
            if all_results[q].get(_m["key"]) and not all_results[q][_m["key"]].get("error")]
     if not _et:
-        W(f"| {_m['label']} | ERROR | ERROR | ERROR |")
+        W(f"| {_m['label']} | — | — | ERROR | ERROR | ERROR |")
         continue
     _ae, _as = round(sum(_et) / len(_et)), round(sum(_st) / len(_st))
-    W(f"| {_m['label']} | {_ae}ms | {_as}ms | {_ae + _as}ms |")
+    _parts = _m["sublabel"].split("·")
+    _dims = _parts[0].strip() if _parts else "—"
+    _backend = _BACKEND_LABELS.get(_m["embed_fn"], _m["embed_fn"])
+    W(f"| {_m['label']} | {_dims} | {_backend} | {_ae}ms | {_as}ms | {_ae + _as}ms |")
 W("")
 W("---")
 W("")
@@ -616,16 +624,10 @@ def build_cell(model_key, rank, q):
             isnad = full[:idx].strip()
 
     parts = [ref]
-    if isnad:
-        parts.append(f'<em><small>⛓ {html_escape(isnad[:250])}</small></em>')
     if matn:
-        parts.append(html_escape(matn[:500]))
+        parts.append(html_escape(matn[:150]))
     elif full:
-        parts.append(html_escape(full[:500]))
-
-    ar = strip_html(s.get("arabicText") or "")
-    if ar:
-        parts.append(f'<span dir="rtl" lang="ar"><big>{html_escape(ar[:300])}</big></span>')
+        parts.append(html_escape(full[:150]))
 
     return "<br><br>".join(parts)
 

@@ -371,8 +371,16 @@ W("")
 # ── Latency Summary ───────────────────────────────────────────────────────────
 W("## Latency Summary")
 W("")
-W("Average embed + ES search time across all 8 queries (post-warmup steady state).")
+W("All times are post-warmup averages across 8 queries. Models run in model-major order —")
+W("all 8 queries for one model before switching — so Ollama never evicts a model mid-batch.")
+W("With only 2 Ollama models (F16 + Q4_K_M), both can stay resident simultaneously.")
+W("Speedup is relative to the F16 embed time (embed cost dominates for CPU inference).")
 W("")
+
+_BACKEND_LABELS = {
+    "ollama": "Ollama", "st": "SentenceTransformers",
+    "onnx": "ONNX Runtime", "hf_api": "HF Serverless",
+}
 
 # Compute averages
 bm25_st = [results[q]["bm25"]["search_ms"] for q in QUERIES if not results[q]["bm25"].get("error")]
@@ -382,9 +390,9 @@ avg_bm25 = round(sum(bm25_st) / len(bm25_st)) if bm25_st else "?"
 f16_times = [results[q]["f16"]["embed_ms"] for q in QUERIES if results[q].get("f16") and not results[q]["f16"].get("error")]
 avg_f16_embed = sum(f16_times) / len(f16_times) if f16_times else 1
 
-W("| Step | Model | Avg Embed | Avg Search | Avg Total | Speedup vs F16 |")
-W("|---|---|---|---|---|---|")
-W(f"| — | BM25 Lexical | — | {avg_bm25}ms | {avg_bm25}ms | — |")
+W("| Step | Model | Dims | Backend | Avg Embed | Avg Search | Avg Total | Speedup vs F16 |")
+W("|---|---|---|---|---|---|---|---|")
+W(f"| — | BM25 Lexical | — | ES query_string | — | {avg_bm25}ms | {avg_bm25}ms | — |")
 
 for i, m in enumerate(LADDER, 1):
     et = [results[q][m["key"]]["embed_ms"] for q in QUERIES
@@ -392,14 +400,17 @@ for i, m in enumerate(LADDER, 1):
     st_ = [results[q][m["key"]]["search_ms"] for q in QUERIES
            if results[q].get(m["key"]) and not results[q][m["key"]].get("error")]
     if not et:
-        W(f"| {i} | {m['label']} | ERROR | ERROR | ERROR | — |")
+        W(f"| {i} | {m['label']} | — | — | ERROR | ERROR | ERROR | — |")
         continue
     ae = round(sum(et) / len(et))
     as_ = round(sum(st_) / len(st_))
     speedup = f"{avg_f16_embed / ae:.1f}×" if ae > 0 else "—"
     if m["key"] == "f16":
         speedup = "baseline"
-    W(f"| {i} | {m['label']} | {ae}ms | {as_}ms | {ae + as_}ms | {speedup} |")
+    _parts = m["sublabel"].split("·")
+    _dims = _parts[0].strip() if _parts else "—"
+    _backend = _BACKEND_LABELS.get(m["embed_fn"], m["embed_fn"])
+    W(f"| {i} | {m['label']} | {_dims} | {_backend} | {ae}ms | {as_}ms | {ae + as_}ms | {speedup} |")
 
 W("")
 W("---")
@@ -442,12 +453,10 @@ def build_cell(model_key, rank, q):
             isnad = full[:idx].strip()
 
     parts = [ref]
-    if isnad:
-        parts.append(f'<em><small>⛓ {html_escape(isnad[:250])}</small></em>')
-    parts.append(html_escape((matn or full)[:500]))
-    ar = strip_html(s.get("arabicText") or "")
-    if ar:
-        parts.append(f'<span dir="rtl" lang="ar"><big>{html_escape(ar[:300])}</big></span>')
+    if matn:
+        parts.append(html_escape(matn[:150]))
+    elif full:
+        parts.append(html_escape(full[:150]))
     return "<br><br>".join(parts)
 
 def build_table(q):
