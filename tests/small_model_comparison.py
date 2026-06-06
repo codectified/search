@@ -547,23 +547,87 @@ W("# Small Model Comparison")
 W("")
 W("## Contents")
 W("")
+W("**Summary**")
+W("")
+W("- [Methodology](#methodology)")
+W("- [Latency Summary](#latency-summary)")
+W("")
+W("**Results**")
+W("")
 for _sec_label, _ in ALL_MODEL_SETS:
-    W(f"**{_sec_label}**")
+    W(f"*{_sec_label}*")
     for _q in QUERIES:
         W(f"- [{_q}](#{_anchor(_sec_label, _q)})")
     W("")
 W("---")
 W("")
 
-# ── Latency summary ───────────────────────────────────────────────────────────
+# ── Methodology + Latency summary ─────────────────────────────────────────────
 _BACKEND_LABELS = {"ollama": "Ollama", "st": "SentenceTransformers",
                    "onnx": "ONNX Runtime", "hf_api": "HF Serverless", "bm25": "ES query_string"}
 
+W("## Methodology")
+W("")
+W("### What is timed")
+W("")
+W("Each query runs through two measured steps. Timing is wall-clock via `time.perf_counter()`.")
+W("")
+W("| Field | What is measured |")
+W("|---|---|")
+W("| **Embed (ms)** | Tokenisation + forward pass on CPU, or the Ollama HTTP round-trip to `host.docker.internal:11434`. Network to ES is excluded. |")
+W("| **ES search (ms)** | The ES kNN call: HNSW graph traversal with `num_candidates=250`, `isChainRef` filter applied inside kNN, post-retrieval `dupGroup` dedup, and network to/from the ES container. |")
+W("| **Total (ms)** | Embed + search. End-to-end for a single query, excluding model load time. |")
+W("")
+W("BM25 (`query_string` on `english-mxbai`) has no embed step — total equals search time only.")
+W("")
+W("HF Serverless times include the full network round-trip to HuggingFace's GPU inference")
+W("servers. These are not local CPU numbers — they include transatlantic network latency.")
+W("")
+W("### Warmup protocol")
+W("")
+W("**ST / ONNX models** are loaded into the Python process cache (`_st_cache`, `_onnx_cache`)")
+W("before any timed query runs. The first call downloads weights and initialises the ONNX")
+W("runtime session; all timed queries use the already-loaded session.")
+W("")
+W("**Ollama models** are re-touched (one dummy embed call) immediately before each model's")
+W("timed batch. This causes Ollama to load that model into its in-memory serving layer.")
+W("Subsequent queries for that model are served from RAM.")
+W("")
+W("> Post-warmup means weights are in memory. These numbers do not include cold-start")
+W("> load time — roughly 200 ms for small ONNX models, 1–3 s for large Ollama models")
+W("> loading from disk for the first time.")
+W("")
+W("### Loop order and Ollama cache behaviour")
+W("")
+W("The script uses **model-major** order: all 8 queries for one model complete before")
+W("switching to the next model. This is critical for Ollama.")
+W("")
+W("Ollama keeps only **one model loaded at a time** by default (configurable with")
+W("`OLLAMA_MAX_LOADED_MODELS`). In query-major order — interleaving models per query —")
+W("each of the 5 Ollama models would evict the others between every query, adding")
+W("~440 ms reload overhead per switch. A model that takes 44 ms in steady state would")
+W("appear to take ~490 ms. Model-major order eliminates this and matches the latency")
+W("of a single-model production deployment.")
+W("")
+W("The `hadithText` and `englishMatn` sections are independent runs. Ollama models")
+W("are re-touched at the start of each model's batch within each section.")
+W("")
+W("### Filters and collection boosts")
+W("")
+W("All runs use production-equivalent settings on the `small-model-eval` index (48,702 docs).")
+W("")
+W("| Setting | Value |")
+W("|---|---|")
+W("| `isChainRef` exclusion | **ON** — chain-reference hadiths removed from kNN candidates via filter |")
+W("| Candidate pool | `num_candidates=250`, `k=50`, then dedup to top 10 |")
+W("| Dedup by `dupGroup` | **ON** — highest collection-boosted member wins per duplicate group |")
+W(f"| Collection boosts | bukhari 5×, muslim 4.8×, nawawi40 3.3×, nasai 3.5×, abudawud 3×, tirmidhi/malik/ahmad/riyadussalihin 2.5×, ibnmajah/darimi/mishkat 2× |")
+W("")
+W("---")
+W("")
 W("## Latency Summary")
 W("")
-W("All times are post-warmup averages across 8 queries. Models run in model-major order so")
-W("each Ollama model stays resident in Ollama's single-model cache for its entire batch —")
-W("no inter-query eviction, matching single-model production latency.")
+W("Post-warmup averages across 8 queries. See [Methodology](#methodology) for how these are measured.")
 W("")
 W("| Model | Dims | Backend | Avg Embed | Avg Search | Avg Total |")
 W("|---|---|---|---|---|---|")
@@ -655,11 +719,6 @@ def build_table(q, model_set):
     W('')
 
 
-_BOOST_NOTE = (
-    "bukhari 5×, muslim 4.8×, nawawi40 3.3×, malik/ahmad/riyadussalihin 2.5×, "
-    "nasai 3.5×, abudawud 3×, tirmidhi 2.5×, ibnmajah/darimi/mishkat 2×"
-)
-
 def build_section(input_label, model_set):
     backend_labels = {"ollama": "Ollama", "st": "sentence_transformers",
                       "onnx": "ONNX Runtime", "hf_api": "HF Serverless API"}
@@ -675,17 +734,6 @@ def build_section(input_label, model_set):
     else:
         W("HuggingFace Serverless Inference API — GPU-backed, latency includes network round-trip.")
         W("Latency summary only (no result tables). Vectors queried against `small-model-eval`.")
-    W("")
-
-    # ── Filters & boosts table ────────────────────────────────────────────────
-    W("**Filters & boosts**")
-    W("")
-    W("| Setting | Status |")
-    W("|---|---|")
-    W("| `isChainRef` exclusion | **ON** — chain-reference hadiths excluded from results |")
-    W("| Dedup by `dupGroup` | **ON** — highest collection-boosted member wins per group |")
-    W(f"| Collection boosts | **ON** — {_BOOST_NOTE} |")
-    W("| Embed times | Post-warmup — models loaded into memory before measurement |")
     W("")
 
     if not is_hf:

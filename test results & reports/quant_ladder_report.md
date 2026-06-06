@@ -2,54 +2,93 @@
 
 Six variants of `mxbai-embed-large` / `mxbai-embed-xsmall`, stepped from full F16
 through GGUF 4-bit down to ONNX INT4. All variants query the `small-model-eval`
-index; BM25 on `english-mxbai` is the lexical baseline.
-
-**Filters & boosts** (identical to production semantic search)
-
-| Setting | Status |
-|---|---|
-| `isChainRef` exclusion | **ON** — chain-reference hadiths excluded from results |
-| Dedup by `dupGroup` | **ON** — highest collection-boosted member wins per group |
-| Collection boosts | **ON** — bukhari 5×, muslim 4.8×, nawawi40 3.3×, malik/ahmad/riyadussalihin 2.5×, nasai 3.5×, abudawud 3×, tirmidhi 2.5×, ibnmajah/darimi/mishkat 2× |
-| Embed times | Post-warmup — all models loaded into memory before measurement |
-
-> **Note on Ollama latency:** With only 2 Ollama models (F16 + Q4_K_M), both fit in
-> Ollama's loaded-model cache simultaneously — no eviction between queries. These numbers
-> reflect true single-model steady-state latency. In the full small-model comparison where
-> 5 Ollama models compete, each evicts the others between queries, adding ~440 ms reload
-> overhead per switch. The quant ladder numbers here are more representative of production.
+index (48,702 docs); BM25 on `english-mxbai` is the lexical baseline.
 
 ## Contents
 
+**Summary**
+
+- [Methodology](#methodology)
 - [Latency Summary](#latency-summary)
-- [Per-Query Results](#per-query-results)
-  - [good character and manners](#query-good-character-and-manners)
-  - [angels recording deeds](#query-angels-recording-deeds)
-  - [prayer at night](#query-prayer-at-night)
-  - [forgiving someone who wronged you](#query-forgiving-someone-who-wronged-you)
-  - [comparing yourself to others](#query-comparing-yourself-to-others)
-  - [aisha](#query-aisha)
-  - [fasting expiation sins](#query-fasting-expiation-sins)
-  - [neighbor rights](#query-neighbor-rights)
+
+**Results**
+
+- [good character and manners](#query-good-character-and-manners)
+- [angels recording deeds](#query-angels-recording-deeds)
+- [prayer at night](#query-prayer-at-night)
+- [forgiving someone who wronged you](#query-forgiving-someone-who-wronged-you)
+- [comparing yourself to others](#query-comparing-yourself-to-others)
+- [aisha](#query-aisha)
+- [fasting expiation sins](#query-fasting-expiation-sins)
+- [neighbor rights](#query-neighbor-rights)
+
+---
+
+## Methodology
+
+### What is timed
+
+Each query runs through two measured steps. Timing is wall-clock via `time.perf_counter()`.
+
+| Field | What is measured |
+|---|---|
+| **Embed (ms)** | Tokenisation + forward pass on CPU, or the Ollama HTTP round-trip to `host.docker.internal:11434`. Network to ES is excluded. |
+| **ES search (ms)** | The ES kNN call: HNSW graph traversal with `num_candidates=250`, `isChainRef` filter applied inside kNN, post-retrieval `dupGroup` dedup, and network to/from the ES container. |
+| **Total (ms)** | Embed + search. End-to-end for a single query, excluding model load time. |
+
+BM25 (`query_string` on `english-mxbai`) has no embed step — total equals search time only.
+
+### Warmup protocol
+
+**ONNX / ST models** are loaded into the Python process cache (`_onnx_cache`, `_st_cache`)
+before any timed query runs. The first call downloads weights and initialises the ONNX
+runtime session; all timed queries use the already-loaded session.
+
+**Ollama models** are re-touched (one dummy embed call) immediately before each model's
+timed batch. This causes Ollama to load that model into its in-memory serving layer.
+Subsequent queries for that model are served from RAM.
+
+> Post-warmup means weights are in memory. Numbers do not include cold-start load time
+> — roughly 200 ms for small ONNX models, 1–3 s for large Ollama models from disk.
+
+### Loop order and Ollama cache
+
+The script uses **model-major** order: all 8 queries for one model complete before
+switching to the next. This ladder has only 2 Ollama models (F16 + Q4_K_M), so both
+can stay resident in Ollama's cache simultaneously — there is no inter-query eviction.
+
+This is different from the full small-model comparison, where 5 Ollama models compete
+and evict each other between queries, adding ~440 ms reload overhead per switch.
+**The numbers here are more representative of single-model production latency.**
+
+Speedup column is relative to F16 embed time (embed dominates for CPU inference).
+
+### Filters and collection boosts
+
+All runs use production-equivalent settings:
+
+| Setting | Value |
+|---|---|
+| `isChainRef` exclusion | **ON** — chain-reference hadiths removed from kNN candidates via filter |
+| Candidate pool | `num_candidates=250`, `k=50`, then dedup to top 10 |
+| Dedup by `dupGroup` | **ON** — highest collection-boosted member wins per duplicate group |
+| Collection boosts | bukhari 5×, muslim 4.8×, nawawi40 3.3×, nasai 3.5×, abudawud 3×, tirmidhi/malik/ahmad/riyadussalihin 2.5×, ibnmajah/darimi/mishkat 2× |
 
 ---
 
 ## Latency Summary
 
-All times are post-warmup averages across 8 queries. Models run in model-major order —
-all 8 queries for one model before switching — so Ollama never evicts a model mid-batch.
-With only 2 Ollama models (F16 + Q4_K_M), both can stay resident simultaneously.
-Speedup is relative to the F16 embed time (embed cost dominates for CPU inference).
+Post-warmup averages across 8 queries. See [Methodology](#methodology) for how these are measured.
 
 | Step | Model | Dims | Backend | Avg Embed | Avg Search | Avg Total | Speedup vs F16 |
 |---|---|---|---|---|---|---|---|
 | — | BM25 Lexical | — | ES query_string | — | 20ms | 20ms | — |
-| 1 | mxbai-large F16 | 1024-dim | Ollama | 46ms | 85ms | 131ms | baseline |
-| 2 | mxbai-large Q4_K_M | 1024-dim | Ollama | 48ms | 86ms | 134ms | 1.0× |
-| 3 | mxbai-large INT8 ONNX | 1024-dim | ONNX Runtime | 24ms | 82ms | 106ms | 1.9× |
-| 4 | mxbai-xsmall FP32 | 384-dim | SentenceTransformers | 12ms | 78ms | 90ms | 3.8× |
-| 5 | mxbai-xsmall INT8 ONNX | 384-dim | ONNX Runtime | 3ms | 80ms | 83ms | 15.2× |
-| 6 | mxbai-xsmall INT4 ONNX | 384-dim | ONNX Runtime | 6ms | 80ms | 86ms | 7.6× |
+| 1 | mxbai-large F16 | 1024-dim | Ollama | 42ms | 85ms | 127ms | baseline |
+| 2 | mxbai-large Q4_K_M | 1024-dim | Ollama | 48ms | 87ms | 135ms | 0.9× |
+| 3 | mxbai-large INT8 ONNX | 1024-dim | ONNX Runtime | 24ms | 83ms | 107ms | 1.7× |
+| 4 | mxbai-xsmall FP32 | 384-dim | SentenceTransformers | 11ms | 80ms | 91ms | 3.8× |
+| 5 | mxbai-xsmall INT8 ONNX | 384-dim | ONNX Runtime | 2ms | 81ms | 83ms | 20.9× |
+| 6 | mxbai-xsmall INT4 ONNX | 384-dim | ONNX Runtime | 7ms | 80ms | 87ms | 6.0× |
 
 ---
 
@@ -59,13 +98,13 @@ Speedup is relative to the F16 embed time (embed cost dominates for CPU inferenc
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 90ms |
-| mxbai-large F16 | 37ms | 105ms |
-| mxbai-large Q4_K_M | 46ms | 106ms |
-| mxbai-large INT8 ONNX | 23ms | 80ms |
-| mxbai-xsmall FP32 | 11ms | 78ms |
-| mxbai-xsmall INT8 ONNX | 5ms | 81ms |
-| mxbai-xsmall INT4 ONNX | 6ms | 79ms |
+| BM25 Lexical | — | 89ms |
+| mxbai-large F16 | 29ms | 95ms |
+| mxbai-large Q4_K_M | 40ms | 103ms |
+| mxbai-large INT8 ONNX | 28ms | 81ms |
+| mxbai-xsmall FP32 | 10ms | 80ms |
+| mxbai-xsmall INT8 ONNX | 2ms | 80ms |
+| mxbai-xsmall INT4 ONNX | 7ms | 81ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -185,13 +224,13 @@ Speedup is relative to the F16 embed time (embed cost dominates for CPU inferenc
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 9ms |
-| mxbai-large F16 | 38ms | 83ms |
-| mxbai-large Q4_K_M | 46ms | 83ms |
-| mxbai-large INT8 ONNX | 22ms | 80ms |
-| mxbai-xsmall FP32 | 22ms | 77ms |
-| mxbai-xsmall INT8 ONNX | 4ms | 79ms |
-| mxbai-xsmall INT4 ONNX | 6ms | 80ms |
+| BM25 Lexical | — | 10ms |
+| mxbai-large F16 | 25ms | 84ms |
+| mxbai-large Q4_K_M | 47ms | 85ms |
+| mxbai-large INT8 ONNX | 22ms | 82ms |
+| mxbai-xsmall FP32 | 10ms | 77ms |
+| mxbai-xsmall INT8 ONNX | 2ms | 79ms |
+| mxbai-xsmall INT4 ONNX | 14ms | 80ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -219,7 +258,7 @@ Speedup is relative to the F16 embed time (embed cost dominates for CPU inferenc
 <td valign="top"><strong>bukhari 7429</strong>&nbsp; 0.8243<br><br>Narrated Abu Huraira: Allah's Apostle said, "(A group of) angels stay with you at night and (another group of) angels by daytime, and both groups gath</td>
 <td valign="top"><strong>mishkat 463</strong>&nbsp; 0.8258<br><br>‘Ali reported God’s messenger as saying, “The angels do not enter a house in which there is a picture, a dog, or one who is defiled.” Abu Dawud and Na</td>
 <td valign="top"><strong>bukhari 6491</strong>&nbsp; 0.8506<br><br>Narrated Ibn `Abbas: The Prophet narrating about his Lord I'm and said, "Allah ordered (the appointed angels over you) that the good and the bad deeds</td>
-<td valign="top"><strong>mishkat 44</strong>&nbsp; 0.7839 <small>· [{"graded_by": "Zubair `Aliza'i", "grade": "Muttafaqun 'alayh ", "priority": 40}]</small><br><br>Abu Huraira reported God’s messenger as saying, “When one of you makes a good profession of Islam, every good deed he does will be recorded for him te</td>
+<td valign="top"><strong>mishkat 2374</strong>&nbsp; 0.7868<br><br>Ibn ‘Abbas reported God’s messenger as saying, “God records the good deeds and the evil deeds. If anyone intends to do a good deed but does not do it,</td>
 <td valign="top"><strong>muslim 128 a</strong>&nbsp; 0.7953<br><br>It is narrated on the authority of Abu Huraira that the Messenger of Allah (may peace be upon him) said: The Great and the Glorious Lord said (to ange</td>
 <td valign="top"><strong>mishkat 44</strong>&nbsp; 0.7824 <small>· [{"graded_by": "Zubair `Aliza'i", "grade": "Muttafaqun 'alayh ", "priority": 40}]</small><br><br>Abu Huraira reported God’s messenger as saying, “When one of you makes a good profession of Islam, every good deed he does will be recorded for him te</td>
 </tr>
@@ -229,7 +268,7 @@ Speedup is relative to the F16 embed time (embed cost dominates for CPU inferenc
 <td valign="top"><strong>mishkat 924</strong>&nbsp; 0.8206<br><br>He also reported God’s Messenger as saying, “God has angels who travel about in the earth and convey to me greetings from my people.” Nassa’i and Dari</td>
 <td valign="top"><strong>mishkat 924</strong>&nbsp; 0.8251<br><br>He also reported God’s Messenger as saying, “God has angels who travel about in the earth and convey to me greetings from my people.” Nassa’i and Dari</td>
 <td valign="top"><strong>ibnmajah 76</strong>&nbsp; 0.8461 <small>· Sahih</small><br><br>'Abdullah bin Mas'ud said: "The Messenger of Allah (SAW), the true and truly inspired one, told us that: 'The creation of one of you is put together i</td>
-<td valign="top"><strong>mishkat 1559</strong>&nbsp; 0.7756<br><br>‘Abdallah b. ‘Amr reported God’s messenger as saying, “When a servant of God is accustomed to worship Him in a good manner, then becomes ill, the ange</td>
+<td valign="top"><strong>mishkat 44</strong>&nbsp; 0.7839 <small>· [{"graded_by": "Zubair `Aliza'i", "grade": "Muttafaqun 'alayh ", "priority": 40}]</small><br><br>Abu Huraira reported God’s messenger as saying, “When one of you makes a good profession of Islam, every good deed he does will be recorded for him te</td>
 <td valign="top"><strong>mishkat 44</strong>&nbsp; 0.7874 <small>· [{"graded_by": "Zubair `Aliza'i", "grade": "Muttafaqun 'alayh ", "priority": 40}]</small><br><br>Abu Huraira reported God’s messenger as saying, “When one of you makes a good profession of Islam, every good deed he does will be recorded for him te</td>
 <td valign="top"><strong>mishkat 1559</strong>&nbsp; 0.7775<br><br>‘Abdallah b. ‘Amr reported God’s messenger as saying, “When a servant of God is accustomed to worship Him in a good manner, then becomes ill, the ange</td>
 </tr>
@@ -239,7 +278,7 @@ Speedup is relative to the F16 embed time (embed cost dominates for CPU inferenc
 <td valign="top"><strong>ibnmajah 3801</strong>&nbsp; 0.8195 <small>· Da'if</small><br><br>It was narrated from 'Abdullah bin 'Umar that : the Messenger of Allah (SAW) told them: "One of the slaves of Allah said: 'Ya Rabb! Lakal-hamdu kama y</td>
 <td valign="top"><strong>ibnmajah 3801</strong>&nbsp; 0.8233 <small>· Da'if</small><br><br>It was narrated from 'Abdullah bin 'Umar that : the Messenger of Allah (SAW) told them: "One of the slaves of Allah said: 'Ya Rabb! Lakal-hamdu kama y</td>
 <td valign="top"><strong>mishkat 2374</strong>&nbsp; 0.8447<br><br>Ibn ‘Abbas reported God’s messenger as saying, “God records the good deeds and the evil deeds. If anyone intends to do a good deed but does not do it,</td>
-<td valign="top"><strong>mishkat 2096</strong>&nbsp; 0.7580<br><br>Anas reported God's messenger as saying that when lailat al-qadr comes Gabriel descends with a company of angels who invoke blessings on everyone who </td>
+<td valign="top"><strong>mishkat 1559</strong>&nbsp; 0.7756<br><br>‘Abdallah b. ‘Amr reported God’s messenger as saying, “When a servant of God is accustomed to worship Him in a good manner, then becomes ill, the ange</td>
 <td valign="top"><strong>mishkat 1559</strong>&nbsp; 0.7862<br><br>‘Abdallah b. ‘Amr reported God’s messenger as saying, “When a servant of God is accustomed to worship Him in a good manner, then becomes ill, the ange</td>
 <td valign="top"><strong>abudawud 1454</strong>&nbsp; 0.7654 <small>· Sahih</small><br><br>'Aishah reported the Prophet (saws) as saying: One who is skilled in the Qur'an is associated with the noble, upright recording angels, and he who fal</td>
 </tr>
@@ -249,7 +288,7 @@ Speedup is relative to the F16 embed time (embed cost dominates for CPU inferenc
 <td valign="top"><strong>mishkat 463</strong>&nbsp; 0.8189<br><br>‘Ali reported God’s messenger as saying, “The angels do not enter a house in which there is a picture, a dog, or one who is defiled.” Abu Dawud and Na</td>
 <td valign="top"><strong>bukhari 3210</strong>&nbsp; 0.8233<br><br>Narrated `Aisha: I heard Allah's Apostle saying, "The angels descend, the clouds and mention this or that matter decreed in the Heaven. The devils lis</td>
 <td valign="top"><strong>muslim 128 a</strong>&nbsp; 0.8437<br><br>It is narrated on the authority of Abu Huraira that the Messenger of Allah (may peace be upon him) said: The Great and the Glorious Lord said (to ange</td>
-<td valign="top"><strong>bukhari 7501</strong>&nbsp; 0.7564<br><br>Narrated Abu Huraira: Allah's Apostle said, "Allah says, 'If My slave intends to do a bad deed then (O Angels) do not write it unless he does it; if h</td>
+<td valign="top"><strong>mishkat 2096</strong>&nbsp; 0.7580<br><br>Anas reported God's messenger as saying that when lailat al-qadr comes Gabriel descends with a company of angels who invoke blessings on everyone who </td>
 <td valign="top"><strong>bukhari 7501</strong>&nbsp; 0.7610<br><br>Narrated Abu Huraira: Allah's Apostle said, "Allah says, 'If My slave intends to do a bad deed then (O Angels) do not write it unless he does it; if h</td>
 <td valign="top"><strong>muslim 128 b</strong>&nbsp; 0.7602<br><br>It is narrated on the authority of Abu Huraira that the Messenger of Allah (may peace be upon him) observed: Allah, the Great and Glorious, said: When</td>
 </tr>
@@ -259,7 +298,7 @@ Speedup is relative to the F16 embed time (embed cost dominates for CPU inferenc
 <td valign="top"><strong>bukhari 3210</strong>&nbsp; 0.8189<br><br>Narrated `Aisha: I heard Allah's Apostle saying, "The angels descend, the clouds and mention this or that matter decreed in the Heaven. The devils lis</td>
 <td valign="top"><strong>mishkat 2594</strong>&nbsp; 0.8219<br><br>‘A’isha reported God’s messenger as saying, “There is no day when God sets free more servants from hell than the day of ‘Arafa. He draws near, then pr</td>
 <td valign="top"><strong>bukhari 7429</strong>&nbsp; 0.8430<br><br>Narrated Abu Huraira: Allah's Apostle said, "(A group of) angels stay with you at night and (another group of) angels by daytime, and both groups gath</td>
-<td valign="top"><strong>bukhari 3210</strong>&nbsp; 0.7503<br><br>Narrated `Aisha: I heard Allah's Apostle saying, "The angels descend, the clouds and mention this or that matter decreed in the Heaven. The devils lis</td>
+<td valign="top"><strong>bukhari 7501</strong>&nbsp; 0.7564<br><br>Narrated Abu Huraira: Allah's Apostle said, "Allah says, 'If My slave intends to do a bad deed then (O Angels) do not write it unless he does it; if h</td>
 <td valign="top"><strong>mishkat 2096</strong>&nbsp; 0.7602<br><br>Anas reported God's messenger as saying that when lailat al-qadr comes Gabriel descends with a company of angels who invoke blessings on everyone who </td>
 <td valign="top"><strong>mishkat 635</strong>&nbsp; 0.7588<br><br>Concerning God’s words, “The recitation of the dawn is witnessed,” (Al-Qur’an, 17:78). Abu Huraira quoted the Prophet as saying, "The angels of the ni</td>
 </tr>
@@ -269,7 +308,7 @@ Speedup is relative to the F16 embed time (embed cost dominates for CPU inferenc
 <td valign="top"><strong>bukhari 7486</strong>&nbsp; 0.8180<br><br>Narrated Abu Huraira: Allah's Apostle said, "There are angels coming to you in succession at night, and others during the day, and they all gather at </td>
 <td valign="top"><strong>ibnmajah 76</strong>&nbsp; 0.8214 <small>· Sahih</small><br><br>'Abdullah bin Mas'ud said: "The Messenger of Allah (SAW), the true and truly inspired one, told us that: 'The creation of one of you is put together i</td>
 <td valign="top"><strong>mishkat 924</strong>&nbsp; 0.8423<br><br>He also reported God’s Messenger as saying, “God has angels who travel about in the earth and convey to me greetings from my people.” Nassa’i and Dari</td>
-<td valign="top"><strong>bukhari 3223</strong>&nbsp; 0.7483<br><br>Narrated Abu Huraira: The Prophet said, "Angels keep on descending from and ascending to the Heaven in turn, some at night and some by daytime, and al</td>
+<td valign="top"><strong>bukhari 3210</strong>&nbsp; 0.7503<br><br>Narrated `Aisha: I heard Allah's Apostle saying, "The angels descend, the clouds and mention this or that matter decreed in the Heaven. The devils lis</td>
 <td valign="top"><strong>muslim 128 b</strong>&nbsp; 0.7542<br><br>It is narrated on the authority of Abu Huraira that the Messenger of Allah (may peace be upon him) observed: Allah, the Great and Glorious, said: When</td>
 <td valign="top"><strong>bukhari 7501</strong>&nbsp; 0.7575<br><br>Narrated Abu Huraira: Allah's Apostle said, "Allah says, 'If My slave intends to do a bad deed then (O Angels) do not write it unless he does it; if h</td>
 </tr>
@@ -279,7 +318,7 @@ Speedup is relative to the F16 embed time (embed cost dominates for CPU inferenc
 <td valign="top"><strong>ibnmajah 76</strong>&nbsp; 0.8177 <small>· Sahih</small><br><br>'Abdullah bin Mas'ud said: "The Messenger of Allah (SAW), the true and truly inspired one, told us that: 'The creation of one of you is put together i</td>
 <td valign="top"><strong>bukhari 555</strong>&nbsp; 0.8203<br><br>Narrated Abu Huraira: Allah's Apostle said, "Angels come to you in succession by night and day and all of them get together at the time of the Fajr an</td>
 <td valign="top"><strong>riyadussalihin 547</strong>&nbsp; 0.8419<br><br>Abu Hurairah (May Allah be pleased with him) reported: Messenger of Allah (PBUH) said, "Everyday two angels descend and one of them says, 'O Allah! Co</td>
-<td valign="top"><strong>bukhari 7486</strong>&nbsp; 0.7479<br><br>Narrated Abu Huraira: Allah's Apostle said, "There are angels coming to you in succession at night, and others during the day, and they all gather at </td>
+<td valign="top"><strong>bukhari 3223</strong>&nbsp; 0.7483<br><br>Narrated Abu Huraira: The Prophet said, "Angels keep on descending from and ascending to the Heaven in turn, some at night and some by daytime, and al</td>
 <td valign="top"><strong>bukhari 3210</strong>&nbsp; 0.7507<br><br>Narrated `Aisha: I heard Allah's Apostle saying, "The angels descend, the clouds and mention this or that matter decreed in the Heaven. The devils lis</td>
 <td valign="top"><strong>muslim 129</strong>&nbsp; 0.7572<br><br>Abu Huraira reported that Muhammad, the Messenger of Allah (may peace be upon him), said: When it occurs to my bondsman that he should do a good deed </td>
 </tr>
@@ -289,7 +328,7 @@ Speedup is relative to the F16 embed time (embed cost dominates for CPU inferenc
 <td valign="top"><strong>bukhari 555</strong>&nbsp; 0.8175<br><br>Narrated Abu Huraira: Allah's Apostle said, "Angels come to you in succession by night and day and all of them get together at the time of the Fajr an</td>
 <td valign="top"><strong>bukhari 7486</strong>&nbsp; 0.8201<br><br>Narrated Abu Huraira: Allah's Apostle said, "There are angels coming to you in succession at night, and others during the day, and they all gather at </td>
 <td valign="top"><strong>bukhari 3210</strong>&nbsp; 0.8415<br><br>Narrated `Aisha: I heard Allah's Apostle saying, "The angels descend, the clouds and mention this or that matter decreed in the Heaven. The devils lis</td>
-<td valign="top"><strong>mishkat 635</strong>&nbsp; 0.7465<br><br>Concerning God’s words, “The recitation of the dawn is witnessed,” (Al-Qur’an, 17:78). Abu Huraira quoted the Prophet as saying, "The angels of the ni</td>
+<td valign="top"><strong>bukhari 7486</strong>&nbsp; 0.7479<br><br>Narrated Abu Huraira: Allah's Apostle said, "There are angels coming to you in succession at night, and others during the day, and they all gather at </td>
 <td valign="top"><strong>bukhari 3223</strong>&nbsp; 0.7489<br><br>Narrated Abu Huraira: The Prophet said, "Angels keep on descending from and ascending to the Heaven in turn, some at night and some by daytime, and al</td>
 <td valign="top"><strong>bukhari 555</strong>&nbsp; 0.7555<br><br>Narrated Abu Huraira: Allah's Apostle said, "Angels come to you in succession by night and day and all of them get together at the time of the Fajr an</td>
 </tr>
@@ -299,7 +338,7 @@ Speedup is relative to the F16 embed time (embed cost dominates for CPU inferenc
 <td valign="top"><strong>muslim 632 a</strong>&nbsp; 0.8170<br><br>Abu Huraira reported: The Messenger of Allah (may peace be upon him) said: Angels take turns among you by night and by day, and they all assemble at t</td>
 <td valign="top"><strong>muslim 632 a</strong>&nbsp; 0.8199<br><br>Abu Huraira reported: The Messenger of Allah (may peace be upon him) said: Angels take turns among you by night and by day, and they all assemble at t</td>
 <td valign="top"><strong>bukhari 555</strong>&nbsp; 0.8405<br><br>Narrated Abu Huraira: Allah's Apostle said, "Angels come to you in succession by night and day and all of them get together at the time of the Fajr an</td>
-<td valign="top"><strong>bukhari 3332</strong>&nbsp; 0.7462<br><br>Narrated `Abdullah: Allah's Apostle, the true and truly inspired said, "(as regards your creation), every one of you is collected in the womb of his m</td>
+<td valign="top"><strong>mishkat 635</strong>&nbsp; 0.7465<br><br>Concerning God’s words, “The recitation of the dawn is witnessed,” (Al-Qur’an, 17:78). Abu Huraira quoted the Prophet as saying, "The angels of the ni</td>
 <td valign="top"><strong>bukhari 3332</strong>&nbsp; 0.7485<br><br>Narrated `Abdullah: Allah's Apostle, the true and truly inspired said, "(as regards your creation), every one of you is collected in the womb of his m</td>
 <td valign="top"><strong>bukhari 3210</strong>&nbsp; 0.7554<br><br>Narrated `Aisha: I heard Allah's Apostle saying, "The angels descend, the clouds and mention this or that matter decreed in the Heaven. The devils lis</td>
 </tr>
@@ -312,11 +351,11 @@ Speedup is relative to the F16 embed time (embed cost dominates for CPU inferenc
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 13ms |
-| mxbai-large F16 | 43ms | 81ms |
-| mxbai-large Q4_K_M | 48ms | 83ms |
-| mxbai-large INT8 ONNX | 21ms | 82ms |
-| mxbai-xsmall FP32 | 9ms | 78ms |
-| mxbai-xsmall INT8 ONNX | 2ms | 79ms |
+| mxbai-large F16 | 56ms | 83ms |
+| mxbai-large Q4_K_M | 43ms | 84ms |
+| mxbai-large INT8 ONNX | 24ms | 82ms |
+| mxbai-xsmall FP32 | 11ms | 79ms |
+| mxbai-xsmall INT8 ONNX | 2ms | 80ms |
 | mxbai-xsmall INT4 ONNX | 6ms | 79ms |
 
 <table width="100%"><thead><tr>
@@ -437,13 +476,13 @@ Speedup is relative to the F16 embed time (embed cost dominates for CPU inferenc
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 12ms |
-| mxbai-large F16 | 51ms | 81ms |
-| mxbai-large Q4_K_M | 53ms | 83ms |
-| mxbai-large INT8 ONNX | 30ms | 83ms |
+| BM25 Lexical | — | 13ms |
+| mxbai-large F16 | 48ms | 83ms |
+| mxbai-large Q4_K_M | 56ms | 84ms |
+| mxbai-large INT8 ONNX | 29ms | 85ms |
 | mxbai-xsmall FP32 | 10ms | 77ms |
-| mxbai-xsmall INT8 ONNX | 2ms | 78ms |
-| mxbai-xsmall INT4 ONNX | 11ms | 80ms |
+| mxbai-xsmall INT8 ONNX | 2ms | 82ms |
+| mxbai-xsmall INT4 ONNX | 7ms | 80ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -563,13 +602,13 @@ Speedup is relative to the F16 embed time (embed cost dominates for CPU inferenc
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 11ms |
-| mxbai-large F16 | 54ms | 82ms |
-| mxbai-large Q4_K_M | 47ms | 81ms |
-| mxbai-large INT8 ONNX | 39ms | 83ms |
-| mxbai-xsmall FP32 | 11ms | 79ms |
-| mxbai-xsmall INT8 ONNX | 6ms | 79ms |
-| mxbai-xsmall INT4 ONNX | 6ms | 81ms |
+| BM25 Lexical | — | 10ms |
+| mxbai-large F16 | 44ms | 82ms |
+| mxbai-large Q4_K_M | 45ms | 82ms |
+| mxbai-large INT8 ONNX | 22ms | 83ms |
+| mxbai-xsmall FP32 | 10ms | 81ms |
+| mxbai-xsmall INT8 ONNX | 2ms | 82ms |
+| mxbai-xsmall INT4 ONNX | 6ms | 80ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -690,12 +729,12 @@ Speedup is relative to the F16 embed time (embed cost dominates for CPU inferenc
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 9ms |
-| mxbai-large F16 | 42ms | 81ms |
-| mxbai-large Q4_K_M | 52ms | 85ms |
-| mxbai-large INT8 ONNX | 17ms | 83ms |
-| mxbai-xsmall FP32 | 8ms | 80ms |
+| mxbai-large F16 | 43ms | 83ms |
+| mxbai-large Q4_K_M | 49ms | 85ms |
+| mxbai-large INT8 ONNX | 18ms | 83ms |
+| mxbai-xsmall FP32 | 13ms | 81ms |
 | mxbai-xsmall INT8 ONNX | 2ms | 83ms |
-| mxbai-xsmall INT4 ONNX | 5ms | 82ms |
+| mxbai-xsmall INT4 ONNX | 2ms | 83ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -816,12 +855,12 @@ Speedup is relative to the F16 embed time (embed cost dominates for CPU inferenc
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 10ms |
-| mxbai-large F16 | 53ms | 86ms |
-| mxbai-large Q4_K_M | 43ms | 82ms |
-| mxbai-large INT8 ONNX | 27ms | 82ms |
-| mxbai-xsmall FP32 | 13ms | 79ms |
+| mxbai-large F16 | 44ms | 84ms |
+| mxbai-large Q4_K_M | 57ms | 86ms |
+| mxbai-large INT8 ONNX | 25ms | 82ms |
+| mxbai-xsmall FP32 | 11ms | 80ms |
 | mxbai-xsmall INT8 ONNX | 2ms | 82ms |
-| mxbai-xsmall INT4 ONNX | 6ms | 80ms |
+| mxbai-xsmall INT4 ONNX | 11ms | 82ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -942,12 +981,12 @@ Speedup is relative to the F16 embed time (embed cost dominates for CPU inferenc
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 9ms |
-| mxbai-large F16 | 47ms | 81ms |
-| mxbai-large Q4_K_M | 47ms | 83ms |
-| mxbai-large INT8 ONNX | 16ms | 83ms |
-| mxbai-xsmall FP32 | 10ms | 79ms |
-| mxbai-xsmall INT8 ONNX | 2ms | 81ms |
-| mxbai-xsmall INT4 ONNX | 5ms | 81ms |
+| mxbai-large F16 | 46ms | 84ms |
+| mxbai-large Q4_K_M | 47ms | 84ms |
+| mxbai-large INT8 ONNX | 20ms | 83ms |
+| mxbai-xsmall FP32 | 12ms | 82ms |
+| mxbai-xsmall INT8 ONNX | 3ms | 83ms |
+| mxbai-xsmall INT4 ONNX | 5ms | 79ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>

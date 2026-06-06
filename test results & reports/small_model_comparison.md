@@ -2,7 +2,14 @@
 
 ## Contents
 
-**hadithText**
+**Summary**
+
+- [Methodology](#methodology)
+- [Latency Summary](#latency-summary)
+
+**Results**
+
+*hadithText*
 - [good character and manners](#hadithtext-good-character-and-manners)
 - [angels recording deeds](#hadithtext-angels-recording-deeds)
 - [prayer at night](#hadithtext-prayer-at-night)
@@ -12,7 +19,7 @@
 - [fasting expiation sins](#hadithtext-fasting-expiation-sins)
 - [neighbor rights](#hadithtext-neighbor-rights)
 
-**englishMatn**
+*englishMatn*
 - [good character and manners](#englishmatn-good-character-and-manners)
 - [angels recording deeds](#englishmatn-angels-recording-deeds)
 - [prayer at night](#englishmatn-prayer-at-night)
@@ -22,7 +29,7 @@
 - [fasting expiation sins](#englishmatn-fasting-expiation-sins)
 - [neighbor rights](#englishmatn-neighbor-rights)
 
-**HF Serverless API**
+*HF Serverless API*
 - [good character and manners](#hf-serverless-api-good-character-and-manners)
 - [angels recording deeds](#hf-serverless-api-angels-recording-deeds)
 - [prayer at night](#hf-serverless-api-prayer-at-night)
@@ -34,45 +41,93 @@
 
 ---
 
+## Methodology
+
+### What is timed
+
+Each query runs through two measured steps. Timing is wall-clock via `time.perf_counter()`.
+
+| Field | What is measured |
+|---|---|
+| **Embed (ms)** | Tokenisation + forward pass on CPU, or the Ollama HTTP round-trip to `host.docker.internal:11434`. Network to ES is excluded. |
+| **ES search (ms)** | The ES kNN call: HNSW graph traversal with `num_candidates=250`, `isChainRef` filter applied inside kNN, post-retrieval `dupGroup` dedup, and network to/from the ES container. |
+| **Total (ms)** | Embed + search. End-to-end for a single query, excluding model load time. |
+
+BM25 (`query_string` on `english-mxbai`) has no embed step — total equals search time only.
+
+HF Serverless times include the full network round-trip to HuggingFace's GPU inference
+servers. These are not local CPU numbers — they include transatlantic network latency.
+
+### Warmup protocol
+
+**ST / ONNX models** are loaded into the Python process cache (`_st_cache`, `_onnx_cache`)
+before any timed query runs. The first call downloads weights and initialises the ONNX
+runtime session; all timed queries use the already-loaded session.
+
+**Ollama models** are re-touched (one dummy embed call) immediately before each model's
+timed batch. This causes Ollama to load that model into its in-memory serving layer.
+Subsequent queries for that model are served from RAM.
+
+> Post-warmup means weights are in memory. These numbers do not include cold-start
+> load time — roughly 200 ms for small ONNX models, 1–3 s for large Ollama models
+> loading from disk for the first time.
+
+### Loop order and Ollama cache behaviour
+
+The script uses **model-major** order: all 8 queries for one model complete before
+switching to the next model. This is critical for Ollama.
+
+Ollama keeps only **one model loaded at a time** by default (configurable with
+`OLLAMA_MAX_LOADED_MODELS`). In query-major order — interleaving models per query —
+each of the 5 Ollama models would evict the others between every query, adding
+~440 ms reload overhead per switch. A model that takes 44 ms in steady state would
+appear to take ~490 ms. Model-major order eliminates this and matches the latency
+of a single-model production deployment.
+
+The `hadithText` and `englishMatn` sections are independent runs. Ollama models
+are re-touched at the start of each model's batch within each section.
+
+### Filters and collection boosts
+
+All runs use production-equivalent settings on the `small-model-eval` index (48,702 docs).
+
+| Setting | Value |
+|---|---|
+| `isChainRef` exclusion | **ON** — chain-reference hadiths removed from kNN candidates via filter |
+| Candidate pool | `num_candidates=250`, `k=50`, then dedup to top 10 |
+| Dedup by `dupGroup` | **ON** — highest collection-boosted member wins per duplicate group |
+| Collection boosts | bukhari 5×, muslim 4.8×, nawawi40 3.3×, nasai 3.5×, abudawud 3×, tirmidhi/malik/ahmad/riyadussalihin 2.5×, ibnmajah/darimi/mishkat 2× |
+
+---
+
 ## Latency Summary
 
-All times are post-warmup averages across 8 queries. Models run in model-major order so
-each Ollama model stays resident in Ollama's single-model cache for its entire batch —
-no inter-query eviction, matching single-model production latency.
+Post-warmup averages across 8 queries. See [Methodology](#methodology) for how these are measured.
 
 | Model | Dims | Backend | Avg Embed | Avg Search | Avg Total |
 |---|---|---|---|---|---|
 | BM25 Lexical | — | ES query_string | — | 12ms | 12ms |
-| mxbai-embed-large | 1024-dim | Ollama | 43ms | 86ms | 129ms |
-| nomic-embed-text | 768-dim | Ollama | 33ms | 84ms | 117ms |
-| snowflake-arctic-embed:m | 768-dim | Ollama | 49ms | 87ms | 136ms |
-| all-MiniLM-L6-v2 | 384-dim | Ollama | 34ms | 86ms | 120ms |
-| embeddinggemma-300m | 768-dim | SentenceTransformers | 67ms | 81ms | 148ms |
-| embeddinggemma-300m-qat-q8 | 768-dim | SentenceTransformers | 68ms | 84ms | 152ms |
-| embeddinggemma-300m-qat-q4 | 768-dim | SentenceTransformers | 76ms | 81ms | 157ms |
-| mxbai-embed-xsmall-v1 | 384-dim | SentenceTransformers | 12ms | 80ms | 92ms |
-| mxbai-embed-large (Q4_K_M) | 1024-dim | Ollama | 45ms | 86ms | 131ms |
-| mxbai-embed-large (INT8 ONNX) | 1024-dim | ONNX Runtime | 30ms | 82ms | 112ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 384-dim | ONNX Runtime | 2ms | 81ms | 83ms |
-| mxbai-embed-xsmall (INT4 ONNX) | 384-dim | ONNX Runtime | 5ms | 81ms | 86ms |
-| mxbai-embed-large (HF API) | 1024-dim | HF Serverless | 219ms | 98ms | 317ms |
-| snowflake-arctic-embed:m (HF API) | 768-dim | HF Serverless | 725ms | 96ms | 821ms |
-| all-MiniLM-L6-v2 (HF API) | 384-dim | HF Serverless | 182ms | 96ms | 278ms |
+| mxbai-embed-large | 1024-dim | Ollama | 44ms | 82ms | 126ms |
+| nomic-embed-text | 768-dim | Ollama | 36ms | 85ms | 121ms |
+| snowflake-arctic-embed:m | 768-dim | Ollama | 38ms | 83ms | 121ms |
+| all-MiniLM-L6-v2 | 384-dim | Ollama | 36ms | 86ms | 122ms |
+| embeddinggemma-300m | 768-dim | SentenceTransformers | 70ms | 81ms | 151ms |
+| embeddinggemma-300m-qat-q8 | 768-dim | SentenceTransformers | 70ms | 81ms | 151ms |
+| embeddinggemma-300m-qat-q4 | 768-dim | SentenceTransformers | 72ms | 82ms | 154ms |
+| mxbai-embed-xsmall-v1 | 384-dim | SentenceTransformers | 14ms | 80ms | 94ms |
+| mxbai-embed-large (Q4_K_M) | 1024-dim | Ollama | 46ms | 86ms | 132ms |
+| mxbai-embed-large (INT8 ONNX) | 1024-dim | ONNX Runtime | 23ms | 83ms | 106ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 384-dim | ONNX Runtime | 2ms | 82ms | 84ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 384-dim | ONNX Runtime | 9ms | 82ms | 91ms |
+| mxbai-embed-large (HF API) | 1024-dim | HF Serverless | 219ms | 100ms | 319ms |
+| snowflake-arctic-embed:m (HF API) | 768-dim | HF Serverless | 630ms | 98ms | 728ms |
+| all-MiniLM-L6-v2 (HF API) | 384-dim | HF Serverless | 177ms | 94ms | 271ms |
 
 ---
 
 # Small Model Comparison — hadithText
 
 Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
-
-**Filters & boosts**
-
-| Setting | Status |
-|---|---|
-| `isChainRef` exclusion | **ON** — chain-reference hadiths excluded from results |
-| Dedup by `dupGroup` | **ON** — highest collection-boosted member wins per group |
-| Collection boosts | **ON** — bukhari 5×, muslim 4.8×, nawawi40 3.3×, malik/ahmad/riyadussalihin 2.5×, nasai 3.5×, abudawud 3×, tirmidhi 2.5×, ibnmajah/darimi/mishkat 2× |
-| Embed times | Post-warmup — models loaded into memory before measurement |
 
 | # | Model | Vec field | Dims | Size | Backend |
 |---|---|---|---|---|---|
@@ -95,19 +150,19 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 15ms |
-| mxbai-embed-large | 32ms | 103ms |
-| nomic-embed-text | 26ms | 101ms |
-| snowflake-arctic-embed:m | 49ms | 111ms |
-| all-MiniLM-L6-v2 | 32ms | 108ms |
-| embeddinggemma-300m | 64ms | 81ms |
-| embeddinggemma-300m-qat-q8 | 76ms | 90ms |
-| embeddinggemma-300m-qat-q4 | 71ms | 80ms |
-| mxbai-embed-xsmall-v1 | 12ms | 79ms |
-| mxbai-embed-large (Q4_K_M) | 30ms | 105ms |
-| mxbai-embed-large (INT8 ONNX) | 23ms | 85ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 81ms |
-| mxbai-embed-xsmall (INT4 ONNX) | 7ms | 83ms |
+| BM25 Lexical | — | 13ms |
+| mxbai-embed-large | 23ms | 80ms |
+| nomic-embed-text | 25ms | 100ms |
+| snowflake-arctic-embed:m | 28ms | 94ms |
+| all-MiniLM-L6-v2 | 33ms | 107ms |
+| embeddinggemma-300m | 76ms | 80ms |
+| embeddinggemma-300m-qat-q8 | 71ms | 81ms |
+| embeddinggemma-300m-qat-q4 | 66ms | 80ms |
+| mxbai-embed-xsmall-v1 | 13ms | 79ms |
+| mxbai-embed-large (Q4_K_M) | 42ms | 104ms |
+| mxbai-embed-large (INT8 ONNX) | 18ms | 83ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 80ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 6ms | 81ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -293,19 +348,19 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 12ms |
-| mxbai-embed-large | 42ms | 82ms |
-| nomic-embed-text | 19ms | 81ms |
-| snowflake-arctic-embed:m | 40ms | 81ms |
-| all-MiniLM-L6-v2 | 34ms | 85ms |
-| embeddinggemma-300m | 58ms | 82ms |
+| BM25 Lexical | — | 10ms |
+| mxbai-embed-large | 42ms | 83ms |
+| nomic-embed-text | 21ms | 80ms |
+| snowflake-arctic-embed:m | 39ms | 83ms |
+| all-MiniLM-L6-v2 | 35ms | 82ms |
+| embeddinggemma-300m | 70ms | 81ms |
 | embeddinggemma-300m-qat-q8 | 59ms | 82ms |
-| embeddinggemma-300m-qat-q4 | 63ms | 83ms |
-| mxbai-embed-xsmall-v1 | 14ms | 79ms |
-| mxbai-embed-large (Q4_K_M) | 46ms | 84ms |
-| mxbai-embed-large (INT8 ONNX) | 25ms | 83ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 80ms |
-| mxbai-embed-xsmall (INT4 ONNX) | 7ms | 81ms |
+| embeddinggemma-300m-qat-q4 | 73ms | 83ms |
+| mxbai-embed-xsmall-v1 | 12ms | 79ms |
+| mxbai-embed-large (Q4_K_M) | 41ms | 84ms |
+| mxbai-embed-large (INT8 ONNX) | 24ms | 83ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 81ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 7ms | 82ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -492,18 +547,18 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 15ms |
-| mxbai-embed-large | 47ms | 82ms |
-| nomic-embed-text | 26ms | 80ms |
-| snowflake-arctic-embed:m | 35ms | 81ms |
-| all-MiniLM-L6-v2 | 32ms | 83ms |
-| embeddinggemma-300m | 76ms | 79ms |
-| embeddinggemma-300m-qat-q8 | 74ms | 84ms |
-| embeddinggemma-300m-qat-q4 | 75ms | 79ms |
-| mxbai-embed-xsmall-v1 | 11ms | 80ms |
-| mxbai-embed-large (Q4_K_M) | 42ms | 83ms |
-| mxbai-embed-large (INT8 ONNX) | 42ms | 80ms |
+| mxbai-embed-large | 48ms | 80ms |
+| nomic-embed-text | 34ms | 81ms |
+| snowflake-arctic-embed:m | 42ms | 80ms |
+| all-MiniLM-L6-v2 | 38ms | 88ms |
+| embeddinggemma-300m | 68ms | 79ms |
+| embeddinggemma-300m-qat-q8 | 77ms | 80ms |
+| embeddinggemma-300m-qat-q4 | 72ms | 80ms |
+| mxbai-embed-xsmall-v1 | 20ms | 79ms |
+| mxbai-embed-large (Q4_K_M) | 52ms | 84ms |
+| mxbai-embed-large (INT8 ONNX) | 20ms | 79ms |
 | mxbai-embed-xsmall (INT8 ONNX) | 2ms | 81ms |
-| mxbai-embed-xsmall (INT4 ONNX) | 6ms | 79ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 9ms | 80ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -690,18 +745,18 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 13ms |
-| mxbai-embed-large | 51ms | 83ms |
-| nomic-embed-text | 42ms | 81ms |
-| snowflake-arctic-embed:m | 120ms | 91ms |
-| all-MiniLM-L6-v2 | 41ms | 82ms |
-| embeddinggemma-300m | 80ms | 81ms |
-| embeddinggemma-300m-qat-q8 | 62ms | 83ms |
-| embeddinggemma-300m-qat-q4 | 74ms | 80ms |
-| mxbai-embed-xsmall-v1 | 12ms | 79ms |
-| mxbai-embed-large (Q4_K_M) | 56ms | 85ms |
-| mxbai-embed-large (INT8 ONNX) | 31ms | 82ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 80ms |
-| mxbai-embed-xsmall (INT4 ONNX) | 7ms | 82ms |
+| mxbai-embed-large | 46ms | 80ms |
+| nomic-embed-text | 45ms | 85ms |
+| snowflake-arctic-embed:m | 40ms | 80ms |
+| all-MiniLM-L6-v2 | 40ms | 84ms |
+| embeddinggemma-300m | 68ms | 85ms |
+| embeddinggemma-300m-qat-q8 | 80ms | 81ms |
+| embeddinggemma-300m-qat-q4 | 71ms | 82ms |
+| mxbai-embed-xsmall-v1 | 13ms | 80ms |
+| mxbai-embed-large (Q4_K_M) | 54ms | 84ms |
+| mxbai-embed-large (INT8 ONNX) | 33ms | 81ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 4ms | 79ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 24ms | 78ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -888,18 +943,18 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 10ms |
-| mxbai-embed-large | 43ms | 81ms |
-| nomic-embed-text | 40ms | 82ms |
-| snowflake-arctic-embed:m | 38ms | 84ms |
-| all-MiniLM-L6-v2 | 32ms | 82ms |
-| embeddinggemma-300m | 67ms | 83ms |
-| embeddinggemma-300m-qat-q8 | 74ms | 83ms |
-| embeddinggemma-300m-qat-q4 | 61ms | 80ms |
-| mxbai-embed-xsmall-v1 | 10ms | 78ms |
-| mxbai-embed-large (Q4_K_M) | 43ms | 82ms |
-| mxbai-embed-large (INT8 ONNX) | 28ms | 80ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 82ms |
-| mxbai-embed-xsmall (INT4 ONNX) | 6ms | 81ms |
+| mxbai-embed-large | 43ms | 82ms |
+| nomic-embed-text | 49ms | 84ms |
+| snowflake-arctic-embed:m | 33ms | 80ms |
+| all-MiniLM-L6-v2 | 35ms | 81ms |
+| embeddinggemma-300m | 77ms | 79ms |
+| embeddinggemma-300m-qat-q8 | 64ms | 80ms |
+| embeddinggemma-300m-qat-q4 | 65ms | 80ms |
+| mxbai-embed-xsmall-v1 | 14ms | 80ms |
+| mxbai-embed-large (Q4_K_M) | 44ms | 84ms |
+| mxbai-embed-large (INT8 ONNX) | 20ms | 81ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 81ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 6ms | 82ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -1020,9 +1075,9 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <td valign="top"><strong>nasai 3947</strong>&nbsp; 0.8073 <small>· sahih</small><br><br>It was narrated from Abu Musa that the Prophet said: "The superiority of 'Aishah to other women is like the superiority of Tharid to other kinds of fo</td>
 <td valign="top"><strong>forty 2</strong>&nbsp; 0.8132<br><br>War is deception.</td>
 <td valign="top"><strong>muslim 2762 b</strong>&nbsp; 0.6763<br><br>Asma' reported that Allah's Apostle (may peace be upon him) said: There is none more self-respecting than Allah, the Exalted and Glorious.</td>
-<td valign="top"><strong>nasai 384b</strong>&nbsp; 0.7035<br><br>(Another chain) with similarity.</td>
+<td valign="top"><strong>forty 17</strong>&nbsp; 0.7001<br><br>Richness lies in the richness of the soul.</td>
 <td valign="top"><strong>muslim 2963 c</strong>&nbsp; 0.7050<br><br>Abu Huraira reported Allah's Messenger (may peace be upon him) as saying: Look at those who stand at a lower level than you but don't look at those wh</td>
-<td valign="top"><strong>muslim 2963 a</strong>&nbsp; 0.7055<br><br>Abu Huraira reported that Allah's Messenger (may peace be upon him) said: When one of you looks at one who stands at a higher level than you in regard</td>
+<td valign="top"><strong>nasai 384b</strong>&nbsp; 0.7079<br><br>(Another chain) with similarity.</td>
 <td valign="top"><strong>riyadussalihin 997</strong>&nbsp; 0.7047<br><br>Ibn 'Umar (May Allah be pleased with them) reported: The Prophet (PBUH) said: "Envy is justified in regard to two types of persons only: a man whom Al</td>
 <td valign="top"><strong>abudawud 4092</strong>&nbsp; 0.7838 <small>· Sahih in chain</small><br><br>Narrated AbuHurayrah: A man who was beautiful came to the Prophet (saws). He said: Messenger of Allah, I am a man who likes beauty, and I have been gi</td>
 <td valign="top"><strong>muslim 2536</strong>&nbsp; 0.8273<br><br>'A'isha reported that a person asked Allah's Apostle (may peace be upon him) as to who amongst the people were the best. He said: Of the generation to</td>
@@ -1036,9 +1091,9 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <td valign="top"><strong>adab 1146</strong>&nbsp; 0.8044 <small>· Da'if</small><br><br>Ibn 'Abbas said, "The most precious of people in my opinion is my sitting companion. This is so much the case that he can step over the shoulders of p</td>
 <td valign="top"><strong>forty 21</strong>&nbsp; 0.8128<br><br>A man will be with whom he loves.</td>
 <td valign="top"><strong>bukhari 3336</strong>&nbsp; 0.6750<br><br>Narrated Aishah (ra): I heard the Prophet (saws), "Souls are like recruited troops: Those who are like qualities are inclined to each other, but those</td>
-<td valign="top"><strong>tirmidhi 1515</strong>&nbsp; 0.7012 <small>· Hasan</small><br><br>Another chain with similar.</td>
+<td valign="top"><strong>forty 9</strong>&nbsp; 0.6998<br><br>Modesty is entirely good.</td>
 <td valign="top"><strong>forty 9</strong>&nbsp; 0.7045<br><br>Modesty is entirely good.</td>
-<td valign="top"><strong>forty 28</strong>&nbsp; 0.7010<br><br>One who repents from sin is like someone without sin.</td>
+<td valign="top"><strong>muslim 2963 a</strong>&nbsp; 0.7055<br><br>Abu Huraira reported that Allah's Messenger (may peace be upon him) said: When one of you looks at one who stands at a higher level than you in regard</td>
 <td valign="top"><strong>muslim 816</strong>&nbsp; 0.7037<br><br>'Abdullah b. Mas'ud reported Allah's Messenger (may peace be upon him) as saying: There should be no envy but only in case of two persons: one having </td>
 <td valign="top"><strong>muslim 2536</strong>&nbsp; 0.7812<br><br>'A'isha reported that a person asked Allah's Apostle (may peace be upon him) as to who amongst the people were the best. He said: Of the generation to</td>
 <td valign="top"><strong>forty 3</strong>&nbsp; 0.8208<br><br>A Muslim is a mirror of the Muslim.</td>
@@ -1048,13 +1103,13 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <tr>
 <td align="center" valign="top"><strong>9</strong></td>
 <td valign="top"><strong>bukhari 4816</strong>&nbsp; 9.8959 <small>· Sahih</small><br><br>(regarding) the Verse: 'And you have not been screening against yourself lest your ears, and your eyes and your skins should testify against you..' (4</td>
-<td valign="top"><strong>abudawud 4092</strong>&nbsp; 0.7815 <small>· Sahih in chain</small><br><br>Narrated AbuHurayrah: A man who was beautiful came to the Prophet (saws). He said: Messenger of Allah, I am a man who likes beauty, and I have been gi</td>
+<td valign="top"><strong>nasai 384b</strong>&nbsp; 0.7822<br><br>(Another chain) with similarity.</td>
 <td valign="top"><strong>abudawud 4627</strong>&nbsp; 0.8041 <small>· Sahih</small><br><br>Ibn ‘Umar said: We used to say in the times of the Prophet (saws): We do not compare anyone with Abu Bakr. ’Umar came next and then ‘Uthman. We then w</td>
 <td valign="top"><strong>tirmidhi 226</strong>&nbsp; 0.8126<br><br>Narrator not mentioned: A Similar narration</td>
 <td valign="top"><strong>adab 783</strong>&nbsp; 0.6745 <small>· Sahih</small><br><br>Ibn 'Abbas said, "A man said, to the Prophet, 'Whatever Allah wills and you will.' He said, 'You have put an equal with Allah. It is what Allah alone </td>
-<td valign="top"><strong>forty 17</strong>&nbsp; 0.7001<br><br>Richness lies in the richness of the soul.</td>
+<td valign="top"><strong>forty 14</strong>&nbsp; 0.6987<br><br>Someone who takes back his gift is like someone who eats his vomit.</td>
 <td valign="top"><strong>bukhari 6490</strong>&nbsp; 0.7036<br><br>Narrated Abu Huraira: Allah's Apostle said, "If anyone of you looked at a person who was made superior to him in property and (in good) appearance, th</td>
-<td valign="top"><strong>forty 9</strong>&nbsp; 0.7003<br><br>Modesty is entirely good.</td>
+<td valign="top"><strong>forty 28</strong>&nbsp; 0.7010<br><br>One who repents from sin is like someone without sin.</td>
 <td valign="top"><strong>bulugh 1527</strong>&nbsp; 0.7013<br><br>’Iyad bin Himar (RAA) narrated that the Messenger of Allah (P.B.U.H.) said, “Allah, the Most High has revealed to me that you (people) should be humbl</td>
 <td valign="top"><strong>tirmidhi 2513</strong>&nbsp; 0.7812 <small>· Sahih</small><br><br>Abu Hurairah narrated that the Messenger of Allah (s.a.w) said: "Look to one who is lower than you, and do not look to one who is above you. For indee</td>
 <td valign="top"><strong>muslim 2963 c</strong>&nbsp; 0.8200<br><br>Abu Huraira reported Allah's Messenger (may peace be upon him) as saying: Look at those who stand at a lower level than you but don't look at those wh</td>
@@ -1064,13 +1119,13 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <tr>
 <td align="center" valign="top"><strong>10</strong></td>
 <td valign="top"><strong>mishkat 2757</strong>&nbsp; 9.3983 <small>· Uncategorized</small><br><br>Yahya b. Sa'id said that God’s messenger was sitting when a grave was being dug in Medina. A man looked down into the grave and said, "What a bad-rest</td>
-<td valign="top"><strong>adab 898</strong>&nbsp; 0.7814 <small>· Sahih</small><br><br>Ibn 'Abbas said, "I do not know anyone who acts by this ayat: 'Mankind! We created you from a male and a female, and made you into peoples and tribes </td>
+<td valign="top"><strong>abudawud 4092</strong>&nbsp; 0.7815 <small>· Sahih in chain</small><br><br>Narrated AbuHurayrah: A man who was beautiful came to the Prophet (saws). He said: Messenger of Allah, I am a man who likes beauty, and I have been gi</td>
 <td valign="top"><strong>nasai 3948</strong>&nbsp; 0.8039 <small>· hasan</small><br><br>It was narrated from 'Aishah that the Prophet said: "The superiority of 'Aishah to other women is like the superiority of Tharid to other kinds of foo</td>
 <td valign="top"><strong>forty 22</strong>&nbsp; 0.8125<br><br>A man who knows his worth will not be ruined.</td>
 <td valign="top"><strong>muslim 3000 b</strong>&nbsp; 0.6717<br><br>Abd al-Rahman b. Abu Bakra reported on the authority of his father that a person was mentioned in the presence of Allah's Apostle (may peace be upon h</td>
-<td valign="top"><strong>forty 9</strong>&nbsp; 0.6998<br><br>Modesty is entirely good.</td>
+<td valign="top"><strong>adab 328</strong>&nbsp; 0.6976 <small>· Da'if</small><br><br>Ibn 'Abbas said, "When you want to mention your companion's faults, remember your own faults."</td>
 <td valign="top"><strong>forty 1</strong>&nbsp; 0.6996<br><br>The report is not like witnessing.</td>
-<td valign="top"><strong>adab 328</strong>&nbsp; 0.6992 <small>· Da'if</small><br><br>Ibn 'Abbas said, "When you want to mention your companion's faults, remember your own faults."</td>
+<td valign="top"><strong>forty 9</strong>&nbsp; 0.7003<br><br>Modesty is entirely good.</td>
 <td valign="top"><strong>riyadussalihin 466</strong>&nbsp; 0.6986<br><br>Abu Hurairah (May allah be pleased with him) reported: Messenger of Allah (PBUH) said, "Look at those who are inferior to you and do not look at those</td>
 <td valign="top"><strong>adab 898</strong>&nbsp; 0.7778 <small>· Sahih</small><br><br>Ibn 'Abbas said, "I do not know anyone who acts by this ayat: 'Mankind! We created you from a male and a female, and made you into peoples and tribes </td>
 <td valign="top"><strong>adab 898</strong>&nbsp; 0.8200 <small>· Sahih</small><br><br>Ibn 'Abbas said, "I do not know anyone who acts by this ayat: 'Mankind! We created you from a male and a female, and made you into peoples and tribes </td>
@@ -1085,19 +1140,19 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 9ms |
-| mxbai-embed-large | 43ms | 83ms |
-| nomic-embed-text | 39ms | 87ms |
-| snowflake-arctic-embed:m | 34ms | 82ms |
-| all-MiniLM-L6-v2 | 33ms | 83ms |
-| embeddinggemma-300m | 60ms | 78ms |
-| embeddinggemma-300m-qat-q8 | 64ms | 82ms |
-| embeddinggemma-300m-qat-q4 | 100ms | 82ms |
-| mxbai-embed-xsmall-v1 | 12ms | 83ms |
-| mxbai-embed-large (Q4_K_M) | 42ms | 83ms |
-| mxbai-embed-large (INT8 ONNX) | 22ms | 85ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 82ms |
-| mxbai-embed-xsmall (INT4 ONNX) | 2ms | 81ms |
+| BM25 Lexical | — | 11ms |
+| mxbai-embed-large | 51ms | 84ms |
+| nomic-embed-text | 38ms | 84ms |
+| snowflake-arctic-embed:m | 39ms | 82ms |
+| all-MiniLM-L6-v2 | 36ms | 83ms |
+| embeddinggemma-300m | 70ms | 79ms |
+| embeddinggemma-300m-qat-q8 | 64ms | 81ms |
+| embeddinggemma-300m-qat-q4 | 84ms | 81ms |
+| mxbai-embed-xsmall-v1 | 10ms | 81ms |
+| mxbai-embed-large (Q4_K_M) | 47ms | 85ms |
+| mxbai-embed-large (INT8 ONNX) | 19ms | 85ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 87ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 5ms | 83ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -1202,7 +1257,7 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <td valign="top"><strong>adab 280</strong>&nbsp; 0.7742 <small>· Sahih</small><br><br>'Abdullah ibn az-Zubayr said, "I have never seen two women more generous than 'A'isha and Asma'. Their generosity was different. 'A'isha used to gathe</td>
 <td valign="top"><strong>adab 796</strong>&nbsp; 0.9143 <small>· Sahih</small><br><br>See 772.</td>
 <td valign="top"><strong>tirmidhi 3884</strong>&nbsp; 0.7503 <small>· Da'if</small><br><br>Narrated Musa bin Talhah: "I have not seen anyone clearer (in speech) than 'Aishah."</td>
-<td valign="top"><strong>bukhari 1444</strong>&nbsp; 0.7396<br><br>See previous hadith.</td>
+<td valign="top"><strong>adab 810</strong>&nbsp; 0.7359 <small>· Sahih</small><br><br>Same with another isnad.</td>
 <td valign="top"><strong>bulugh 1006</strong>&nbsp; 0.7364<br><br>Muslim has from 'Aishah (RA): "Her husband was a slave."</td>
 <td valign="top"><strong>nasai 3379</strong>&nbsp; 0.7351 <small>· hasan</small><br><br>It was narrated that 'Aishah said: "The Messenger of Allah married me when I was six, and consummated the marriage with me when I was nine."</td>
 <td valign="top"><strong>shamail 173</strong>&nbsp; 0.8112 <small>· Sahih Isnād</small><br><br>Abu Musa al-Ash'ari said that the Prophet said (Allah bless him and give him peace): “The superiority of 'Aisha over all other women is like the super</td>
@@ -1218,7 +1273,7 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <td valign="top"><strong>muslim 1211 ac</strong>&nbsp; 0.7736<br><br>Abd al-Rahman b. al Qasim narrated on the authority of 'A'isha (Allah be pleased with her) that she made a mention to Allah's Messenger (may peace be </td>
 <td valign="top"><strong>adab 1127</strong>&nbsp; 0.9122 <small>· Hasan</small><br><br>See 1122.</td>
 <td valign="top"><strong>tirmidhi 3889</strong>&nbsp; 0.7483 <small>· Sahih</small><br><br>Narrated 'Ammar bin Yasir: "She is his wife in the world and in the Hereafter." - meaning: 'Aishah [may Allah be pleased with her].</td>
-<td valign="top"><strong>adab 810</strong>&nbsp; 0.7359 <small>· Sahih</small><br><br>Same with another isnad.</td>
+<td valign="top"><strong>riyadussalihin 1643</strong>&nbsp; 0.7348<br><br>A similar narration was narrated on the authority of 'Aishah.</td>
 <td valign="top"><strong>muslim 1092 d</strong>&nbsp; 0.7357<br><br>A hadith like this has been transmitted on the authority of 'A'isha (Allah be pleased with her).</td>
 <td valign="top"><strong>adab 585</strong>&nbsp; 0.7343<br><br>(As hadith above)</td>
 <td valign="top"><strong>bukhari 3768</strong>&nbsp; 0.8094<br><br>Narrated Abu Salama: `Aisha said, "Once Allah's Apostle said (to me), 'O Aish (`Aisha)! This is Gabriel greeting you.' I said, 'Peace and Allah's Merc</td>
@@ -1234,7 +1289,7 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <td valign="top"><strong>muslim 785 b</strong>&nbsp; 0.7734<br><br>'A'isha said: The Messenger of Allah (may peace be upon him) came to me when a woman was sitting with me. He said: Who is she? I said: She is a woman </td>
 <td valign="top"><strong>adab 1249</strong>&nbsp; 0.9115 <small>· Da'if</small><br><br>See 1245.</td>
 <td valign="top"><strong>bulugh 1124</strong>&nbsp; 0.7474<br><br>The aforesaid Hadith is also a part of 'Aishah's Hadith in the course of a story.</td>
-<td valign="top"><strong>riyadussalihin 1643</strong>&nbsp; 0.7348<br><br>A similar narration was narrated on the authority of 'Aishah.</td>
+<td valign="top"><strong>mishkat 3129</strong>&nbsp; 0.7278<br><br>‘A’isha said that the Prophet married her when she was seven, she was brought to live with him when she was nine bringing her toys with her, and he di</td>
 <td valign="top"><strong>muslim 1422 b</strong>&nbsp; 0.7334<br><br>'A'isha (Allah be pleased with her) reported: Allah's Apostle (may peace be upon him) married me when I was six years old, and I was admitted to his h</td>
 <td valign="top"><strong>adab 586</strong>&nbsp; 0.7343<br><br>(As hadith above)</td>
 <td valign="top"><strong>bukhari 3771</strong>&nbsp; 0.8082<br><br>Narrated Al-Qasim bin Muhammad: Once `Aisha became sick and Ibn `Abbas went to see her and said, "O mother of the believers! You are leaving for truth</td>
@@ -1250,7 +1305,7 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <td valign="top"><strong>bulugh 1103</strong>&nbsp; 0.7730<br><br>Narrated al-Miswar bin Makhramah (RA): Some nights after her husband's death, Subai'ah al-Aslamiyah (RA) gave birth to a child. Then she went to the P</td>
 <td valign="top"><strong>adab 585</strong>&nbsp; 0.9081<br><br>(As hadith above)</td>
 <td valign="top"><strong>tirmidhi 580</strong>&nbsp; 0.7454 <small>· Da'if</small><br><br>Aisha narrated: "When the Messenger of Allah would prostrate (for recitation of) the Qur'an, he would say: (Sajada wajhiya lilladhi khalaqahu wa shaqq</td>
-<td valign="top"><strong>mishkat 3129</strong>&nbsp; 0.7278<br><br>‘A’isha said that the Prophet married her when she was seven, she was brought to live with him when she was nine bringing her toys with her, and he di</td>
+<td valign="top"><strong>shamail 389</strong>&nbsp; 0.7277 <small>· Hasan</small><br><br>'A’isha said: "No more will I envy anyone for an easy death now that I have seen how the Messenger of Allah (Allah bless him and give him peace) suffe</td>
 <td valign="top"><strong>bukhari 5918</strong>&nbsp; 0.7333<br><br>Narrated `Aisha: As if I am now looking at the shine of the hair parting of the Prophet while he was in the state of lhram.</td>
 <td valign="top"><strong>tirmidhi 1179</strong>&nbsp; 0.7330 <small>· Sahih</small><br><br>Aishah said: "The Messenger of Allah gave us the choice, so we chose him. So was that a divorce?"</td>
 <td valign="top"><strong>bukhari 3388</strong>&nbsp; 0.8052<br><br>Narrated Masruq: I asked Um Ruman, `Aisha's mother about the accusation forged against `Aisha. She said, "While I was sitting with `Aisha, an Ansari w</td>
@@ -1266,7 +1321,7 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <td valign="top"><strong>muslim 334 f</strong>&nbsp; 0.7729<br><br>'A'isha, the wife of the Apostle (may peace be upon him), said: Umm Habiba b. Jahsh who was the spouse of Abd al- Rahman b. Auf made a complaint to th</td>
 <td valign="top"><strong>adab 586</strong>&nbsp; 0.9081<br><br>(As hadith above)</td>
 <td valign="top"><strong>riyadussalihin 1643</strong>&nbsp; 0.7451<br><br>A similar narration was narrated on the authority of 'Aishah.</td>
-<td valign="top"><strong>shamail 389</strong>&nbsp; 0.7277 <small>· Hasan</small><br><br>'A’isha said: "No more will I envy anyone for an easy death now that I have seen how the Messenger of Allah (Allah bless him and give him peace) suffe</td>
+<td valign="top"><strong>abudawud 2383</strong>&nbsp; 0.7276 <small>· Sahih</small><br><br>Narrated 'Aishah: The Prophet (saws) used to kiss (me) during the month of fasting.</td>
 <td valign="top"><strong>adab 585</strong>&nbsp; 0.7328<br><br>(As hadith above)</td>
 <td valign="top"><strong>abudawud 2121</strong>&nbsp; 0.7323 <small>· Sahih</small><br><br>Narrated 'Aishah: The Messenger of Allah (saws) married me when I was seven years old. The narrator Sulaiman said: or Six years. He had intercourse wi</td>
 <td valign="top"><strong>bukhari 3770</strong>&nbsp; 0.8047<br><br>Narrated Anas bin Malik: Allah's Apostle said, "The superiority of `Aisha over other women is like the superiority of Tharid to other meals."</td>
@@ -1283,19 +1338,19 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 10ms |
-| mxbai-embed-large | 43ms | 84ms |
-| nomic-embed-text | 35ms | 82ms |
-| snowflake-arctic-embed:m | 36ms | 82ms |
-| all-MiniLM-L6-v2 | 31ms | 84ms |
-| embeddinggemma-300m | 59ms | 82ms |
-| embeddinggemma-300m-qat-q8 | 63ms | 82ms |
-| embeddinggemma-300m-qat-q4 | 94ms | 82ms |
+| BM25 Lexical | — | 11ms |
+| mxbai-embed-large | 45ms | 83ms |
+| nomic-embed-text | 43ms | 84ms |
+| snowflake-arctic-embed:m | 40ms | 82ms |
+| all-MiniLM-L6-v2 | 38ms | 84ms |
+| embeddinggemma-300m | 65ms | 82ms |
+| embeddinggemma-300m-qat-q8 | 75ms | 82ms |
+| embeddinggemma-300m-qat-q4 | 72ms | 82ms |
 | mxbai-embed-xsmall-v1 | 12ms | 80ms |
-| mxbai-embed-large (Q4_K_M) | 44ms | 84ms |
-| mxbai-embed-large (INT8 ONNX) | 50ms | 82ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 82ms |
-| mxbai-embed-xsmall (INT4 ONNX) | 6ms | 81ms |
+| mxbai-embed-large (Q4_K_M) | 43ms | 83ms |
+| mxbai-embed-large (INT8 ONNX) | 26ms | 85ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 81ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 13ms | 83ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -1481,18 +1536,18 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 8ms |
-| mxbai-embed-large | 43ms | 86ms |
-| nomic-embed-text | 35ms | 82ms |
-| snowflake-arctic-embed:m | 38ms | 81ms |
-| all-MiniLM-L6-v2 | 36ms | 82ms |
-| embeddinggemma-300m | 70ms | 81ms |
-| embeddinggemma-300m-qat-q8 | 69ms | 83ms |
-| embeddinggemma-300m-qat-q4 | 71ms | 82ms |
-| mxbai-embed-xsmall-v1 | 9ms | 81ms |
-| mxbai-embed-large (Q4_K_M) | 54ms | 83ms |
-| mxbai-embed-large (INT8 ONNX) | 19ms | 80ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 83ms |
+| BM25 Lexical | — | 9ms |
+| mxbai-embed-large | 57ms | 85ms |
+| nomic-embed-text | 37ms | 83ms |
+| snowflake-arctic-embed:m | 42ms | 86ms |
+| all-MiniLM-L6-v2 | 35ms | 81ms |
+| embeddinggemma-300m | 62ms | 82ms |
+| embeddinggemma-300m-qat-q8 | 72ms | 79ms |
+| embeddinggemma-300m-qat-q4 | 77ms | 85ms |
+| mxbai-embed-xsmall-v1 | 18ms | 81ms |
+| mxbai-embed-large (Q4_K_M) | 47ms | 84ms |
+| mxbai-embed-large (INT8 ONNX) | 26ms | 84ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 82ms |
 | mxbai-embed-xsmall (INT4 ONNX) | 2ms | 83ms |
 
 <table width="100%"><thead><tr>
@@ -1682,15 +1737,6 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 Input: `englishMatn` (matn only, isnad stripped). Same production filters/boosts as hadithText.
 Compare with hadithText section to see the effect of noisy isnad chains on retrieval.
 
-**Filters & boosts**
-
-| Setting | Status |
-|---|---|
-| `isChainRef` exclusion | **ON** — chain-reference hadiths excluded from results |
-| Dedup by `dupGroup` | **ON** — highest collection-boosted member wins per group |
-| Collection boosts | **ON** — bukhari 5×, muslim 4.8×, nawawi40 3.3×, malik/ahmad/riyadussalihin 2.5×, nasai 3.5×, abudawud 3×, tirmidhi 2.5×, ibnmajah/darimi/mishkat 2× |
-| Embed times | Post-warmup — models loaded into memory before measurement |
-
 | # | Model | Vec field | Dims | Size | Backend |
 |---|---|---|---|---|---|
 | 1 | mxbai-embed-large [matn] | `vec_mxbai_matn` | 1024-dim | 335M | Ollama |
@@ -1712,19 +1758,19 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 15ms |
-| mxbai-embed-large [matn] | 38ms | 105ms |
-| nomic-embed-text [matn] | 21ms | 86ms |
-| snowflake-arctic-embed:m [matn] | 25ms | 84ms |
-| all-MiniLM-L6-v2 [matn] | 29ms | 105ms |
-| embeddinggemma-300m [matn] | 98ms | 82ms |
-| embeddinggemma-300m-qat-q8 [matn] | 64ms | 82ms |
-| embeddinggemma-300m-qat-q4 [matn] | 64ms | 81ms |
-| mxbai-embed-xsmall-v1 [matn] | 16ms | 83ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 42ms | 110ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 26ms | 83ms |
-| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 85ms |
-| mxbai-embed-xsmall (INT4 ONNX) [matn] | 6ms | 82ms |
+| BM25 Lexical | — | 13ms |
+| mxbai-embed-large [matn] | 27ms | 104ms |
+| nomic-embed-text [matn] | 21ms | 85ms |
+| snowflake-arctic-embed:m [matn] | 16ms | 83ms |
+| all-MiniLM-L6-v2 [matn] | 30ms | 106ms |
+| embeddinggemma-300m [matn] | 79ms | 81ms |
+| embeddinggemma-300m-qat-q8 [matn] | 60ms | 83ms |
+| embeddinggemma-300m-qat-q4 [matn] | 66ms | 86ms |
+| mxbai-embed-xsmall-v1 [matn] | 12ms | 81ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 37ms | 106ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 27ms | 82ms |
+| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 81ms |
+| mxbai-embed-xsmall (INT4 ONNX) [matn] | 9ms | 84ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -1910,19 +1956,19 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 12ms |
-| mxbai-embed-large [matn] | 35ms | 83ms |
-| nomic-embed-text [matn] | 25ms | 79ms |
-| snowflake-arctic-embed:m [matn] | 34ms | 83ms |
-| all-MiniLM-L6-v2 [matn] | 24ms | 82ms |
-| embeddinggemma-300m [matn] | 78ms | 84ms |
+| BM25 Lexical | — | 10ms |
+| mxbai-embed-large [matn] | 24ms | 80ms |
+| nomic-embed-text [matn] | 37ms | 80ms |
+| snowflake-arctic-embed:m [matn] | 31ms | 82ms |
+| all-MiniLM-L6-v2 [matn] | 36ms | 84ms |
+| embeddinggemma-300m [matn] | 67ms | 81ms |
 | embeddinggemma-300m-qat-q8 [matn] | 64ms | 82ms |
-| embeddinggemma-300m-qat-q4 [matn] | 73ms | 82ms |
-| mxbai-embed-xsmall-v1 [matn] | 14ms | 77ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 44ms | 85ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 32ms | 82ms |
-| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 80ms |
-| mxbai-embed-xsmall (INT4 ONNX) [matn] | 6ms | 80ms |
+| embeddinggemma-300m-qat-q4 [matn] | 59ms | 80ms |
+| mxbai-embed-xsmall-v1 [matn] | 22ms | 79ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 39ms | 83ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 26ms | 81ms |
+| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 79ms |
+| mxbai-embed-xsmall (INT4 ONNX) [matn] | 7ms | 81ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -2090,7 +2136,7 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 <td valign="top"><strong>bukhari 555</strong>&nbsp; 0.8236<br><br>Narrated Abu Huraira: Allah's Apostle said, "Angels come to you in succession by night and day and all of them get together at the time of the Fajr an</td>
 <td valign="top"><strong>mishkat 463</strong>&nbsp; 0.8117<br><br>‘Ali reported God’s messenger as saying, “The angels do not enter a house in which there is a picture, a dog, or one who is defiled.” Abu Dawud and Na</td>
 <td valign="top"><strong>ahmad 632</strong>&nbsp; 0.7960 <small>· Sahih, because of corroborating evidences]</small><br><br>It was narrated from ‘Ali (رضي الله عنه) from the Prophet (ﷺ): “The angels do not enter a house in which there is a junub person or an image or a dog.</td>
-<td valign="top"><strong>nasai 705</strong>&nbsp; 0.7418 <small>· Sahih</small><br><br>It was narrated from Abu Hurairah that the Prophet (PBUH) said: "When a man goes out of his house to his Masjid, one foot records a good deed and the </td>
+<td valign="top"><strong>bukhari 3332</strong>&nbsp; 0.7409<br><br>Narrated `Abdullah: Allah's Apostle, the true and truly inspired said, "(as regards your creation), every one of you is collected in the womb of his m</td>
 <td valign="top"><strong>muslim 129</strong>&nbsp; 0.7407<br><br>Abu Huraira reported that Muhammad, the Messenger of Allah (may peace be upon him), said: When it occurs to my bondsman that he should do a good deed </td>
 <td valign="top"><strong>ahmad 632</strong>&nbsp; 0.7391 <small>· Sahih, because of corroborating evidences]</small><br><br>It was narrated from ‘Ali (رضي الله عنه) from the Prophet (ﷺ): “The angels do not enter a house in which there is a junub person or an image or a dog.</td>
 <td valign="top"><strong>ibnmajah 3650</strong>&nbsp; 0.7411 <small>· Hasan</small><br><br>It was narrated from ‘Ali bin Abu Talib that the Prophet (saw) said: “The angels do not enter a house in which there is a dog or an image.”</td>
@@ -2109,17 +2155,17 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 15ms |
-| mxbai-embed-large [matn] | 68ms | 84ms |
+| mxbai-embed-large [matn] | 42ms | 83ms |
 | nomic-embed-text [matn] | 37ms | 80ms |
-| snowflake-arctic-embed:m [matn] | 34ms | 82ms |
-| all-MiniLM-L6-v2 [matn] | 42ms | 82ms |
-| embeddinggemma-300m [matn] | 72ms | 80ms |
-| embeddinggemma-300m-qat-q8 [matn] | 105ms | 80ms |
-| embeddinggemma-300m-qat-q4 [matn] | 56ms | 80ms |
-| mxbai-embed-xsmall-v1 [matn] | 10ms | 77ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 41ms | 83ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 22ms | 80ms |
-| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 81ms |
+| snowflake-arctic-embed:m [matn] | 32ms | 87ms |
+| all-MiniLM-L6-v2 [matn] | 37ms | 82ms |
+| embeddinggemma-300m [matn] | 70ms | 80ms |
+| embeddinggemma-300m-qat-q8 [matn] | 62ms | 80ms |
+| embeddinggemma-300m-qat-q4 [matn] | 70ms | 79ms |
+| mxbai-embed-xsmall-v1 [matn] | 11ms | 79ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 48ms | 84ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 28ms | 81ms |
+| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 80ms |
 | mxbai-embed-xsmall (INT4 ONNX) [matn] | 6ms | 80ms |
 
 <table width="100%"><thead><tr>
@@ -2307,17 +2353,17 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 13ms |
-| mxbai-embed-large [matn] | 54ms | 83ms |
-| nomic-embed-text [matn] | 45ms | 80ms |
-| snowflake-arctic-embed:m [matn] | 46ms | 83ms |
-| all-MiniLM-L6-v2 [matn] | 46ms | 80ms |
-| embeddinggemma-300m [matn] | 71ms | 86ms |
-| embeddinggemma-300m-qat-q8 [matn] | 63ms | 81ms |
-| embeddinggemma-300m-qat-q4 [matn] | 72ms | 82ms |
-| mxbai-embed-xsmall-v1 [matn] | 10ms | 78ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 64ms | 85ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 48ms | 82ms |
-| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 80ms |
+| mxbai-embed-large [matn] | 48ms | 82ms |
+| nomic-embed-text [matn] | 38ms | 81ms |
+| snowflake-arctic-embed:m [matn] | 48ms | 82ms |
+| all-MiniLM-L6-v2 [matn] | 42ms | 82ms |
+| embeddinggemma-300m [matn] | 78ms | 82ms |
+| embeddinggemma-300m-qat-q8 [matn] | 85ms | 81ms |
+| embeddinggemma-300m-qat-q4 [matn] | 71ms | 80ms |
+| mxbai-embed-xsmall-v1 [matn] | 15ms | 79ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 59ms | 84ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 30ms | 83ms |
+| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 81ms |
 | mxbai-embed-xsmall (INT4 ONNX) [matn] | 7ms | 80ms |
 
 <table width="100%"><thead><tr>
@@ -2505,17 +2551,17 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 10ms |
-| mxbai-embed-large [matn] | 45ms | 85ms |
-| nomic-embed-text [matn] | 37ms | 82ms |
-| snowflake-arctic-embed:m [matn] | 31ms | 83ms |
-| all-MiniLM-L6-v2 [matn] | 33ms | 81ms |
-| embeddinggemma-300m [matn] | 62ms | 80ms |
-| embeddinggemma-300m-qat-q8 [matn] | 66ms | 80ms |
-| embeddinggemma-300m-qat-q4 [matn] | 76ms | 80ms |
-| mxbai-embed-xsmall-v1 [matn] | 10ms | 81ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 50ms | 83ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 27ms | 83ms |
-| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 81ms |
+| mxbai-embed-large [matn] | 45ms | 84ms |
+| nomic-embed-text [matn] | 40ms | 83ms |
+| snowflake-arctic-embed:m [matn] | 37ms | 81ms |
+| all-MiniLM-L6-v2 [matn] | 34ms | 80ms |
+| embeddinggemma-300m [matn] | 73ms | 79ms |
+| embeddinggemma-300m-qat-q8 [matn] | 85ms | 79ms |
+| embeddinggemma-300m-qat-q4 [matn] | 60ms | 81ms |
+| mxbai-embed-xsmall-v1 [matn] | 10ms | 80ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 48ms | 82ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 26ms | 82ms |
+| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 83ms |
 | mxbai-embed-xsmall (INT4 ONNX) [matn] | 6ms | 81ms |
 
 <table width="100%"><thead><tr>
@@ -2702,19 +2748,19 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 9ms |
-| mxbai-embed-large [matn] | 41ms | 89ms |
-| nomic-embed-text [matn] | 41ms | 84ms |
-| snowflake-arctic-embed:m [matn] | 46ms | 81ms |
-| all-MiniLM-L6-v2 [matn] | 34ms | 83ms |
+| BM25 Lexical | — | 11ms |
+| mxbai-embed-large [matn] | 50ms | 84ms |
+| nomic-embed-text [matn] | 37ms | 82ms |
+| snowflake-arctic-embed:m [matn] | 37ms | 83ms |
+| all-MiniLM-L6-v2 [matn] | 44ms | 85ms |
 | embeddinggemma-300m [matn] | 68ms | 82ms |
-| embeddinggemma-300m-qat-q8 [matn] | 58ms | 82ms |
-| embeddinggemma-300m-qat-q4 [matn] | 60ms | 81ms |
-| mxbai-embed-xsmall-v1 [matn] | 9ms | 82ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 51ms | 85ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 17ms | 83ms |
+| embeddinggemma-300m-qat-q8 [matn] | 68ms | 82ms |
+| embeddinggemma-300m-qat-q4 [matn] | 62ms | 80ms |
+| mxbai-embed-xsmall-v1 [matn] | 9ms | 83ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 43ms | 85ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 19ms | 89ms |
 | mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 83ms |
-| mxbai-embed-xsmall (INT4 ONNX) [matn] | 3ms | 83ms |
+| mxbai-embed-xsmall (INT4 ONNX) [matn] | 2ms | 84ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -2900,19 +2946,19 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 10ms |
-| mxbai-embed-large [matn] | 54ms | 85ms |
-| nomic-embed-text [matn] | 42ms | 84ms |
+| BM25 Lexical | — | 11ms |
+| mxbai-embed-large [matn] | 49ms | 84ms |
+| nomic-embed-text [matn] | 41ms | 82ms |
 | snowflake-arctic-embed:m [matn] | 36ms | 83ms |
-| all-MiniLM-L6-v2 [matn] | 42ms | 83ms |
-| embeddinggemma-300m [matn] | 83ms | 81ms |
-| embeddinggemma-300m-qat-q8 [matn] | 73ms | 82ms |
-| embeddinggemma-300m-qat-q4 [matn] | 79ms | 81ms |
-| mxbai-embed-xsmall-v1 [matn] | 14ms | 81ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 58ms | 84ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 27ms | 82ms |
+| all-MiniLM-L6-v2 [matn] | 34ms | 83ms |
+| embeddinggemma-300m [matn] | 108ms | 82ms |
+| embeddinggemma-300m-qat-q8 [matn] | 70ms | 82ms |
+| embeddinggemma-300m-qat-q4 [matn] | 80ms | 82ms |
+| mxbai-embed-xsmall-v1 [matn] | 15ms | 80ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 44ms | 85ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 35ms | 82ms |
 | mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 82ms |
-| mxbai-embed-xsmall (INT4 ONNX) [matn] | 6ms | 88ms |
+| mxbai-embed-xsmall (INT4 ONNX) [matn] | 6ms | 83ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -3098,19 +3144,19 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 8ms |
-| mxbai-embed-large [matn] | 39ms | 82ms |
-| nomic-embed-text [matn] | 40ms | 83ms |
-| snowflake-arctic-embed:m [matn] | 35ms | 83ms |
-| all-MiniLM-L6-v2 [matn] | 31ms | 82ms |
-| embeddinggemma-300m [matn] | 72ms | 82ms |
-| embeddinggemma-300m-qat-q8 [matn] | 73ms | 80ms |
-| embeddinggemma-300m-qat-q4 [matn] | 71ms | 81ms |
-| mxbai-embed-xsmall-v1 [matn] | 29ms | 85ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 46ms | 84ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 20ms | 81ms |
-| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 82ms |
-| mxbai-embed-xsmall (INT4 ONNX) [matn] | 5ms | 84ms |
+| BM25 Lexical | — | 9ms |
+| mxbai-embed-large [matn] | 48ms | 83ms |
+| nomic-embed-text [matn] | 42ms | 83ms |
+| snowflake-arctic-embed:m [matn] | 33ms | 83ms |
+| all-MiniLM-L6-v2 [matn] | 34ms | 81ms |
+| embeddinggemma-300m [matn] | 74ms | 81ms |
+| embeddinggemma-300m-qat-q8 [matn] | 60ms | 82ms |
+| embeddinggemma-300m-qat-q4 [matn] | 73ms | 82ms |
+| mxbai-embed-xsmall-v1 [matn] | 9ms | 80ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 43ms | 82ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 19ms | 83ms |
+| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 81ms |
+| mxbai-embed-xsmall (INT4 ONNX) [matn] | 4ms | 82ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -3299,25 +3345,16 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 HuggingFace Serverless Inference API — GPU-backed, latency includes network round-trip.
 Latency summary only (no result tables). Vectors queried against `small-model-eval`.
 
-**Filters & boosts**
-
-| Setting | Status |
-|---|---|
-| `isChainRef` exclusion | **ON** — chain-reference hadiths excluded from results |
-| Dedup by `dupGroup` | **ON** — highest collection-boosted member wins per group |
-| Collection boosts | **ON** — bukhari 5×, muslim 4.8×, nawawi40 3.3×, malik/ahmad/riyadussalihin 2.5×, nasai 3.5×, abudawud 3×, tirmidhi 2.5×, ibnmajah/darimi/mishkat 2× |
-| Embed times | Post-warmup — models loaded into memory before measurement |
-
 ---
 
 ## HF Serverless API: good character and manners
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 15ms |
-| mxbai-embed-large (HF API) | 232ms | 102ms |
-| snowflake-arctic-embed:m (HF API) | 4423ms | 99ms |
-| all-MiniLM-L6-v2 (HF API) | 177ms | 97ms |
+| BM25 Lexical | — | 13ms |
+| mxbai-embed-large (HF API) | 259ms | 102ms |
+| snowflake-arctic-embed:m (HF API) | 3548ms | 102ms |
+| all-MiniLM-L6-v2 (HF API) | 149ms | 93ms |
 
 ---
 
@@ -3325,10 +3362,10 @@ Latency summary only (no result tables). Vectors queried against `small-model-ev
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 12ms |
-| mxbai-embed-large (HF API) | 197ms | 100ms |
-| snowflake-arctic-embed:m (HF API) | 192ms | 97ms |
-| all-MiniLM-L6-v2 (HF API) | 184ms | 93ms |
+| BM25 Lexical | — | 10ms |
+| mxbai-embed-large (HF API) | 208ms | 97ms |
+| snowflake-arctic-embed:m (HF API) | 224ms | 101ms |
+| all-MiniLM-L6-v2 (HF API) | 179ms | 99ms |
 
 ---
 
@@ -3337,9 +3374,9 @@ Latency summary only (no result tables). Vectors queried against `small-model-ev
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 15ms |
-| mxbai-embed-large (HF API) | 228ms | 102ms |
-| snowflake-arctic-embed:m (HF API) | 211ms | 91ms |
-| all-MiniLM-L6-v2 (HF API) | 186ms | 98ms |
+| mxbai-embed-large (HF API) | 220ms | 97ms |
+| snowflake-arctic-embed:m (HF API) | 198ms | 93ms |
+| all-MiniLM-L6-v2 (HF API) | 177ms | 97ms |
 
 ---
 
@@ -3348,9 +3385,9 @@ Latency summary only (no result tables). Vectors queried against `small-model-ev
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 13ms |
-| mxbai-embed-large (HF API) | 224ms | 103ms |
-| snowflake-arctic-embed:m (HF API) | 199ms | 95ms |
-| all-MiniLM-L6-v2 (HF API) | 174ms | 96ms |
+| mxbai-embed-large (HF API) | 209ms | 101ms |
+| snowflake-arctic-embed:m (HF API) | 259ms | 101ms |
+| all-MiniLM-L6-v2 (HF API) | 168ms | 89ms |
 
 ---
 
@@ -3359,9 +3396,9 @@ Latency summary only (no result tables). Vectors queried against `small-model-ev
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 10ms |
-| mxbai-embed-large (HF API) | 259ms | 103ms |
-| snowflake-arctic-embed:m (HF API) | 199ms | 98ms |
-| all-MiniLM-L6-v2 (HF API) | 196ms | 98ms |
+| mxbai-embed-large (HF API) | 233ms | 102ms |
+| snowflake-arctic-embed:m (HF API) | 228ms | 95ms |
+| all-MiniLM-L6-v2 (HF API) | 148ms | 86ms |
 
 ---
 
@@ -3369,10 +3406,10 @@ Latency summary only (no result tables). Vectors queried against `small-model-ev
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 9ms |
-| mxbai-embed-large (HF API) | 198ms | 92ms |
-| snowflake-arctic-embed:m (HF API) | 179ms | 93ms |
-| all-MiniLM-L6-v2 (HF API) | 189ms | 98ms |
+| BM25 Lexical | — | 11ms |
+| mxbai-embed-large (HF API) | 217ms | 101ms |
+| snowflake-arctic-embed:m (HF API) | 188ms | 100ms |
+| all-MiniLM-L6-v2 (HF API) | 149ms | 92ms |
 
 ---
 
@@ -3380,10 +3417,10 @@ Latency summary only (no result tables). Vectors queried against `small-model-ev
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 10ms |
-| mxbai-embed-large (HF API) | 204ms | 90ms |
-| snowflake-arctic-embed:m (HF API) | 207ms | 99ms |
-| all-MiniLM-L6-v2 (HF API) | 190ms | 94ms |
+| BM25 Lexical | — | 11ms |
+| mxbai-embed-large (HF API) | 207ms | 102ms |
+| snowflake-arctic-embed:m (HF API) | 198ms | 98ms |
+| all-MiniLM-L6-v2 (HF API) | 151ms | 95ms |
 
 ---
 
@@ -3391,10 +3428,10 @@ Latency summary only (no result tables). Vectors queried against `small-model-ev
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 8ms |
-| mxbai-embed-large (HF API) | 209ms | 95ms |
-| snowflake-arctic-embed:m (HF API) | 193ms | 98ms |
-| all-MiniLM-L6-v2 (HF API) | 162ms | 91ms |
+| BM25 Lexical | — | 9ms |
+| mxbai-embed-large (HF API) | 199ms | 97ms |
+| snowflake-arctic-embed:m (HF API) | 197ms | 98ms |
+| all-MiniLM-L6-v2 (HF API) | 293ms | 102ms |
 
 ---
 
