@@ -98,6 +98,107 @@ _SHADOW_EXECUTOR = ThreadPoolExecutor(
 # the executor queue (and memory) grow without bound under load.
 _shadow_slots = threading.BoundedSemaphore(_SHADOW_MAX_INFLIGHT)
 
+# Bulk-indexing timeouts. Semantic bulk can be slow because ES embeds each
+# doc against the inference endpoint (Ollama) unless we shipped inline chunks;
+# lexical bulk is just text ingest and stays fast.
+LEXICAL_BULK_TIMEOUT_S = 60
+SEMANTIC_BULK_TIMEOUT_S = 300
+
+
+class SearchMode(str, Enum):
+    """Search mode for /search?mode=…. str mixin so equality with raw query
+    strings and JSON serialization both produce the underlying value
+    ('lexical' / 'semantic') without extra plumbing.
+    """
+
+    LEXICAL = "lexical"
+    SEMANTIC = "semantic"
+
+
+COLLECTION_BOOSTS = [
+    ("bukhari", 5.0),
+    ("muslim", 4.8),
+    ("nasai", 3.5),
+    ("abudawud", 3.0),
+    ("tirmidhi", 2.5),
+    ("ibnmajah", 2.0),
+    ("malik", 2.5),
+    ("ahmad", 2.5),
+    ("darimi", 2.0),
+    ("mishkat", 2.5),
+    ("nawawi40", 3.3),
+    ("riyadussalihin", 2.5),
+]
+_COLLECTION_BOOST_MAP = dict(COLLECTION_BOOSTS)
+
+# Exclude pure isnad-chain entries from all search paths.
+# Uses must_not rather than term:false because isChainRef is only stored on
+# flagged docs — absent field must pass through, not be excluded.
+_CHAIN_REF_FILTER = {"bool": {"must_not": {"term": {"isChainRef": True}}}}
+
+# Grade + collection facet aggregations returned on every search response.
+_FACET_AGGS = {
+    "gradeNorm": {
+        "terms": {"field": "gradeNorm", "size": 10, "missing": "Uncategorized"},
+    },
+    "collection": {
+        "terms": {"field": "collection.keyword", "size": 30},
+    },
+}
+
+_GRADE_NORM_MAP = {
+    "sahih": "Sahih", "صحيح": "Sahih",
+    "muttafaqun 'alayh": "Sahih", "muttafaqun alayh": "Sahih",
+    "hasan": "Hasan", "حسن": "Hasan", "qawi": "Hasan",
+    "hasan sahih": "Hasan", "sahih hasan": "Hasan",
+    "da'if": "Da'if", "daif": "Da'if", "weak": "Da'if", "ضعيف": "Da'if",
+    "munkar": "Da'if", "shadh": "Da'if", "shaz": "Da'if",
+    "maudu'": "Maudu'", "maudu": "Maudu'", "fabricated": "Maudu'", "موضوع": "Maudu'",
+}
+_BUKHARI_MUSLIM = {"bukhari", "muslim"}
+
+
+def _normalize_grade(raw, collection=""):
+    if collection in _BUKHARI_MUSLIM:
+        return "Sahih"
+    if not raw:
+        return "Uncategorized"
+    cleaned = raw.strip()
+    if cleaned.startswith("[") or cleaned.startswith("{"):
+        m = re.search(r'"grade"\s*:\s*"([^"]+)"', cleaned)
+        cleaned = m.group(1) if m else cleaned
+    cleaned = re.sub(r'\s*\([^)]+\)', '', cleaned).lower().strip()
+    cleaned = re.sub(r"^(?:lts|its)\s+(?:isnad|chain)\s+is\s+", "", cleaned).strip()
+    if cleaned in _GRADE_NORM_MAP:
+        return _GRADE_NORM_MAP[cleaned]
+    for k, v in _GRADE_NORM_MAP.items():
+        if cleaned.startswith(k):
+            return v
+    return "Uncategorized"
+
+
+def _dedup_hits(hits, size):
+    """Collapse duplicate groups, keeping the best-collection member per group.
+
+    Within each dupGroup, prefer the member from the most authoritative
+    collection (COLLECTION_BOOSTS), using raw ES score as tiebreaker.
+    Docs with no dupGroup are singletons and always included.
+    """
+    groups = {}
+    singletons = []
+    for h in hits:
+        gid = h["_source"].get("dupGroup")
+        if not gid:
+            singletons.append(h)
+        else:
+            coll = h["_source"].get("collection", "")
+            key = (_COLLECTION_BOOST_MAP.get(coll, 1.0), h["_score"])
+            if gid not in groups or key > groups[gid][1]:
+                groups[gid] = (h, key)
+    merged = singletons + [h for h, _ in groups.values()]
+    merged.sort(key=lambda h: h["_score"], reverse=True)
+    return merged[:size]
+
 
 @app.errorhandler(Exception)
 def _handle_unexpected(exc):
@@ -268,6 +369,7 @@ def _make_mappings(non_indexed_fields, model=None):
         "fields": {"trigram": {"type": "text", "analyzer": "trigram"}},
     }
     props["arabicText"] = {"type": "text", "analyzer": "custom_arabic"}
+    props["gradeNorm"] = {"type": "keyword"}
     props["contentHash"] = {"type": "keyword", "index": False}
     # Reconstruction payloads: kept in _source, kept out of the index entirely.
     props["en"] = {"type": "object", "enabled": False}
@@ -454,6 +556,7 @@ def index():
             "hadithNumber": hadith["hadithNumber"],
             "arabicText": hadith["hadithText"],
             "grade": hadith["grade1"],
+            "gradeNorm": _normalize_grade(hadith["grade1"], hadith["collection"]),
             "ar": ar_obj,
         }
         arabicHadiths.append(doc)
@@ -479,6 +582,7 @@ def index():
             "collection": hadith["collection"],
             "hadithText": hadith["hadithText"],
             "grade": hadith["grade1"],
+            "gradeNorm": _normalize_grade(hadith["grade1"], hadith["collection"]),
             "en": dict(hadith),
         }
         # Fold in the matching Arabic side → one bilingual doc. Arabic
@@ -750,7 +854,9 @@ def get_filter_from_args(args):
     filters = []
     if collection := args.getlist("collection"):
         filters.append({"terms": {"collection": collection}})
-    if grade := args.getlist("grade"):
+    if gradeNorm := args.getlist("gradeNorm"):
+        filters.append({"terms": {"gradeNorm": gradeNorm}})
+    elif grade := args.getlist("grade"):
         filters.append({"terms": {"grade": grade}})
     return filters
 
@@ -866,21 +972,23 @@ def _execute_lexical_search(query, filters, from_, size):
     """Lexical BM25 query, falling back to simple_query_string on syntax the strict
     parser rejects. Shared by the lexical route and the semantic fallback path; a
     BadRequestError from the fallback propagates for callers to map."""
+    all_filters = [_CHAIN_REF_FILTER] + filters
     kwargs = {
         "index": LEXICAL_INDEX,
         "from_": from_,
         "size": size,
+        "aggs": _FACET_AGGS,
         "_source": {"excludes": [SEMANTIC_FIELD]},
         "highlight": _highlight(),
         "suggest": get_suggest_block(query),
     }
     try:
         return es_client.search(
-            query=build_lexical_query(query, "query_string", filters), **kwargs
+            query=build_lexical_query(query, "query_string", all_filters), **kwargs
         )
     except BadRequestError:
         return es_client.search(
-            query=build_lexical_query(query, "simple_query_string", filters), **kwargs
+            query=build_lexical_query(query, "simple_query_string", all_filters), **kwargs
         )
 
 
@@ -894,6 +1002,7 @@ def _execute_semantic_search(model, query, filters, from_, size):
         from_=int(from_),
         size=int(size),
         query=build_semantic_query(_apply_prompt(model, "query", query), filters),
+        aggs=_FACET_AGGS,
         _source={"excludes": [SEMANTIC_FIELD]},
         suggest=get_suggest_block(query),
         highlight=_highlight(_lexical_inner(query, "simple_query_string")),
@@ -902,20 +1011,27 @@ def _execute_semantic_search(model, query, filters, from_, size):
 
 def _semantic_search(model, query, filters):
     from_ = request.args.get("from", 0)
-    size = request.args.get("size", 10)
+    size = int(request.args.get("size", 10))
+    dedup = not _is_truthy(request.args.get("show_dupes", "0"))
+    all_filters = [_CHAIN_REF_FILTER] + filters
+    fetch_size = size * 3 if dedup else size
     route = "semantic"
     try:
-        result = _execute_semantic_search(model, query, filters, from_, size)
+        result = _execute_semantic_search(model, query, all_filters, from_, fetch_size)
     except Exception:
-        # Degrade gracefully: any semantic failure (inference endpoint down,
-        # timeout, etc.) falls back to lexical so the user still gets results.
+        # Degrade gracefully: any semantic failure falls back to lexical.
         access_log.exception("semantic_search_failed", extra={"query": query})
         try:
             result = _execute_lexical_search(query, filters, from_, size)
         except BadRequestError as e:
             return malformed_query_response(e)
         route = "lexical_fallback"
-    result.body.setdefault("_meta", {})["route"] = route
+        dedup = False
+    if dedup:
+        deduped = _dedup_hits(result.body["hits"]["hits"], size)
+        result.body["hits"]["hits"] = deduped
+        result.body["hits"]["total"]["value"] = len(deduped)
+    result.body.setdefault("_meta", {}).update({"route": route, "dedup": dedup})
     return jsonify(result.body)
 
 
