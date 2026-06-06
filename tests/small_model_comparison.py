@@ -655,28 +655,50 @@ def build_table(q, model_set):
     W('')
 
 
+_BOOST_NOTE = (
+    "bukhari 5×, muslim 4.8×, nawawi40 3.3×, malik/ahmad/riyadussalihin 2.5×, "
+    "nasai 3.5×, abudawud 3×, tirmidhi 2.5×, ibnmajah/darimi/mishkat 2×"
+)
+
 def build_section(input_label, model_set):
-    backend_labels = {"ollama": "Ollama", "st": "sentence_transformers", "onnx": "ONNX Runtime", "hf_api": "HF Serverless API"}
+    backend_labels = {"ollama": "Ollama", "st": "sentence_transformers",
+                      "onnx": "ONNX Runtime", "hf_api": "HF Serverless API"}
+    is_hf = input_label == "HF Serverless API"
+
     W(f"# Small Model Comparison — {input_label}")
     W("")
     if input_label == "hadithText":
-        W("Input: raw `hadithText` (isnad + matn). Same field for all models.")
+        W("Input: raw `hadithText` (isnad + matn). Identical to production semantic search.")
+    elif input_label == "englishMatn":
+        W("Input: `englishMatn` (matn only, isnad stripped). Same production filters/boosts as hadithText.")
+        W("Compare with hadithText section to see the effect of noisy isnad chains on retrieval.")
     else:
-        W("Input: `englishMatn` (isnad-stripped). Same text for all models.")
-        W("Compare with the hadithText section to see how much isnad noise affects retrieval.")
+        W("HuggingFace Serverless Inference API — GPU-backed, latency includes network round-trip.")
+        W("Latency summary only (no result tables). Vectors queried against `small-model-eval`.")
     W("")
-    W("| # | Model | Vec field | Dims | Size | Backend |")
-    W("|---|---|---|---|---|---|")
-    for i, m in enumerate(model_set, 1):
-        parts = m["sublabel"].split("·")
-        W(f"| {i} | {m['label']} | `{m['vec_field']}` | "
-          f"{parts[0].strip()} | "
-          f"{parts[1].strip() if len(parts) > 1 else '—'} | "
-          f"{backend_labels.get(m['embed_fn'], m['embed_fn'])} |")
+
+    # ── Filters & boosts table ────────────────────────────────────────────────
+    W("**Filters & boosts**")
     W("")
-    W("*Filters: isChainRef=true excluded · Dedup ON (collection-boost priority)*")
-    W("*Embed times are post-warmup — one dummy query per model loaded before measurement.*")
+    W("| Setting | Status |")
+    W("|---|---|")
+    W("| `isChainRef` exclusion | **ON** — chain-reference hadiths excluded from results |")
+    W("| Dedup by `dupGroup` | **ON** — highest collection-boosted member wins per group |")
+    W(f"| Collection boosts | **ON** — {_BOOST_NOTE} |")
+    W("| Embed times | Post-warmup — models loaded into memory before measurement |")
     W("")
+
+    if not is_hf:
+        W("| # | Model | Vec field | Dims | Size | Backend |")
+        W("|---|---|---|---|---|---|")
+        for i, m in enumerate(model_set, 1):
+            parts = m["sublabel"].split("·")
+            W(f"| {i} | {m['label']} | `{m['vec_field']}` | "
+              f"{parts[0].strip()} | "
+              f"{parts[1].strip() if len(parts) > 1 else '—'} | "
+              f"{backend_labels.get(m['embed_fn'], m['embed_fn'])} |")
+        W("")
+
     W("---")
     W("")
 
@@ -702,7 +724,8 @@ def build_section(input_label, model_set):
                 W(f"| {m['label']} | {r['embed_ms']}ms | {r['search_ms']}ms |")
         W("")
 
-        build_table(q, display_set)
+        if not is_hf:
+            build_table(q, display_set)
         W("---")
         W("")
 

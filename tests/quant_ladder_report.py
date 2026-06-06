@@ -341,6 +341,21 @@ W("Six variants of `mxbai-embed-large` / `mxbai-embed-xsmall`, stepped from full
 W("through GGUF 4-bit down to ONNX INT4. All variants query the `small-model-eval`")
 W("index; BM25 on `english-mxbai` is the lexical baseline.")
 W("")
+W("**Filters & boosts** (identical to production semantic search)")
+W("")
+W("| Setting | Status |")
+W("|---|---|")
+W("| `isChainRef` exclusion | **ON** — chain-reference hadiths excluded from results |")
+W("| Dedup by `dupGroup` | **ON** — highest collection-boosted member wins per group |")
+W("| Collection boosts | **ON** — bukhari 5×, muslim 4.8×, nawawi40 3.3×, malik/ahmad/riyadussalihin 2.5×, nasai 3.5×, abudawud 3×, tirmidhi 2.5×, ibnmajah/darimi/mishkat 2× |")
+W("| Embed times | Post-warmup — all models loaded into memory before measurement |")
+W("")
+W("> **Note on Ollama latency:** With only 2 Ollama models (F16 + Q4_K_M), both fit in")
+W("> Ollama's loaded-model cache simultaneously — no eviction between queries. These numbers")
+W("> reflect true single-model steady-state latency. In the full small-model comparison where")
+W("> 5 Ollama models compete, each evicts the others between queries, adding ~440 ms reload")
+W("> overhead per switch. The quant ladder numbers here are more representative of production.")
+W("")
 
 # ── TOC ───────────────────────────────────────────────────────────────────────
 W("## Contents")
@@ -392,9 +407,6 @@ W("")
 
 # ── Per-query results ─────────────────────────────────────────────────────────
 W("## Per-Query Results")
-W("")
-W("*Filters: isChainRef=true excluded · Dedup ON (collection-boost priority)*")
-W("*Embed times are post-warmup — models loaded before measurement.*")
 W("")
 
 ALL_MODELS_DISPLAY = [
