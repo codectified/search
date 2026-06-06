@@ -29,16 +29,6 @@
 - [fasting expiation sins](#englishmatn-fasting-expiation-sins)
 - [neighbor rights](#englishmatn-neighbor-rights)
 
-*HF Serverless API*
-- [good character and manners](#hf-serverless-api-good-character-and-manners)
-- [angels recording deeds](#hf-serverless-api-angels-recording-deeds)
-- [prayer at night](#hf-serverless-api-prayer-at-night)
-- [forgiving someone who wronged you](#hf-serverless-api-forgiving-someone-who-wronged-you)
-- [comparing yourself to others](#hf-serverless-api-comparing-yourself-to-others)
-- [aisha](#hf-serverless-api-aisha)
-- [fasting expiation sins](#hf-serverless-api-fasting-expiation-sins)
-- [neighbor rights](#hf-serverless-api-neighbor-rights)
-
 ---
 
 ## Methodology
@@ -107,21 +97,18 @@ Post-warmup averages across 8 queries. See [Methodology](#methodology) for how t
 | Model | Dims | Backend | Avg Embed | Avg Search | Avg Total |
 |---|---|---|---|---|---|
 | BM25 Lexical | — | ES query_string | — | 12ms | 12ms |
-| mxbai-embed-large | 1024-dim | Ollama | 44ms | 82ms | 126ms |
-| nomic-embed-text | 768-dim | Ollama | 36ms | 85ms | 121ms |
-| snowflake-arctic-embed:m | 768-dim | Ollama | 38ms | 83ms | 121ms |
-| all-MiniLM-L6-v2 | 384-dim | Ollama | 36ms | 86ms | 122ms |
-| embeddinggemma-300m | 768-dim | SentenceTransformers | 70ms | 81ms | 151ms |
-| embeddinggemma-300m-qat-q8 | 768-dim | SentenceTransformers | 70ms | 81ms | 151ms |
-| embeddinggemma-300m-qat-q4 | 768-dim | SentenceTransformers | 72ms | 82ms | 154ms |
-| mxbai-embed-xsmall-v1 | 384-dim | SentenceTransformers | 14ms | 80ms | 94ms |
-| mxbai-embed-large (Q4_K_M) | 1024-dim | Ollama | 46ms | 86ms | 132ms |
-| mxbai-embed-large (INT8 ONNX) | 1024-dim | ONNX Runtime | 23ms | 83ms | 106ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 384-dim | ONNX Runtime | 2ms | 82ms | 84ms |
-| mxbai-embed-xsmall (INT4 ONNX) | 384-dim | ONNX Runtime | 9ms | 82ms | 91ms |
-| mxbai-embed-large (HF API) | 1024-dim | HF Serverless | 219ms | 100ms | 319ms |
-| snowflake-arctic-embed:m (HF API) | 768-dim | HF Serverless | 630ms | 98ms | 728ms |
-| all-MiniLM-L6-v2 (HF API) | 384-dim | HF Serverless | 177ms | 94ms | 271ms |
+| mxbai-embed-large | 1024-dim | Ollama | 41ms | 82ms | 123ms |
+| nomic-embed-text | 768-dim | Ollama | 41ms | 86ms | 127ms |
+| snowflake-arctic-embed:m | 768-dim | Ollama | 44ms | 89ms | 133ms |
+| all-MiniLM-L6-v2 | 384-dim | Ollama | 34ms | 90ms | 124ms |
+| embeddinggemma-300m | 768-dim | SentenceTransformers | 73ms | 83ms | 156ms |
+| embeddinggemma-300m-qat-q8 | 768-dim | SentenceTransformers | 78ms | 83ms | 161ms |
+| embeddinggemma-300m-qat-q4 | 768-dim | SentenceTransformers | 70ms | 84ms | 154ms |
+| mxbai-embed-xsmall-v1 | 384-dim | SentenceTransformers | 16ms | 81ms | 97ms |
+| mxbai-embed-large (Q4_K_M) | 1024-dim | Ollama | 45ms | 86ms | 131ms |
+| mxbai-embed-large (INT8 ONNX) | 1024-dim | ONNX Runtime | 25ms | 82ms | 107ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 384-dim | ONNX Runtime | 3ms | 82ms | 85ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 384-dim | ONNX Runtime | 7ms | 81ms | 88ms |
 
 ---
 
@@ -150,19 +137,19 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 13ms |
-| mxbai-embed-large | 23ms | 80ms |
-| nomic-embed-text | 25ms | 100ms |
-| snowflake-arctic-embed:m | 28ms | 94ms |
-| all-MiniLM-L6-v2 | 33ms | 107ms |
-| embeddinggemma-300m | 76ms | 80ms |
-| embeddinggemma-300m-qat-q8 | 71ms | 81ms |
-| embeddinggemma-300m-qat-q4 | 66ms | 80ms |
-| mxbai-embed-xsmall-v1 | 13ms | 79ms |
-| mxbai-embed-large (Q4_K_M) | 42ms | 104ms |
-| mxbai-embed-large (INT8 ONNX) | 18ms | 83ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 80ms |
-| mxbai-embed-xsmall (INT4 ONNX) | 6ms | 81ms |
+| BM25 Lexical | — | 14ms |
+| mxbai-embed-large | 24ms | 82ms |
+| nomic-embed-text | 40ms | 106ms |
+| snowflake-arctic-embed:m | 41ms | 113ms |
+| all-MiniLM-L6-v2 | 30ms | 110ms |
+| embeddinggemma-300m | 69ms | 85ms |
+| embeddinggemma-300m-qat-q8 | 62ms | 90ms |
+| embeddinggemma-300m-qat-q4 | 77ms | 91ms |
+| mxbai-embed-xsmall-v1 | 12ms | 82ms |
+| mxbai-embed-large (Q4_K_M) | 46ms | 105ms |
+| mxbai-embed-large (INT8 ONNX) | 25ms | 82ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 5ms | 81ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 16ms | 81ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -349,18 +336,18 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 10ms |
-| mxbai-embed-large | 42ms | 83ms |
-| nomic-embed-text | 21ms | 80ms |
-| snowflake-arctic-embed:m | 39ms | 83ms |
-| all-MiniLM-L6-v2 | 35ms | 82ms |
-| embeddinggemma-300m | 70ms | 81ms |
-| embeddinggemma-300m-qat-q8 | 59ms | 82ms |
-| embeddinggemma-300m-qat-q4 | 73ms | 83ms |
-| mxbai-embed-xsmall-v1 | 12ms | 79ms |
-| mxbai-embed-large (Q4_K_M) | 41ms | 84ms |
-| mxbai-embed-large (INT8 ONNX) | 24ms | 83ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 81ms |
-| mxbai-embed-xsmall (INT4 ONNX) | 7ms | 82ms |
+| mxbai-embed-large | 40ms | 83ms |
+| nomic-embed-text | 49ms | 83ms |
+| snowflake-arctic-embed:m | 34ms | 85ms |
+| all-MiniLM-L6-v2 | 25ms | 90ms |
+| embeddinggemma-300m | 69ms | 85ms |
+| embeddinggemma-300m-qat-q8 | 86ms | 82ms |
+| embeddinggemma-300m-qat-q4 | 66ms | 83ms |
+| mxbai-embed-xsmall-v1 | 23ms | 82ms |
+| mxbai-embed-large (Q4_K_M) | 31ms | 85ms |
+| mxbai-embed-large (INT8 ONNX) | 21ms | 83ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 86ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 6ms | 82ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -404,7 +391,7 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <td valign="top"><strong>bukhari 7501</strong>&nbsp; 0.7429<br><br>Narrated Abu Huraira: Allah's Apostle said, "Allah says, 'If My slave intends to do a bad deed then (O Angels) do not write it unless he does it; if h</td>
 <td valign="top"><strong>bukhari 7501</strong>&nbsp; 0.7415<br><br>Narrated Abu Huraira: Allah's Apostle said, "Allah says, 'If My slave intends to do a bad deed then (O Angels) do not write it unless he does it; if h</td>
 <td valign="top"><strong>muslim 129</strong>&nbsp; 0.7476<br><br>Abu Huraira reported that Muhammad, the Messenger of Allah (may peace be upon him), said: When it occurs to my bondsman that he should do a good deed </td>
-<td valign="top"><strong>mishkat 2374</strong>&nbsp; 0.7868<br><br>Ibn ‘Abbas reported God’s messenger as saying, “God records the good deeds and the evil deeds. If anyone intends to do a good deed but does not do it,</td>
+<td valign="top"><strong>mishkat 44</strong>&nbsp; 0.7839 <small>· [{"graded_by": "Zubair `Aliza'i", "grade": "Muttafaqun 'alayh ", "priority": 40}]</small><br><br>Abu Huraira reported God’s messenger as saying, “When one of you makes a good profession of Islam, every good deed he does will be recorded for him te</td>
 <td valign="top"><strong>mishkat 463</strong>&nbsp; 0.8258<br><br>‘Ali reported God’s messenger as saying, “The angels do not enter a house in which there is a picture, a dog, or one who is defiled.” Abu Dawud and Na</td>
 <td valign="top"><strong>bukhari 6491</strong>&nbsp; 0.8506<br><br>Narrated Ibn `Abbas: The Prophet narrating about his Lord I'm and said, "Allah ordered (the appointed angels over you) that the good and the bad deeds</td>
 <td valign="top"><strong>muslim 128 a</strong>&nbsp; 0.7953<br><br>It is narrated on the authority of Abu Huraira that the Messenger of Allah (may peace be upon him) said: The Great and the Glorious Lord said (to ange</td>
@@ -420,7 +407,7 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <td valign="top"><strong>muslim 129</strong>&nbsp; 0.7382<br><br>Abu Huraira reported that Muhammad, the Messenger of Allah (may peace be upon him), said: When it occurs to my bondsman that he should do a good deed </td>
 <td valign="top"><strong>muslim 129</strong>&nbsp; 0.7365<br><br>Abu Huraira reported that Muhammad, the Messenger of Allah (may peace be upon him), said: When it occurs to my bondsman that he should do a good deed </td>
 <td valign="top"><strong>bukhari 7501</strong>&nbsp; 0.7446<br><br>Narrated Abu Huraira: Allah's Apostle said, "Allah says, 'If My slave intends to do a bad deed then (O Angels) do not write it unless he does it; if h</td>
-<td valign="top"><strong>mishkat 44</strong>&nbsp; 0.7839 <small>· [{"graded_by": "Zubair `Aliza'i", "grade": "Muttafaqun 'alayh ", "priority": 40}]</small><br><br>Abu Huraira reported God’s messenger as saying, “When one of you makes a good profession of Islam, every good deed he does will be recorded for him te</td>
+<td valign="top"><strong>mishkat 1559</strong>&nbsp; 0.7756<br><br>‘Abdallah b. ‘Amr reported God’s messenger as saying, “When a servant of God is accustomed to worship Him in a good manner, then becomes ill, the ange</td>
 <td valign="top"><strong>mishkat 924</strong>&nbsp; 0.8251<br><br>He also reported God’s Messenger as saying, “God has angels who travel about in the earth and convey to me greetings from my people.” Nassa’i and Dari</td>
 <td valign="top"><strong>ibnmajah 76</strong>&nbsp; 0.8461 <small>· Sahih</small><br><br>'Abdullah bin Mas'ud said: "The Messenger of Allah (SAW), the true and truly inspired one, told us that: 'The creation of one of you is put together i</td>
 <td valign="top"><strong>mishkat 44</strong>&nbsp; 0.7874 <small>· [{"graded_by": "Zubair `Aliza'i", "grade": "Muttafaqun 'alayh ", "priority": 40}]</small><br><br>Abu Huraira reported God’s messenger as saying, “When one of you makes a good profession of Islam, every good deed he does will be recorded for him te</td>
@@ -436,7 +423,7 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <td valign="top"><strong>muslim 632 a</strong>&nbsp; 0.7279<br><br>Abu Huraira reported: The Messenger of Allah (may peace be upon him) said: Angels take turns among you by night and by day, and they all assemble at t</td>
 <td valign="top"><strong>mishkat 2374</strong>&nbsp; 0.7324<br><br>Ibn ‘Abbas reported God’s messenger as saying, “God records the good deeds and the evil deeds. If anyone intends to do a good deed but does not do it,</td>
 <td valign="top"><strong>mishkat 2374</strong>&nbsp; 0.7384<br><br>Ibn ‘Abbas reported God’s messenger as saying, “God records the good deeds and the evil deeds. If anyone intends to do a good deed but does not do it,</td>
-<td valign="top"><strong>mishkat 1559</strong>&nbsp; 0.7756<br><br>‘Abdallah b. ‘Amr reported God’s messenger as saying, “When a servant of God is accustomed to worship Him in a good manner, then becomes ill, the ange</td>
+<td valign="top"><strong>mishkat 2096</strong>&nbsp; 0.7580<br><br>Anas reported God's messenger as saying that when lailat al-qadr comes Gabriel descends with a company of angels who invoke blessings on everyone who </td>
 <td valign="top"><strong>ibnmajah 3801</strong>&nbsp; 0.8233 <small>· Da'if</small><br><br>It was narrated from 'Abdullah bin 'Umar that : the Messenger of Allah (SAW) told them: "One of the slaves of Allah said: 'Ya Rabb! Lakal-hamdu kama y</td>
 <td valign="top"><strong>mishkat 2374</strong>&nbsp; 0.8447<br><br>Ibn ‘Abbas reported God’s messenger as saying, “God records the good deeds and the evil deeds. If anyone intends to do a good deed but does not do it,</td>
 <td valign="top"><strong>mishkat 1559</strong>&nbsp; 0.7862<br><br>‘Abdallah b. ‘Amr reported God’s messenger as saying, “When a servant of God is accustomed to worship Him in a good manner, then becomes ill, the ange</td>
@@ -452,7 +439,7 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <td valign="top"><strong>forty 33</strong>&nbsp; 0.7257<br><br>Actions are through intentions.</td>
 <td valign="top"><strong>bukhari 7486</strong>&nbsp; 0.7289<br><br>Narrated Abu Huraira: Allah's Apostle said, "There are angels coming to you in succession at night, and others during the day, and they all gather at </td>
 <td valign="top"><strong>bukhari 555</strong>&nbsp; 0.7290<br><br>Narrated Abu Huraira: Allah's Apostle said, "Angels come to you in succession by night and day and all of them get together at the time of the Fajr an</td>
-<td valign="top"><strong>mishkat 2096</strong>&nbsp; 0.7580<br><br>Anas reported God's messenger as saying that when lailat al-qadr comes Gabriel descends with a company of angels who invoke blessings on everyone who </td>
+<td valign="top"><strong>bukhari 7501</strong>&nbsp; 0.7564<br><br>Narrated Abu Huraira: Allah's Apostle said, "Allah says, 'If My slave intends to do a bad deed then (O Angels) do not write it unless he does it; if h</td>
 <td valign="top"><strong>bukhari 3210</strong>&nbsp; 0.8233<br><br>Narrated `Aisha: I heard Allah's Apostle saying, "The angels descend, the clouds and mention this or that matter decreed in the Heaven. The devils lis</td>
 <td valign="top"><strong>muslim 128 a</strong>&nbsp; 0.8437<br><br>It is narrated on the authority of Abu Huraira that the Messenger of Allah (may peace be upon him) said: The Great and the Glorious Lord said (to ange</td>
 <td valign="top"><strong>bukhari 7501</strong>&nbsp; 0.7610<br><br>Narrated Abu Huraira: Allah's Apostle said, "Allah says, 'If My slave intends to do a bad deed then (O Angels) do not write it unless he does it; if h</td>
@@ -468,7 +455,7 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <td valign="top"><strong>mishkat 626</strong>&nbsp; 0.7255<br><br>Abu Huraira reported God’s Messenger as saying: Angels take turns among you by night and by day, and they all assemble at the dawn and the afternoon p</td>
 <td valign="top"><strong>muslim 632 a</strong>&nbsp; 0.7263<br><br>Abu Huraira reported: The Messenger of Allah (may peace be upon him) said: Angels take turns among you by night and by day, and they all assemble at t</td>
 <td valign="top"><strong>bukhari 7486</strong>&nbsp; 0.7284<br><br>Narrated Abu Huraira: Allah's Apostle said, "There are angels coming to you in succession at night, and others during the day, and they all gather at </td>
-<td valign="top"><strong>bukhari 7501</strong>&nbsp; 0.7564<br><br>Narrated Abu Huraira: Allah's Apostle said, "Allah says, 'If My slave intends to do a bad deed then (O Angels) do not write it unless he does it; if h</td>
+<td valign="top"><strong>bukhari 3210</strong>&nbsp; 0.7503<br><br>Narrated `Aisha: I heard Allah's Apostle saying, "The angels descend, the clouds and mention this or that matter decreed in the Heaven. The devils lis</td>
 <td valign="top"><strong>mishkat 2594</strong>&nbsp; 0.8219<br><br>‘A’isha reported God’s messenger as saying, “There is no day when God sets free more servants from hell than the day of ‘Arafa. He draws near, then pr</td>
 <td valign="top"><strong>bukhari 7429</strong>&nbsp; 0.8430<br><br>Narrated Abu Huraira: Allah's Apostle said, "(A group of) angels stay with you at night and (another group of) angels by daytime, and both groups gath</td>
 <td valign="top"><strong>mishkat 2096</strong>&nbsp; 0.7602<br><br>Anas reported God's messenger as saying that when lailat al-qadr comes Gabriel descends with a company of angels who invoke blessings on everyone who </td>
@@ -484,7 +471,7 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <td valign="top"><strong>bukhari 7486</strong>&nbsp; 0.7255<br><br>Narrated Abu Huraira: Allah's Apostle said, "There are angels coming to you in succession at night, and others during the day, and they all gather at </td>
 <td valign="top"><strong>bukhari 555</strong>&nbsp; 0.7262<br><br>Narrated Abu Huraira: Allah's Apostle said, "Angels come to you in succession by night and day and all of them get together at the time of the Fajr an</td>
 <td valign="top"><strong>muslim 632 a</strong>&nbsp; 0.7261<br><br>Abu Huraira reported: The Messenger of Allah (may peace be upon him) said: Angels take turns among you by night and by day, and they all assemble at t</td>
-<td valign="top"><strong>bukhari 3210</strong>&nbsp; 0.7503<br><br>Narrated `Aisha: I heard Allah's Apostle saying, "The angels descend, the clouds and mention this or that matter decreed in the Heaven. The devils lis</td>
+<td valign="top"><strong>bukhari 3223</strong>&nbsp; 0.7483<br><br>Narrated Abu Huraira: The Prophet said, "Angels keep on descending from and ascending to the Heaven in turn, some at night and some by daytime, and al</td>
 <td valign="top"><strong>ibnmajah 76</strong>&nbsp; 0.8214 <small>· Sahih</small><br><br>'Abdullah bin Mas'ud said: "The Messenger of Allah (SAW), the true and truly inspired one, told us that: 'The creation of one of you is put together i</td>
 <td valign="top"><strong>mishkat 924</strong>&nbsp; 0.8423<br><br>He also reported God’s Messenger as saying, “God has angels who travel about in the earth and convey to me greetings from my people.” Nassa’i and Dari</td>
 <td valign="top"><strong>muslim 128 b</strong>&nbsp; 0.7542<br><br>It is narrated on the authority of Abu Huraira that the Messenger of Allah (may peace be upon him) observed: Allah, the Great and Glorious, said: When</td>
@@ -500,7 +487,7 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <td valign="top"><strong>mishkat 1559</strong>&nbsp; 0.7252<br><br>‘Abdallah b. ‘Amr reported God’s messenger as saying, “When a servant of God is accustomed to worship Him in a good manner, then becomes ill, the ange</td>
 <td valign="top"><strong>mishkat 3115</strong>&nbsp; 0.7258<br><br>Ibn ‘Umar reported God’s Messenger as saying, "Avoid being naked, for with you are those who never leave you (the recording angels) except when you ar</td>
 <td valign="top"><strong>bukhari 1442</strong>&nbsp; 0.7260<br><br>Narrated Abu Huraira: The Prophet said, "Every day two angels come down from Heaven and one of them says, 'O Allah! Compensate every person who spends</td>
-<td valign="top"><strong>bukhari 3223</strong>&nbsp; 0.7483<br><br>Narrated Abu Huraira: The Prophet said, "Angels keep on descending from and ascending to the Heaven in turn, some at night and some by daytime, and al</td>
+<td valign="top"><strong>bukhari 7486</strong>&nbsp; 0.7479<br><br>Narrated Abu Huraira: Allah's Apostle said, "There are angels coming to you in succession at night, and others during the day, and they all gather at </td>
 <td valign="top"><strong>bukhari 555</strong>&nbsp; 0.8203<br><br>Narrated Abu Huraira: Allah's Apostle said, "Angels come to you in succession by night and day and all of them get together at the time of the Fajr an</td>
 <td valign="top"><strong>riyadussalihin 547</strong>&nbsp; 0.8419<br><br>Abu Hurairah (May Allah be pleased with him) reported: Messenger of Allah (PBUH) said, "Everyday two angels descend and one of them says, 'O Allah! Co</td>
 <td valign="top"><strong>bukhari 3210</strong>&nbsp; 0.7507<br><br>Narrated `Aisha: I heard Allah's Apostle saying, "The angels descend, the clouds and mention this or that matter decreed in the Heaven. The devils lis</td>
@@ -516,7 +503,7 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <td valign="top"><strong>mishkat 3115</strong>&nbsp; 0.7237<br><br>Ibn ‘Umar reported God’s Messenger as saying, "Avoid being naked, for with you are those who never leave you (the recording angels) except when you ar</td>
 <td valign="top"><strong>mishkat 1559</strong>&nbsp; 0.7226<br><br>‘Abdallah b. ‘Amr reported God’s messenger as saying, “When a servant of God is accustomed to worship Him in a good manner, then becomes ill, the ange</td>
 <td valign="top"><strong>bukhari 6408</strong>&nbsp; 0.7231<br><br>Narrated Abu Huraira: Allah 's Apostle said, "Allah has some angels who look for those who celebrate the Praises of Allah on the roads and paths. And </td>
-<td valign="top"><strong>bukhari 7486</strong>&nbsp; 0.7479<br><br>Narrated Abu Huraira: Allah's Apostle said, "There are angels coming to you in succession at night, and others during the day, and they all gather at </td>
+<td valign="top"><strong>mishkat 635</strong>&nbsp; 0.7465<br><br>Concerning God’s words, “The recitation of the dawn is witnessed,” (Al-Qur’an, 17:78). Abu Huraira quoted the Prophet as saying, "The angels of the ni</td>
 <td valign="top"><strong>bukhari 7486</strong>&nbsp; 0.8201<br><br>Narrated Abu Huraira: Allah's Apostle said, "There are angels coming to you in succession at night, and others during the day, and they all gather at </td>
 <td valign="top"><strong>bukhari 3210</strong>&nbsp; 0.8415<br><br>Narrated `Aisha: I heard Allah's Apostle saying, "The angels descend, the clouds and mention this or that matter decreed in the Heaven. The devils lis</td>
 <td valign="top"><strong>bukhari 3223</strong>&nbsp; 0.7489<br><br>Narrated Abu Huraira: The Prophet said, "Angels keep on descending from and ascending to the Heaven in turn, some at night and some by daytime, and al</td>
@@ -532,7 +519,7 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <td valign="top"><strong>mishkat 1860</strong>&nbsp; 0.7230<br><br>He reported him as saying that two angels come down every morning and one says, "O God, give him who spends something in place of it;” the other says,</td>
 <td valign="top"><strong>muslim 2112</strong>&nbsp; 0.7206<br><br>Abu Huraira reported Allah's Messenger (may peace be upon him) as saying: Angels do not enter the house in which there are portrayals or pictures.</td>
 <td valign="top"><strong>muslim 2689</strong>&nbsp; 0.7227<br><br>Abu Huraira reported Allah's Apostle (may peace be upon him) as saying Allah has mobile (squads) of angels, who have no other work (to attend to but) </td>
-<td valign="top"><strong>mishkat 635</strong>&nbsp; 0.7465<br><br>Concerning God’s words, “The recitation of the dawn is witnessed,” (Al-Qur’an, 17:78). Abu Huraira quoted the Prophet as saying, "The angels of the ni</td>
+<td valign="top"><strong>bukhari 3332</strong>&nbsp; 0.7462<br><br>Narrated `Abdullah: Allah's Apostle, the true and truly inspired said, "(as regards your creation), every one of you is collected in the womb of his m</td>
 <td valign="top"><strong>muslim 632 a</strong>&nbsp; 0.8199<br><br>Abu Huraira reported: The Messenger of Allah (may peace be upon him) said: Angels take turns among you by night and by day, and they all assemble at t</td>
 <td valign="top"><strong>bukhari 555</strong>&nbsp; 0.8405<br><br>Narrated Abu Huraira: Allah's Apostle said, "Angels come to you in succession by night and day and all of them get together at the time of the Fajr an</td>
 <td valign="top"><strong>bukhari 3332</strong>&nbsp; 0.7485<br><br>Narrated `Abdullah: Allah's Apostle, the true and truly inspired said, "(as regards your creation), every one of you is collected in the womb of his m</td>
@@ -546,19 +533,19 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 15ms |
-| mxbai-embed-large | 48ms | 80ms |
-| nomic-embed-text | 34ms | 81ms |
-| snowflake-arctic-embed:m | 42ms | 80ms |
-| all-MiniLM-L6-v2 | 38ms | 88ms |
-| embeddinggemma-300m | 68ms | 79ms |
-| embeddinggemma-300m-qat-q8 | 77ms | 80ms |
-| embeddinggemma-300m-qat-q4 | 72ms | 80ms |
-| mxbai-embed-xsmall-v1 | 20ms | 79ms |
-| mxbai-embed-large (Q4_K_M) | 52ms | 84ms |
-| mxbai-embed-large (INT8 ONNX) | 20ms | 79ms |
+| BM25 Lexical | — | 14ms |
+| mxbai-embed-large | 45ms | 81ms |
+| nomic-embed-text | 40ms | 82ms |
+| snowflake-arctic-embed:m | 33ms | 85ms |
+| all-MiniLM-L6-v2 | 51ms | 89ms |
+| embeddinggemma-300m | 79ms | 81ms |
+| embeddinggemma-300m-qat-q8 | 100ms | 79ms |
+| embeddinggemma-300m-qat-q4 | 77ms | 81ms |
+| mxbai-embed-xsmall-v1 | 34ms | 81ms |
+| mxbai-embed-large (Q4_K_M) | 54ms | 86ms |
+| mxbai-embed-large (INT8 ONNX) | 25ms | 79ms |
 | mxbai-embed-xsmall (INT8 ONNX) | 2ms | 81ms |
-| mxbai-embed-xsmall (INT4 ONNX) | 9ms | 80ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 6ms | 80ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -744,19 +731,19 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 13ms |
-| mxbai-embed-large | 46ms | 80ms |
-| nomic-embed-text | 45ms | 85ms |
-| snowflake-arctic-embed:m | 40ms | 80ms |
-| all-MiniLM-L6-v2 | 40ms | 84ms |
-| embeddinggemma-300m | 68ms | 85ms |
-| embeddinggemma-300m-qat-q8 | 80ms | 81ms |
-| embeddinggemma-300m-qat-q4 | 71ms | 82ms |
+| BM25 Lexical | — | 14ms |
+| mxbai-embed-large | 49ms | 82ms |
+| nomic-embed-text | 41ms | 82ms |
+| snowflake-arctic-embed:m | 67ms | 90ms |
+| all-MiniLM-L6-v2 | 35ms | 86ms |
+| embeddinggemma-300m | 89ms | 84ms |
+| embeddinggemma-300m-qat-q8 | 135ms | 83ms |
+| embeddinggemma-300m-qat-q4 | 64ms | 81ms |
 | mxbai-embed-xsmall-v1 | 13ms | 80ms |
-| mxbai-embed-large (Q4_K_M) | 54ms | 84ms |
-| mxbai-embed-large (INT8 ONNX) | 33ms | 81ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 4ms | 79ms |
-| mxbai-embed-xsmall (INT4 ONNX) | 24ms | 78ms |
+| mxbai-embed-large (Q4_K_M) | 51ms | 83ms |
+| mxbai-embed-large (INT8 ONNX) | 31ms | 81ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 5ms | 79ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 7ms | 79ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -942,17 +929,17 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 10ms |
-| mxbai-embed-large | 43ms | 82ms |
-| nomic-embed-text | 49ms | 84ms |
-| snowflake-arctic-embed:m | 33ms | 80ms |
-| all-MiniLM-L6-v2 | 35ms | 81ms |
-| embeddinggemma-300m | 77ms | 79ms |
-| embeddinggemma-300m-qat-q8 | 64ms | 80ms |
-| embeddinggemma-300m-qat-q4 | 65ms | 80ms |
-| mxbai-embed-xsmall-v1 | 14ms | 80ms |
-| mxbai-embed-large (Q4_K_M) | 44ms | 84ms |
-| mxbai-embed-large (INT8 ONNX) | 20ms | 81ms |
+| BM25 Lexical | — | 12ms |
+| mxbai-embed-large | 45ms | 80ms |
+| nomic-embed-text | 35ms | 83ms |
+| snowflake-arctic-embed:m | 70ms | 84ms |
+| all-MiniLM-L6-v2 | 34ms | 84ms |
+| embeddinggemma-300m | 73ms | 80ms |
+| embeddinggemma-300m-qat-q8 | 56ms | 82ms |
+| embeddinggemma-300m-qat-q4 | 68ms | 86ms |
+| mxbai-embed-xsmall-v1 | 12ms | 80ms |
+| mxbai-embed-large (Q4_K_M) | 49ms | 82ms |
+| mxbai-embed-large (INT8 ONNX) | 29ms | 81ms |
 | mxbai-embed-xsmall (INT8 ONNX) | 2ms | 81ms |
 | mxbai-embed-xsmall (INT4 ONNX) | 6ms | 82ms |
 
@@ -1103,7 +1090,7 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <tr>
 <td align="center" valign="top"><strong>9</strong></td>
 <td valign="top"><strong>bukhari 4816</strong>&nbsp; 9.8959 <small>· Sahih</small><br><br>(regarding) the Verse: 'And you have not been screening against yourself lest your ears, and your eyes and your skins should testify against you..' (4</td>
-<td valign="top"><strong>nasai 384b</strong>&nbsp; 0.7822<br><br>(Another chain) with similarity.</td>
+<td valign="top"><strong>abudawud 4092</strong>&nbsp; 0.7815 <small>· Sahih in chain</small><br><br>Narrated AbuHurayrah: A man who was beautiful came to the Prophet (saws). He said: Messenger of Allah, I am a man who likes beauty, and I have been gi</td>
 <td valign="top"><strong>abudawud 4627</strong>&nbsp; 0.8041 <small>· Sahih</small><br><br>Ibn ‘Umar said: We used to say in the times of the Prophet (saws): We do not compare anyone with Abu Bakr. ’Umar came next and then ‘Uthman. We then w</td>
 <td valign="top"><strong>tirmidhi 226</strong>&nbsp; 0.8126<br><br>Narrator not mentioned: A Similar narration</td>
 <td valign="top"><strong>adab 783</strong>&nbsp; 0.6745 <small>· Sahih</small><br><br>Ibn 'Abbas said, "A man said, to the Prophet, 'Whatever Allah wills and you will.' He said, 'You have put an equal with Allah. It is what Allah alone </td>
@@ -1119,7 +1106,7 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <tr>
 <td align="center" valign="top"><strong>10</strong></td>
 <td valign="top"><strong>mishkat 2757</strong>&nbsp; 9.3983 <small>· Uncategorized</small><br><br>Yahya b. Sa'id said that God’s messenger was sitting when a grave was being dug in Medina. A man looked down into the grave and said, "What a bad-rest</td>
-<td valign="top"><strong>abudawud 4092</strong>&nbsp; 0.7815 <small>· Sahih in chain</small><br><br>Narrated AbuHurayrah: A man who was beautiful came to the Prophet (saws). He said: Messenger of Allah, I am a man who likes beauty, and I have been gi</td>
+<td valign="top"><strong>adab 898</strong>&nbsp; 0.7814 <small>· Sahih</small><br><br>Ibn 'Abbas said, "I do not know anyone who acts by this ayat: 'Mankind! We created you from a male and a female, and made you into peoples and tribes </td>
 <td valign="top"><strong>nasai 3948</strong>&nbsp; 0.8039 <small>· hasan</small><br><br>It was narrated from 'Aishah that the Prophet said: "The superiority of 'Aishah to other women is like the superiority of Tharid to other kinds of foo</td>
 <td valign="top"><strong>forty 22</strong>&nbsp; 0.8125<br><br>A man who knows his worth will not be ruined.</td>
 <td valign="top"><strong>muslim 3000 b</strong>&nbsp; 0.6717<br><br>Abd al-Rahman b. Abu Bakra reported on the authority of his father that a person was mentioned in the presence of Allah's Apostle (may peace be upon h</td>
@@ -1140,19 +1127,19 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 11ms |
-| mxbai-embed-large | 51ms | 84ms |
-| nomic-embed-text | 38ms | 84ms |
-| snowflake-arctic-embed:m | 39ms | 82ms |
-| all-MiniLM-L6-v2 | 36ms | 83ms |
-| embeddinggemma-300m | 70ms | 79ms |
-| embeddinggemma-300m-qat-q8 | 64ms | 81ms |
-| embeddinggemma-300m-qat-q4 | 84ms | 81ms |
-| mxbai-embed-xsmall-v1 | 10ms | 81ms |
-| mxbai-embed-large (Q4_K_M) | 47ms | 85ms |
-| mxbai-embed-large (INT8 ONNX) | 19ms | 85ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 87ms |
-| mxbai-embed-xsmall (INT4 ONNX) | 5ms | 83ms |
+| BM25 Lexical | — | 12ms |
+| mxbai-embed-large | 37ms | 84ms |
+| nomic-embed-text | 46ms | 85ms |
+| snowflake-arctic-embed:m | 33ms | 85ms |
+| all-MiniLM-L6-v2 | 38ms | 86ms |
+| embeddinggemma-300m | 74ms | 85ms |
+| embeddinggemma-300m-qat-q8 | 61ms | 84ms |
+| embeddinggemma-300m-qat-q4 | 86ms | 84ms |
+| mxbai-embed-xsmall-v1 | 10ms | 83ms |
+| mxbai-embed-large (Q4_K_M) | 44ms | 83ms |
+| mxbai-embed-large (INT8 ONNX) | 23ms | 85ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 84ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 5ms | 84ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -1257,7 +1244,7 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <td valign="top"><strong>adab 280</strong>&nbsp; 0.7742 <small>· Sahih</small><br><br>'Abdullah ibn az-Zubayr said, "I have never seen two women more generous than 'A'isha and Asma'. Their generosity was different. 'A'isha used to gathe</td>
 <td valign="top"><strong>adab 796</strong>&nbsp; 0.9143 <small>· Sahih</small><br><br>See 772.</td>
 <td valign="top"><strong>tirmidhi 3884</strong>&nbsp; 0.7503 <small>· Da'if</small><br><br>Narrated Musa bin Talhah: "I have not seen anyone clearer (in speech) than 'Aishah."</td>
-<td valign="top"><strong>adab 810</strong>&nbsp; 0.7359 <small>· Sahih</small><br><br>Same with another isnad.</td>
+<td valign="top"><strong>bukhari 1444</strong>&nbsp; 0.7396<br><br>See previous hadith.</td>
 <td valign="top"><strong>bulugh 1006</strong>&nbsp; 0.7364<br><br>Muslim has from 'Aishah (RA): "Her husband was a slave."</td>
 <td valign="top"><strong>nasai 3379</strong>&nbsp; 0.7351 <small>· hasan</small><br><br>It was narrated that 'Aishah said: "The Messenger of Allah married me when I was six, and consummated the marriage with me when I was nine."</td>
 <td valign="top"><strong>shamail 173</strong>&nbsp; 0.8112 <small>· Sahih Isnād</small><br><br>Abu Musa al-Ash'ari said that the Prophet said (Allah bless him and give him peace): “The superiority of 'Aisha over all other women is like the super</td>
@@ -1273,7 +1260,7 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <td valign="top"><strong>muslim 1211 ac</strong>&nbsp; 0.7736<br><br>Abd al-Rahman b. al Qasim narrated on the authority of 'A'isha (Allah be pleased with her) that she made a mention to Allah's Messenger (may peace be </td>
 <td valign="top"><strong>adab 1127</strong>&nbsp; 0.9122 <small>· Hasan</small><br><br>See 1122.</td>
 <td valign="top"><strong>tirmidhi 3889</strong>&nbsp; 0.7483 <small>· Sahih</small><br><br>Narrated 'Ammar bin Yasir: "She is his wife in the world and in the Hereafter." - meaning: 'Aishah [may Allah be pleased with her].</td>
-<td valign="top"><strong>riyadussalihin 1643</strong>&nbsp; 0.7348<br><br>A similar narration was narrated on the authority of 'Aishah.</td>
+<td valign="top"><strong>adab 810</strong>&nbsp; 0.7359 <small>· Sahih</small><br><br>Same with another isnad.</td>
 <td valign="top"><strong>muslim 1092 d</strong>&nbsp; 0.7357<br><br>A hadith like this has been transmitted on the authority of 'A'isha (Allah be pleased with her).</td>
 <td valign="top"><strong>adab 585</strong>&nbsp; 0.7343<br><br>(As hadith above)</td>
 <td valign="top"><strong>bukhari 3768</strong>&nbsp; 0.8094<br><br>Narrated Abu Salama: `Aisha said, "Once Allah's Apostle said (to me), 'O Aish (`Aisha)! This is Gabriel greeting you.' I said, 'Peace and Allah's Merc</td>
@@ -1289,7 +1276,7 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <td valign="top"><strong>muslim 785 b</strong>&nbsp; 0.7734<br><br>'A'isha said: The Messenger of Allah (may peace be upon him) came to me when a woman was sitting with me. He said: Who is she? I said: She is a woman </td>
 <td valign="top"><strong>adab 1249</strong>&nbsp; 0.9115 <small>· Da'if</small><br><br>See 1245.</td>
 <td valign="top"><strong>bulugh 1124</strong>&nbsp; 0.7474<br><br>The aforesaid Hadith is also a part of 'Aishah's Hadith in the course of a story.</td>
-<td valign="top"><strong>mishkat 3129</strong>&nbsp; 0.7278<br><br>‘A’isha said that the Prophet married her when she was seven, she was brought to live with him when she was nine bringing her toys with her, and he di</td>
+<td valign="top"><strong>riyadussalihin 1643</strong>&nbsp; 0.7348<br><br>A similar narration was narrated on the authority of 'Aishah.</td>
 <td valign="top"><strong>muslim 1422 b</strong>&nbsp; 0.7334<br><br>'A'isha (Allah be pleased with her) reported: Allah's Apostle (may peace be upon him) married me when I was six years old, and I was admitted to his h</td>
 <td valign="top"><strong>adab 586</strong>&nbsp; 0.7343<br><br>(As hadith above)</td>
 <td valign="top"><strong>bukhari 3771</strong>&nbsp; 0.8082<br><br>Narrated Al-Qasim bin Muhammad: Once `Aisha became sick and Ibn `Abbas went to see her and said, "O mother of the believers! You are leaving for truth</td>
@@ -1305,7 +1292,7 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <td valign="top"><strong>bulugh 1103</strong>&nbsp; 0.7730<br><br>Narrated al-Miswar bin Makhramah (RA): Some nights after her husband's death, Subai'ah al-Aslamiyah (RA) gave birth to a child. Then she went to the P</td>
 <td valign="top"><strong>adab 585</strong>&nbsp; 0.9081<br><br>(As hadith above)</td>
 <td valign="top"><strong>tirmidhi 580</strong>&nbsp; 0.7454 <small>· Da'if</small><br><br>Aisha narrated: "When the Messenger of Allah would prostrate (for recitation of) the Qur'an, he would say: (Sajada wajhiya lilladhi khalaqahu wa shaqq</td>
-<td valign="top"><strong>shamail 389</strong>&nbsp; 0.7277 <small>· Hasan</small><br><br>'A’isha said: "No more will I envy anyone for an easy death now that I have seen how the Messenger of Allah (Allah bless him and give him peace) suffe</td>
+<td valign="top"><strong>mishkat 3129</strong>&nbsp; 0.7278<br><br>‘A’isha said that the Prophet married her when she was seven, she was brought to live with him when she was nine bringing her toys with her, and he di</td>
 <td valign="top"><strong>bukhari 5918</strong>&nbsp; 0.7333<br><br>Narrated `Aisha: As if I am now looking at the shine of the hair parting of the Prophet while he was in the state of lhram.</td>
 <td valign="top"><strong>tirmidhi 1179</strong>&nbsp; 0.7330 <small>· Sahih</small><br><br>Aishah said: "The Messenger of Allah gave us the choice, so we chose him. So was that a divorce?"</td>
 <td valign="top"><strong>bukhari 3388</strong>&nbsp; 0.8052<br><br>Narrated Masruq: I asked Um Ruman, `Aisha's mother about the accusation forged against `Aisha. She said, "While I was sitting with `Aisha, an Ansari w</td>
@@ -1321,7 +1308,7 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 <td valign="top"><strong>muslim 334 f</strong>&nbsp; 0.7729<br><br>'A'isha, the wife of the Apostle (may peace be upon him), said: Umm Habiba b. Jahsh who was the spouse of Abd al- Rahman b. Auf made a complaint to th</td>
 <td valign="top"><strong>adab 586</strong>&nbsp; 0.9081<br><br>(As hadith above)</td>
 <td valign="top"><strong>riyadussalihin 1643</strong>&nbsp; 0.7451<br><br>A similar narration was narrated on the authority of 'Aishah.</td>
-<td valign="top"><strong>abudawud 2383</strong>&nbsp; 0.7276 <small>· Sahih</small><br><br>Narrated 'Aishah: The Prophet (saws) used to kiss (me) during the month of fasting.</td>
+<td valign="top"><strong>shamail 389</strong>&nbsp; 0.7277 <small>· Hasan</small><br><br>'A’isha said: "No more will I envy anyone for an easy death now that I have seen how the Messenger of Allah (Allah bless him and give him peace) suffe</td>
 <td valign="top"><strong>adab 585</strong>&nbsp; 0.7328<br><br>(As hadith above)</td>
 <td valign="top"><strong>abudawud 2121</strong>&nbsp; 0.7323 <small>· Sahih</small><br><br>Narrated 'Aishah: The Messenger of Allah (saws) married me when I was seven years old. The narrator Sulaiman said: or Six years. He had intercourse wi</td>
 <td valign="top"><strong>bukhari 3770</strong>&nbsp; 0.8047<br><br>Narrated Anas bin Malik: Allah's Apostle said, "The superiority of `Aisha over other women is like the superiority of Tharid to other meals."</td>
@@ -1339,18 +1326,18 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 11ms |
-| mxbai-embed-large | 45ms | 83ms |
-| nomic-embed-text | 43ms | 84ms |
-| snowflake-arctic-embed:m | 40ms | 82ms |
-| all-MiniLM-L6-v2 | 38ms | 84ms |
-| embeddinggemma-300m | 65ms | 82ms |
-| embeddinggemma-300m-qat-q8 | 75ms | 82ms |
-| embeddinggemma-300m-qat-q4 | 72ms | 82ms |
-| mxbai-embed-xsmall-v1 | 12ms | 80ms |
-| mxbai-embed-large (Q4_K_M) | 43ms | 83ms |
-| mxbai-embed-large (INT8 ONNX) | 26ms | 85ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 81ms |
-| mxbai-embed-xsmall (INT4 ONNX) | 13ms | 83ms |
+| mxbai-embed-large | 48ms | 84ms |
+| nomic-embed-text | 38ms | 84ms |
+| snowflake-arctic-embed:m | 34ms | 89ms |
+| all-MiniLM-L6-v2 | 31ms | 86ms |
+| embeddinggemma-300m | 65ms | 84ms |
+| embeddinggemma-300m-qat-q8 | 62ms | 82ms |
+| embeddinggemma-300m-qat-q4 | 68ms | 83ms |
+| mxbai-embed-xsmall-v1 | 10ms | 80ms |
+| mxbai-embed-large (Q4_K_M) | 43ms | 85ms |
+| mxbai-embed-large (INT8 ONNX) | 23ms | 82ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 83ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 6ms | 81ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -1537,18 +1524,18 @@ Input: raw `hadithText` (isnad + matn). Identical to production semantic search.
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 9ms |
-| mxbai-embed-large | 57ms | 85ms |
-| nomic-embed-text | 37ms | 83ms |
-| snowflake-arctic-embed:m | 42ms | 86ms |
-| all-MiniLM-L6-v2 | 35ms | 81ms |
-| embeddinggemma-300m | 62ms | 82ms |
-| embeddinggemma-300m-qat-q8 | 72ms | 79ms |
-| embeddinggemma-300m-qat-q4 | 77ms | 85ms |
-| mxbai-embed-xsmall-v1 | 18ms | 81ms |
-| mxbai-embed-large (Q4_K_M) | 47ms | 84ms |
-| mxbai-embed-large (INT8 ONNX) | 26ms | 84ms |
-| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 82ms |
-| mxbai-embed-xsmall (INT4 ONNX) | 2ms | 83ms |
+| mxbai-embed-large | 42ms | 83ms |
+| nomic-embed-text | 36ms | 84ms |
+| snowflake-arctic-embed:m | 41ms | 81ms |
+| all-MiniLM-L6-v2 | 32ms | 86ms |
+| embeddinggemma-300m | 68ms | 82ms |
+| embeddinggemma-300m-qat-q8 | 65ms | 82ms |
+| embeddinggemma-300m-qat-q4 | 57ms | 81ms |
+| mxbai-embed-xsmall-v1 | 11ms | 80ms |
+| mxbai-embed-large (Q4_K_M) | 44ms | 83ms |
+| mxbai-embed-large (INT8 ONNX) | 22ms | 85ms |
+| mxbai-embed-xsmall (INT8 ONNX) | 2ms | 81ms |
+| mxbai-embed-xsmall (INT4 ONNX) | 5ms | 80ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -1758,19 +1745,19 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 13ms |
-| mxbai-embed-large [matn] | 27ms | 104ms |
-| nomic-embed-text [matn] | 21ms | 85ms |
-| snowflake-arctic-embed:m [matn] | 16ms | 83ms |
-| all-MiniLM-L6-v2 [matn] | 30ms | 106ms |
-| embeddinggemma-300m [matn] | 79ms | 81ms |
-| embeddinggemma-300m-qat-q8 [matn] | 60ms | 83ms |
-| embeddinggemma-300m-qat-q4 [matn] | 66ms | 86ms |
-| mxbai-embed-xsmall-v1 [matn] | 12ms | 81ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 37ms | 106ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 27ms | 82ms |
-| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 81ms |
-| mxbai-embed-xsmall (INT4 ONNX) [matn] | 9ms | 84ms |
+| BM25 Lexical | — | 14ms |
+| mxbai-embed-large [matn] | 42ms | 111ms |
+| nomic-embed-text [matn] | 20ms | 90ms |
+| snowflake-arctic-embed:m [matn] | 18ms | 94ms |
+| all-MiniLM-L6-v2 [matn] | 36ms | 108ms |
+| embeddinggemma-300m [matn] | 67ms | 89ms |
+| embeddinggemma-300m-qat-q8 [matn] | 79ms | 88ms |
+| embeddinggemma-300m-qat-q4 [matn] | 64ms | 86ms |
+| mxbai-embed-xsmall-v1 [matn] | 10ms | 84ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 38ms | 98ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 32ms | 93ms |
+| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 89ms |
+| mxbai-embed-xsmall (INT4 ONNX) [matn] | 6ms | 85ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -1920,7 +1907,7 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 <td align="center" valign="top"><strong>9</strong></td>
 <td valign="top"><strong>tirmidhi 2005</strong>&nbsp; 13.2451 <small>· Sahih</small><br><br>"It is a smiling face, doing one's best in good, and refraining from harm."</td>
 <td valign="top"><strong>adab 288</strong>&nbsp; 0.8415<br><br>'Abdullah ibn 'Amr said, "There are four qualities such that if you were to be given them, you will not be harmed even if the world were to be taken a</td>
-<td valign="top"><strong>mishkat 219</strong>&nbsp; 0.8174<br><br>Abu Huraira reported God’s messenger as saying, “Two qualities are not found together in a hypocrite: good behaviour and knowledge of religion.” Tirmi</td>
+<td valign="top"><strong>adab 288</strong>&nbsp; 0.8164<br><br>'Abdullah ibn 'Amr said, "There are four qualities such that if you were to be given them, you will not be harmed even if the world were to be taken a</td>
 <td valign="top"><strong>muslim 572 g</strong>&nbsp; 0.8548<br><br>This hadith has been narrated by Mansur and he said:" He should aim at correctness."</td>
 <td valign="top"><strong>muslim 48 b</strong>&nbsp; 0.7250<br><br>Abd Shuraib al-Adawi reported: My eare listened and my eye saw when Allah's Messenger (may peace be upon him) spoke and said: He who believes In Allah</td>
 <td valign="top"><strong>adab 284</strong>&nbsp; 0.7893 <small>· Sahih</small><br><br>Abu Hurayra reported that the Messenger of Allah, may Allah bless him and grant him peace, said, "A man who is known for his good character has the sa</td>
@@ -1936,7 +1923,7 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 <td align="center" valign="top"><strong>10</strong></td>
 <td valign="top"><strong>adab 273</strong>&nbsp; 12.7513 <small>· Sahih</small><br><br>I was sent to perfect good character."</td>
 <td valign="top"><strong>forty 22</strong>&nbsp; 0.8378<br><br>A man who knows his worth will not be ruined.</td>
-<td valign="top"><strong>adab 288</strong>&nbsp; 0.8164<br><br>'Abdullah ibn 'Amr said, "There are four qualities such that if you were to be given them, you will not be harmed even if the world were to be taken a</td>
+<td valign="top"><strong>tirmidhi 1952</strong>&nbsp; 0.8151 <small>· Da'if</small><br><br>Ayyub bin Musa narrated from his father, from his grandfather, that the Messenger of Allah said : "There is no gift that a father gives his son more v</td>
 <td valign="top"><strong>tirmidhi 64</strong>&nbsp; 0.8526 <small>· Hasan</small><br><br>A1-Hakim bin Amr AI-Ghifari narrated that: "The Prophet forbade that a man should perform Wudu with the leftover (water) from a woman's purifcation." </td>
 <td valign="top"><strong>muslim 39</strong>&nbsp; 0.7245<br><br>It is narrated on the authority of 'Abdullah b. 'Amr that a man asked the Messenger of Allah (may peace and blessings be upon him) which of the merits</td>
 <td valign="top"><strong>tirmidhi 2494</strong>&nbsp; 0.7878 <small>· Da'if</small><br><br>Abu Bakr bin Al-Munkadir narrated from Jabir that the Messenger of Allah (s.a.w) said: "There are three (characteristics) for which whomever has them,</td>
@@ -1957,18 +1944,18 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 10ms |
-| mxbai-embed-large [matn] | 24ms | 80ms |
-| nomic-embed-text [matn] | 37ms | 80ms |
-| snowflake-arctic-embed:m [matn] | 31ms | 82ms |
-| all-MiniLM-L6-v2 [matn] | 36ms | 84ms |
-| embeddinggemma-300m [matn] | 67ms | 81ms |
-| embeddinggemma-300m-qat-q8 [matn] | 64ms | 82ms |
-| embeddinggemma-300m-qat-q4 [matn] | 59ms | 80ms |
-| mxbai-embed-xsmall-v1 [matn] | 22ms | 79ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 39ms | 83ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 26ms | 81ms |
-| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 79ms |
-| mxbai-embed-xsmall (INT4 ONNX) [matn] | 7ms | 81ms |
+| mxbai-embed-large [matn] | 40ms | 87ms |
+| nomic-embed-text [matn] | 39ms | 83ms |
+| snowflake-arctic-embed:m [matn] | 34ms | 87ms |
+| all-MiniLM-L6-v2 [matn] | 20ms | 83ms |
+| embeddinggemma-300m [matn] | 73ms | 85ms |
+| embeddinggemma-300m-qat-q8 [matn] | 61ms | 85ms |
+| embeddinggemma-300m-qat-q4 [matn] | 67ms | 85ms |
+| mxbai-embed-xsmall-v1 [matn] | 12ms | 81ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 27ms | 86ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 22ms | 85ms |
+| mxbai-embed-xsmall (INT8 ONNX) [matn] | 4ms | 83ms |
+| mxbai-embed-xsmall (INT4 ONNX) [matn] | 6ms | 83ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -2054,7 +2041,7 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 <td align="center" valign="top"><strong>5</strong></td>
 <td valign="top"><strong>mishkat 2374</strong>&nbsp; 15.4689 <small>· Uncategorized</small><br><br>God records the good deeds and the evil deeds. If anyone intends to do a good deed but does not do it, God enters it for him in His record as a comple</td>
 <td valign="top"><strong>ibnmajah 851</strong>&nbsp; 0.8288 <small>· Sahih</small><br><br>It was narrated from Abu Hurairah that the Messenger of Allah (saw) said: “When the reciter says Amin, then say Amin, for the angels say Amin, and if </td>
-<td valign="top"><strong>mishkat 2172</strong>&nbsp; 0.8177<br><br>Makhūl said, “If anyone recites Āl ‘Imrān on a Friday, the angels will invoke blessings on him till night comes.” Transmitted by Dārimī.</td>
+<td valign="top"><strong>mishkat 2374</strong>&nbsp; 0.8211<br><br>Ibn ‘Abbas reported God’s messenger as saying, “God records the good deeds and the evil deeds. If anyone intends to do a good deed but does not do it,</td>
 <td valign="top"><strong>ibnmajah 3818</strong>&nbsp; 0.8101 <small>· Hasan</small><br><br>'Abdullah bin Busr said that : the Prophet (saas) said: "Glad tidings to those who find a lot of seeking forgiveness in the record of their deeds."</td>
 <td valign="top"><strong>bukhari 3210</strong>&nbsp; 0.7509<br><br>Narrated `Aisha: I heard Allah's Apostle saying, "The angels descend, the clouds and mention this or that matter decreed in the Heaven. The devils lis</td>
 <td valign="top"><strong>ibnmajah 3649</strong>&nbsp; 0.7426 <small>· Sahih</small><br><br>It was narrated from Abu Talhah that the Prophet (saw) said: “The angels do not enter a house in which there is a dog or an image.”</td>
@@ -2070,7 +2057,7 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 <td align="center" valign="top"><strong>6</strong></td>
 <td valign="top"><strong>abudawud 5263</strong>&nbsp; 15.3019 <small>· Sahih</small><br><br>The Prophet (saws) said: If anyone kills a gecko with the first blow, such and such number of good deeds will be recorded for him, if he kills it with</td>
 <td valign="top"><strong>bukhari 7429</strong>&nbsp; 0.8283<br><br>Narrated Abu Huraira: Allah's Apostle said, "(A group of) angels stay with you at night and (another group of) angels by daytime, and both groups gath</td>
-<td valign="top"><strong>ibnmajah 1426</strong>&nbsp; 0.8170 <small>· Sahih</small><br><br>It was narrated from Tamim Dari that the Prophet (saw) said: “The first thing for which a person will be brought to account on the Day of Resurrection</td>
+<td valign="top"><strong>mishkat 2172</strong>&nbsp; 0.8177<br><br>Makhūl said, “If anyone recites Āl ‘Imrān on a Friday, the angels will invoke blessings on him till night comes.” Transmitted by Dārimī.</td>
 <td valign="top"><strong>abudawud 4453</strong>&nbsp; 0.8081 <small>· Sahih li ghairih</small><br><br>A similar tradition has also been transmitted by Ibrahim and al-Sha’bi from the Prophet (saws) through a different chain of narrators. But this versio</td>
 <td valign="top"><strong>nasai 261</strong>&nbsp; 0.7495 <small>· Hasan</small><br><br>It was narrated from 'Ali that the Prophet (PBUH) said: "The angels do not enter a house where there is an image, a dog or a Junub person."</td>
 <td valign="top"><strong>ibnmajah 3650</strong>&nbsp; 0.7426 <small>· Hasan</small><br><br>It was narrated from ‘Ali bin Abu Talib that the Prophet (saw) said: “The angels do not enter a house in which there is a dog or an image.”</td>
@@ -2086,7 +2073,7 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 <td align="center" valign="top"><strong>7</strong></td>
 <td valign="top"><strong>muslim 2644</strong>&nbsp; 14.9987 <small>· Sahih</small><br><br>When the drop of (semen) remains in the womb for forty or forty five nights, the angel comes and says: My Lord, will he be good or evil? And both thes</td>
 <td valign="top"><strong>ibnmajah 3801</strong>&nbsp; 0.8277 <small>· Da'if</small><br><br>It was narrated from 'Abdullah bin 'Umar that : the Messenger of Allah (SAW) told them: "One of the slaves of Allah said: 'Ya Rabb! Lakal-hamdu kama y</td>
-<td valign="top"><strong>muslim 798 a</strong>&nbsp; 0.8160<br><br>`A'isha reported Allah's Messenger (may peace be upon him) (as saying): One who is proficient in the Qur'an is associated with the noble, upright, rec</td>
+<td valign="top"><strong>ibnmajah 1426</strong>&nbsp; 0.8170 <small>· Sahih</small><br><br>It was narrated from Tamim Dari that the Prophet (saw) said: “The first thing for which a person will be brought to account on the Day of Resurrection</td>
 <td valign="top"><strong>abudawud 4719</strong>&nbsp; 0.8020 <small>· Sahih</small><br><br>Anas b. Malik reported the Messenger of Allah (May peace be upon him) as saying : The devil flows in a man like his blood.</td>
 <td valign="top"><strong>muslim 85 e</strong>&nbsp; 0.7461<br><br>It is reported on the authority of 'Abdullah that the Apostle of Allah observed: The best of' the deeds or deed is the (observance of) prayer at its p</td>
 <td valign="top"><strong>ahmad 815</strong>&nbsp; 0.7426 <small>· Sahih because of corroborating evidence, this is a Da'if isnad]</small><br><br>It was narrated from ‘Ali (رضي الله عنه) from the Prophet (ﷺ), that He said: “The angels do not enter a house in which there is a dog or an image.”</td>
@@ -2102,7 +2089,7 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 <td align="center" valign="top"><strong>8</strong></td>
 <td valign="top"><strong>riyadussalihin 1864</strong>&nbsp; 14.4177 <small>· Uncategorized</small><br><br>The Messenger of Allah (PBUH) said, "He who kills a chameleon at the first blow, such and such number of good deeds will be awarded to him; whoever ki</td>
 <td valign="top"><strong>bukhari 7486</strong>&nbsp; 0.8260<br><br>Narrated Abu Huraira: Allah's Apostle said, "There are angels coming to you in succession at night, and others during the day, and they all gather at </td>
-<td valign="top"><strong>ibnmajah 851</strong>&nbsp; 0.8140 <small>· Sahih</small><br><br>It was narrated from Abu Hurairah that the Messenger of Allah (saw) said: “When the reciter says Amin, then say Amin, for the angels say Amin, and if </td>
+<td valign="top"><strong>muslim 798 a</strong>&nbsp; 0.8160<br><br>`A'isha reported Allah's Messenger (may peace be upon him) (as saying): One who is proficient in the Qur'an is associated with the noble, upright, rec</td>
 <td valign="top"><strong>muslim 1623 h</strong>&nbsp; 0.7972<br><br>Nu'man b. Bashir (Allah be pleased with them) reported that Allah's Messenger (may peace be upon him) said to his father: Call me not as witness to an</td>
 <td valign="top"><strong>nasai 485</strong>&nbsp; 0.7455 <small>· Sahih</small><br><br>It was narrated from Abu Hurairah that the Messenger of Allah (PBUH) said: "Angels come to you in succession by night and day, and they meet at Fajr p</td>
 <td valign="top"><strong>muslim 487 a</strong>&nbsp; 0.7426<br><br>'A'isha reported that the Messenger of Allah (may peace he upon him) used to pronounce while bowing and prostrating himself: All Glorious, All Holy, L</td>
@@ -2118,7 +2105,7 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 <td align="center" valign="top"><strong>9</strong></td>
 <td valign="top"><strong>muslim 129</strong>&nbsp; 14.3222 <small>· Sahih</small><br><br>When it occurs to my bondsman that he should do a good deed but he actually does not do it, record one good to him, but if he puts it into practice, I</td>
 <td valign="top"><strong>ibnmajah 76</strong>&nbsp; 0.8242 <small>· Sahih</small><br><br>'Abdullah bin Mas'ud said: "The Messenger of Allah (SAW), the true and truly inspired one, told us that: 'The creation of one of you is put together i</td>
-<td valign="top"><strong>mishkat 877</strong>&nbsp; 0.8129<br><br>Rifa'a b. Raf’i said: We were praying behind the Prophet, and when he raised his head at the end of the rak'a he said, “God listens to him who praises</td>
+<td valign="top"><strong>ibnmajah 851</strong>&nbsp; 0.8140 <small>· Sahih</small><br><br>It was narrated from Abu Hurairah that the Messenger of Allah (saw) said: “When the reciter says Amin, then say Amin, for the angels say Amin, and if </td>
 <td valign="top"><strong>abudawud 706</strong>&nbsp; 0.7962 <small>· Da'if</small><br><br>This tradition as also been reported by Sa’id through the same chain of narrators and to the same effect. He added: He cut off our prayer, may Allah c</td>
 <td valign="top"><strong>bukhari 3225</strong>&nbsp; 0.7422<br><br>Narrated Abu Talha: I heard Allah's Apostle saying; "Angels (of Mercy) do not enter a house wherein there is a dog or a picture of a living creature (</td>
 <td valign="top"><strong>mishkat 3115</strong>&nbsp; 0.7409<br><br>Ibn ‘Umar reported God’s Messenger as saying, "Avoid being naked, for with you are those who never leave you (the recording angels) except when you ar</td>
@@ -2134,7 +2121,7 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 <td align="center" valign="top"><strong>10</strong></td>
 <td valign="top"><strong>ibnmajah 1426</strong>&nbsp; 14.0222 <small>· Sahih</small><br><br>“The first thing for which a person will be brought to account on the Day of Resurrection will be his prayer. If it is complete, then the voluntary (p</td>
 <td valign="top"><strong>bukhari 555</strong>&nbsp; 0.8236<br><br>Narrated Abu Huraira: Allah's Apostle said, "Angels come to you in succession by night and day and all of them get together at the time of the Fajr an</td>
-<td valign="top"><strong>mishkat 463</strong>&nbsp; 0.8117<br><br>‘Ali reported God’s messenger as saying, “The angels do not enter a house in which there is a picture, a dog, or one who is defiled.” Abu Dawud and Na</td>
+<td valign="top"><strong>mishkat 877</strong>&nbsp; 0.8129<br><br>Rifa'a b. Raf’i said: We were praying behind the Prophet, and when he raised his head at the end of the rak'a he said, “God listens to him who praises</td>
 <td valign="top"><strong>ahmad 632</strong>&nbsp; 0.7960 <small>· Sahih, because of corroborating evidences]</small><br><br>It was narrated from ‘Ali (رضي الله عنه) from the Prophet (ﷺ): “The angels do not enter a house in which there is a junub person or an image or a dog.</td>
 <td valign="top"><strong>bukhari 3332</strong>&nbsp; 0.7409<br><br>Narrated `Abdullah: Allah's Apostle, the true and truly inspired said, "(as regards your creation), every one of you is collected in the womb of his m</td>
 <td valign="top"><strong>muslim 129</strong>&nbsp; 0.7407<br><br>Abu Huraira reported that Muhammad, the Messenger of Allah (may peace be upon him), said: When it occurs to my bondsman that he should do a good deed </td>
@@ -2154,19 +2141,19 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 15ms |
-| mxbai-embed-large [matn] | 42ms | 83ms |
-| nomic-embed-text [matn] | 37ms | 80ms |
-| snowflake-arctic-embed:m [matn] | 32ms | 87ms |
-| all-MiniLM-L6-v2 [matn] | 37ms | 82ms |
-| embeddinggemma-300m [matn] | 70ms | 80ms |
-| embeddinggemma-300m-qat-q8 [matn] | 62ms | 80ms |
-| embeddinggemma-300m-qat-q4 [matn] | 70ms | 79ms |
-| mxbai-embed-xsmall-v1 [matn] | 11ms | 79ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 48ms | 84ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 28ms | 81ms |
-| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 80ms |
-| mxbai-embed-xsmall (INT4 ONNX) [matn] | 6ms | 80ms |
+| BM25 Lexical | — | 14ms |
+| mxbai-embed-large [matn] | 44ms | 84ms |
+| nomic-embed-text [matn] | 41ms | 82ms |
+| snowflake-arctic-embed:m [matn] | 44ms | 85ms |
+| all-MiniLM-L6-v2 [matn] | 35ms | 83ms |
+| embeddinggemma-300m [matn] | 69ms | 81ms |
+| embeddinggemma-300m-qat-q8 [matn] | 91ms | 82ms |
+| embeddinggemma-300m-qat-q4 [matn] | 76ms | 81ms |
+| mxbai-embed-xsmall-v1 [matn] | 10ms | 81ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 56ms | 87ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 22ms | 82ms |
+| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 81ms |
+| mxbai-embed-xsmall (INT4 ONNX) [matn] | 6ms | 79ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -2352,19 +2339,19 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 13ms |
-| mxbai-embed-large [matn] | 48ms | 82ms |
-| nomic-embed-text [matn] | 38ms | 81ms |
-| snowflake-arctic-embed:m [matn] | 48ms | 82ms |
-| all-MiniLM-L6-v2 [matn] | 42ms | 82ms |
-| embeddinggemma-300m [matn] | 78ms | 82ms |
-| embeddinggemma-300m-qat-q8 [matn] | 85ms | 81ms |
-| embeddinggemma-300m-qat-q4 [matn] | 71ms | 80ms |
-| mxbai-embed-xsmall-v1 [matn] | 15ms | 79ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 59ms | 84ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 30ms | 83ms |
-| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 81ms |
-| mxbai-embed-xsmall (INT4 ONNX) [matn] | 7ms | 80ms |
+| BM25 Lexical | — | 14ms |
+| mxbai-embed-large [matn] | 56ms | 85ms |
+| nomic-embed-text [matn] | 39ms | 84ms |
+| snowflake-arctic-embed:m [matn] | 84ms | 88ms |
+| all-MiniLM-L6-v2 [matn] | 36ms | 82ms |
+| embeddinggemma-300m [matn] | 77ms | 83ms |
+| embeddinggemma-300m-qat-q8 [matn] | 59ms | 81ms |
+| embeddinggemma-300m-qat-q4 [matn] | 58ms | 82ms |
+| mxbai-embed-xsmall-v1 [matn] | 24ms | 78ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 52ms | 86ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 27ms | 81ms |
+| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 79ms |
+| mxbai-embed-xsmall (INT4 ONNX) [matn] | 12ms | 81ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -2550,19 +2537,19 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 10ms |
-| mxbai-embed-large [matn] | 45ms | 84ms |
-| nomic-embed-text [matn] | 40ms | 83ms |
-| snowflake-arctic-embed:m [matn] | 37ms | 81ms |
-| all-MiniLM-L6-v2 [matn] | 34ms | 80ms |
-| embeddinggemma-300m [matn] | 73ms | 79ms |
-| embeddinggemma-300m-qat-q8 [matn] | 85ms | 79ms |
-| embeddinggemma-300m-qat-q4 [matn] | 60ms | 81ms |
-| mxbai-embed-xsmall-v1 [matn] | 10ms | 80ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 48ms | 82ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 26ms | 82ms |
-| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 83ms |
-| mxbai-embed-xsmall (INT4 ONNX) [matn] | 6ms | 81ms |
+| BM25 Lexical | — | 12ms |
+| mxbai-embed-large [matn] | 48ms | 85ms |
+| nomic-embed-text [matn] | 49ms | 85ms |
+| snowflake-arctic-embed:m [matn] | 36ms | 84ms |
+| all-MiniLM-L6-v2 [matn] | 43ms | 83ms |
+| embeddinggemma-300m [matn] | 67ms | 83ms |
+| embeddinggemma-300m-qat-q8 [matn] | 60ms | 87ms |
+| embeddinggemma-300m-qat-q4 [matn] | 83ms | 82ms |
+| mxbai-embed-xsmall-v1 [matn] | 9ms | 81ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 46ms | 85ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 25ms | 85ms |
+| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 81ms |
+| mxbai-embed-xsmall (INT4 ONNX) [matn] | 7ms | 83ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -2748,19 +2735,19 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 11ms |
-| mxbai-embed-large [matn] | 50ms | 84ms |
-| nomic-embed-text [matn] | 37ms | 82ms |
-| snowflake-arctic-embed:m [matn] | 37ms | 83ms |
-| all-MiniLM-L6-v2 [matn] | 44ms | 85ms |
-| embeddinggemma-300m [matn] | 68ms | 82ms |
-| embeddinggemma-300m-qat-q8 [matn] | 68ms | 82ms |
-| embeddinggemma-300m-qat-q4 [matn] | 62ms | 80ms |
-| mxbai-embed-xsmall-v1 [matn] | 9ms | 83ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 43ms | 85ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 19ms | 89ms |
-| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 83ms |
-| mxbai-embed-xsmall (INT4 ONNX) [matn] | 2ms | 84ms |
+| BM25 Lexical | — | 12ms |
+| mxbai-embed-large [matn] | 43ms | 89ms |
+| nomic-embed-text [matn] | 36ms | 85ms |
+| snowflake-arctic-embed:m [matn] | 36ms | 84ms |
+| all-MiniLM-L6-v2 [matn] | 39ms | 83ms |
+| embeddinggemma-300m [matn] | 61ms | 87ms |
+| embeddinggemma-300m-qat-q8 [matn] | 74ms | 85ms |
+| embeddinggemma-300m-qat-q4 [matn] | 58ms | 84ms |
+| mxbai-embed-xsmall-v1 [matn] | 14ms | 83ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 53ms | 85ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 21ms | 84ms |
+| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 84ms |
+| mxbai-embed-xsmall (INT4 ONNX) [matn] | 3ms | 86ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -2947,17 +2934,17 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 11ms |
-| mxbai-embed-large [matn] | 49ms | 84ms |
-| nomic-embed-text [matn] | 41ms | 82ms |
-| snowflake-arctic-embed:m [matn] | 36ms | 83ms |
+| mxbai-embed-large [matn] | 53ms | 85ms |
+| nomic-embed-text [matn] | 36ms | 83ms |
+| snowflake-arctic-embed:m [matn] | 38ms | 86ms |
 | all-MiniLM-L6-v2 [matn] | 34ms | 83ms |
-| embeddinggemma-300m [matn] | 108ms | 82ms |
+| embeddinggemma-300m [matn] | 139ms | 82ms |
 | embeddinggemma-300m-qat-q8 [matn] | 70ms | 82ms |
-| embeddinggemma-300m-qat-q4 [matn] | 80ms | 82ms |
-| mxbai-embed-xsmall-v1 [matn] | 15ms | 80ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 44ms | 85ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 35ms | 82ms |
-| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 82ms |
+| embeddinggemma-300m-qat-q4 [matn] | 70ms | 81ms |
+| mxbai-embed-xsmall-v1 [matn] | 10ms | 81ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 52ms | 83ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 26ms | 84ms |
+| mxbai-embed-xsmall (INT8 ONNX) [matn] | 7ms | 82ms |
 | mxbai-embed-xsmall (INT4 ONNX) [matn] | 6ms | 83ms |
 
 <table width="100%"><thead><tr>
@@ -3145,18 +3132,18 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 9ms |
-| mxbai-embed-large [matn] | 48ms | 83ms |
-| nomic-embed-text [matn] | 42ms | 83ms |
-| snowflake-arctic-embed:m [matn] | 33ms | 83ms |
-| all-MiniLM-L6-v2 [matn] | 34ms | 81ms |
-| embeddinggemma-300m [matn] | 74ms | 81ms |
-| embeddinggemma-300m-qat-q8 [matn] | 60ms | 82ms |
-| embeddinggemma-300m-qat-q4 [matn] | 73ms | 82ms |
-| mxbai-embed-xsmall-v1 [matn] | 9ms | 80ms |
-| mxbai-embed-large (Q4_K_M) [matn] | 43ms | 82ms |
-| mxbai-embed-large (INT8 ONNX) [matn] | 19ms | 83ms |
-| mxbai-embed-xsmall (INT8 ONNX) [matn] | 2ms | 81ms |
-| mxbai-embed-xsmall (INT4 ONNX) [matn] | 4ms | 82ms |
+| mxbai-embed-large [matn] | 41ms | 85ms |
+| nomic-embed-text [matn] | 36ms | 86ms |
+| snowflake-arctic-embed:m [matn] | 32ms | 83ms |
+| all-MiniLM-L6-v2 [matn] | 32ms | 83ms |
+| embeddinggemma-300m [matn] | 63ms | 82ms |
+| embeddinggemma-300m-qat-q8 [matn] | 69ms | 83ms |
+| embeddinggemma-300m-qat-q4 [matn] | 71ms | 82ms |
+| mxbai-embed-xsmall-v1 [matn] | 16ms | 83ms |
+| mxbai-embed-large (Q4_K_M) [matn] | 46ms | 84ms |
+| mxbai-embed-large (INT8 ONNX) [matn] | 27ms | 83ms |
+| mxbai-embed-xsmall (INT8 ONNX) [matn] | 5ms | 82ms |
+| mxbai-embed-xsmall (INT4 ONNX) [matn] | 2ms | 83ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -3335,103 +3322,6 @@ Compare with hadithText section to see the effect of noisy isnad chains on retri
 <td valign="top"><strong>muslim 47 c</strong>&nbsp; 0.7699<br><br>Another hadith similar to one narrated (above) by Abu Husain is also reported by Abu Huraira with the exception of these words: He (the Prophet) said:</td>
 </tr>
 </tbody></table>
-
----
-
-*Generated by `tests/small_model_comparison.py` · pool=50 · N=10*
-
-# Small Model Comparison — HF Serverless API
-
-HuggingFace Serverless Inference API — GPU-backed, latency includes network round-trip.
-Latency summary only (no result tables). Vectors queried against `small-model-eval`.
-
----
-
-## HF Serverless API: good character and manners
-
-| Model | Embed | ES search |
-|---|---|---|
-| BM25 Lexical | — | 13ms |
-| mxbai-embed-large (HF API) | 259ms | 102ms |
-| snowflake-arctic-embed:m (HF API) | 3548ms | 102ms |
-| all-MiniLM-L6-v2 (HF API) | 149ms | 93ms |
-
----
-
-## HF Serverless API: angels recording deeds
-
-| Model | Embed | ES search |
-|---|---|---|
-| BM25 Lexical | — | 10ms |
-| mxbai-embed-large (HF API) | 208ms | 97ms |
-| snowflake-arctic-embed:m (HF API) | 224ms | 101ms |
-| all-MiniLM-L6-v2 (HF API) | 179ms | 99ms |
-
----
-
-## HF Serverless API: prayer at night
-
-| Model | Embed | ES search |
-|---|---|---|
-| BM25 Lexical | — | 15ms |
-| mxbai-embed-large (HF API) | 220ms | 97ms |
-| snowflake-arctic-embed:m (HF API) | 198ms | 93ms |
-| all-MiniLM-L6-v2 (HF API) | 177ms | 97ms |
-
----
-
-## HF Serverless API: forgiving someone who wronged you
-
-| Model | Embed | ES search |
-|---|---|---|
-| BM25 Lexical | — | 13ms |
-| mxbai-embed-large (HF API) | 209ms | 101ms |
-| snowflake-arctic-embed:m (HF API) | 259ms | 101ms |
-| all-MiniLM-L6-v2 (HF API) | 168ms | 89ms |
-
----
-
-## HF Serverless API: comparing yourself to others
-
-| Model | Embed | ES search |
-|---|---|---|
-| BM25 Lexical | — | 10ms |
-| mxbai-embed-large (HF API) | 233ms | 102ms |
-| snowflake-arctic-embed:m (HF API) | 228ms | 95ms |
-| all-MiniLM-L6-v2 (HF API) | 148ms | 86ms |
-
----
-
-## HF Serverless API: aisha
-
-| Model | Embed | ES search |
-|---|---|---|
-| BM25 Lexical | — | 11ms |
-| mxbai-embed-large (HF API) | 217ms | 101ms |
-| snowflake-arctic-embed:m (HF API) | 188ms | 100ms |
-| all-MiniLM-L6-v2 (HF API) | 149ms | 92ms |
-
----
-
-## HF Serverless API: fasting expiation sins
-
-| Model | Embed | ES search |
-|---|---|---|
-| BM25 Lexical | — | 11ms |
-| mxbai-embed-large (HF API) | 207ms | 102ms |
-| snowflake-arctic-embed:m (HF API) | 198ms | 98ms |
-| all-MiniLM-L6-v2 (HF API) | 151ms | 95ms |
-
----
-
-## HF Serverless API: neighbor rights
-
-| Model | Embed | ES search |
-|---|---|---|
-| BM25 Lexical | — | 9ms |
-| mxbai-embed-large (HF API) | 199ms | 97ms |
-| snowflake-arctic-embed:m (HF API) | 197ms | 98ms |
-| all-MiniLM-L6-v2 (HF API) | 293ms | 102ms |
 
 ---
 

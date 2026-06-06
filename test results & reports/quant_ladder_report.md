@@ -82,13 +82,13 @@ Post-warmup averages across 8 queries. See [Methodology](#methodology) for how t
 
 | Step | Model | Dims | Backend | Avg Embed | Avg Search | Avg Total | Speedup vs F16 |
 |---|---|---|---|---|---|---|---|
-| — | BM25 Lexical | — | ES query_string | — | 20ms | 20ms | — |
-| 1 | mxbai-large F16 | 1024-dim | Ollama | 42ms | 85ms | 127ms | baseline |
-| 2 | mxbai-large Q4_K_M | 1024-dim | Ollama | 48ms | 87ms | 135ms | 0.9× |
-| 3 | mxbai-large INT8 ONNX | 1024-dim | ONNX Runtime | 24ms | 83ms | 107ms | 1.7× |
-| 4 | mxbai-xsmall FP32 | 384-dim | SentenceTransformers | 11ms | 80ms | 91ms | 3.8× |
-| 5 | mxbai-xsmall INT8 ONNX | 384-dim | ONNX Runtime | 2ms | 81ms | 83ms | 20.9× |
-| 6 | mxbai-xsmall INT4 ONNX | 384-dim | ONNX Runtime | 7ms | 80ms | 87ms | 6.0× |
+| — | BM25 Lexical | — | ES query_string | — | 21ms | 21ms | — |
+| 1 | mxbai-large F16 | 1024-dim | Ollama | 43ms | 86ms | 129ms | baseline |
+| 2 | mxbai-large Q4_K_M | 1024-dim | Ollama | 64ms | 89ms | 153ms | 0.7× |
+| 3 | mxbai-large INT8 ONNX | 1024-dim | ONNX Runtime | 22ms | 84ms | 106ms | 2.0× |
+| 4 | mxbai-xsmall FP32 | 384-dim | SentenceTransformers | 10ms | 82ms | 92ms | 4.3× |
+| 5 | mxbai-xsmall INT8 ONNX | 384-dim | ONNX Runtime | 3ms | 82ms | 85ms | 14.3× |
+| 6 | mxbai-xsmall INT4 ONNX | 384-dim | ONNX Runtime | 7ms | 83ms | 90ms | 6.1× |
 
 ---
 
@@ -98,13 +98,13 @@ Post-warmup averages across 8 queries. See [Methodology](#methodology) for how t
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 89ms |
-| mxbai-large F16 | 29ms | 95ms |
-| mxbai-large Q4_K_M | 40ms | 103ms |
-| mxbai-large INT8 ONNX | 28ms | 81ms |
-| mxbai-xsmall FP32 | 10ms | 80ms |
-| mxbai-xsmall INT8 ONNX | 2ms | 80ms |
-| mxbai-xsmall INT4 ONNX | 7ms | 81ms |
+| BM25 Lexical | — | 94ms |
+| mxbai-large F16 | 30ms | 96ms |
+| mxbai-large Q4_K_M | 45ms | 100ms |
+| mxbai-large INT8 ONNX | 25ms | 91ms |
+| mxbai-xsmall FP32 | 12ms | 87ms |
+| mxbai-xsmall INT8 ONNX | 2ms | 87ms |
+| mxbai-xsmall INT4 ONNX | 6ms | 86ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -224,13 +224,13 @@ Post-warmup averages across 8 queries. See [Methodology](#methodology) for how t
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 10ms |
-| mxbai-large F16 | 25ms | 84ms |
-| mxbai-large Q4_K_M | 47ms | 85ms |
-| mxbai-large INT8 ONNX | 22ms | 82ms |
-| mxbai-xsmall FP32 | 10ms | 77ms |
-| mxbai-xsmall INT8 ONNX | 2ms | 79ms |
-| mxbai-xsmall INT4 ONNX | 14ms | 80ms |
+| BM25 Lexical | — | 11ms |
+| mxbai-large F16 | 30ms | 83ms |
+| mxbai-large Q4_K_M | 48ms | 86ms |
+| mxbai-large INT8 ONNX | 20ms | 83ms |
+| mxbai-xsmall FP32 | 8ms | 81ms |
+| mxbai-xsmall INT8 ONNX | 2ms | 81ms |
+| mxbai-xsmall INT4 ONNX | 6ms | 82ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -350,13 +350,13 @@ Post-warmup averages across 8 queries. See [Methodology](#methodology) for how t
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 13ms |
-| mxbai-large F16 | 56ms | 83ms |
-| mxbai-large Q4_K_M | 43ms | 84ms |
-| mxbai-large INT8 ONNX | 24ms | 82ms |
-| mxbai-xsmall FP32 | 11ms | 79ms |
+| BM25 Lexical | — | 15ms |
+| mxbai-large F16 | 42ms | 86ms |
+| mxbai-large Q4_K_M | 172ms | 97ms |
+| mxbai-large INT8 ONNX | 20ms | 84ms |
+| mxbai-xsmall FP32 | 10ms | 79ms |
 | mxbai-xsmall INT8 ONNX | 2ms | 80ms |
-| mxbai-xsmall INT4 ONNX | 6ms | 79ms |
+| mxbai-xsmall INT4 ONNX | 7ms | 82ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -476,13 +476,13 @@ Post-warmup averages across 8 queries. See [Methodology](#methodology) for how t
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 13ms |
-| mxbai-large F16 | 48ms | 83ms |
-| mxbai-large Q4_K_M | 56ms | 84ms |
-| mxbai-large INT8 ONNX | 29ms | 85ms |
-| mxbai-xsmall FP32 | 10ms | 77ms |
-| mxbai-xsmall INT8 ONNX | 2ms | 82ms |
-| mxbai-xsmall INT4 ONNX | 7ms | 80ms |
+| BM25 Lexical | — | 12ms |
+| mxbai-large F16 | 53ms | 83ms |
+| mxbai-large Q4_K_M | 58ms | 84ms |
+| mxbai-large INT8 ONNX | 31ms | 79ms |
+| mxbai-xsmall FP32 | 11ms | 79ms |
+| mxbai-xsmall INT8 ONNX | 6ms | 80ms |
+| mxbai-xsmall INT4 ONNX | 7ms | 89ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -604,11 +604,11 @@ Post-warmup averages across 8 queries. See [Methodology](#methodology) for how t
 |---|---|---|
 | BM25 Lexical | — | 10ms |
 | mxbai-large F16 | 44ms | 82ms |
-| mxbai-large Q4_K_M | 45ms | 82ms |
-| mxbai-large INT8 ONNX | 22ms | 83ms |
-| mxbai-xsmall FP32 | 10ms | 81ms |
-| mxbai-xsmall INT8 ONNX | 2ms | 82ms |
-| mxbai-xsmall INT4 ONNX | 6ms | 80ms |
+| mxbai-large Q4_K_M | 52ms | 83ms |
+| mxbai-large INT8 ONNX | 20ms | 85ms |
+| mxbai-xsmall FP32 | 14ms | 82ms |
+| mxbai-xsmall INT8 ONNX | 4ms | 82ms |
+| mxbai-xsmall INT4 ONNX | 5ms | 81ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -729,12 +729,12 @@ Post-warmup averages across 8 queries. See [Methodology](#methodology) for how t
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 9ms |
-| mxbai-large F16 | 43ms | 83ms |
-| mxbai-large Q4_K_M | 49ms | 85ms |
-| mxbai-large INT8 ONNX | 18ms | 83ms |
-| mxbai-xsmall FP32 | 13ms | 81ms |
-| mxbai-xsmall INT8 ONNX | 2ms | 83ms |
-| mxbai-xsmall INT4 ONNX | 2ms | 83ms |
+| mxbai-large F16 | 49ms | 87ms |
+| mxbai-large Q4_K_M | 42ms | 88ms |
+| mxbai-large INT8 ONNX | 14ms | 86ms |
+| mxbai-xsmall FP32 | 9ms | 84ms |
+| mxbai-xsmall INT8 ONNX | 1ms | 81ms |
+| mxbai-xsmall INT4 ONNX | 5ms | 83ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -855,12 +855,12 @@ Post-warmup averages across 8 queries. See [Methodology](#methodology) for how t
 | Model | Embed | ES search |
 |---|---|---|
 | BM25 Lexical | — | 10ms |
-| mxbai-large F16 | 44ms | 84ms |
-| mxbai-large Q4_K_M | 57ms | 86ms |
-| mxbai-large INT8 ONNX | 25ms | 82ms |
-| mxbai-xsmall FP32 | 11ms | 80ms |
+| mxbai-large F16 | 42ms | 84ms |
+| mxbai-large Q4_K_M | 47ms | 88ms |
+| mxbai-large INT8 ONNX | 26ms | 84ms |
+| mxbai-xsmall FP32 | 9ms | 79ms |
 | mxbai-xsmall INT8 ONNX | 2ms | 82ms |
-| mxbai-xsmall INT4 ONNX | 11ms | 82ms |
+| mxbai-xsmall INT4 ONNX | 14ms | 80ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
@@ -980,13 +980,13 @@ Post-warmup averages across 8 queries. See [Methodology](#methodology) for how t
 
 | Model | Embed | ES search |
 |---|---|---|
-| BM25 Lexical | — | 9ms |
-| mxbai-large F16 | 46ms | 84ms |
-| mxbai-large Q4_K_M | 47ms | 84ms |
-| mxbai-large INT8 ONNX | 20ms | 83ms |
-| mxbai-xsmall FP32 | 12ms | 82ms |
-| mxbai-xsmall INT8 ONNX | 3ms | 83ms |
-| mxbai-xsmall INT4 ONNX | 5ms | 79ms |
+| BM25 Lexical | — | 8ms |
+| mxbai-large F16 | 54ms | 83ms |
+| mxbai-large Q4_K_M | 50ms | 84ms |
+| mxbai-large INT8 ONNX | 22ms | 82ms |
+| mxbai-xsmall FP32 | 9ms | 82ms |
+| mxbai-xsmall INT8 ONNX | 2ms | 82ms |
+| mxbai-xsmall INT4 ONNX | 5ms | 80ms |
 
 <table width="100%"><thead><tr>
 <th width="2%">#</th>
