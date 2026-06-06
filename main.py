@@ -240,6 +240,75 @@ COLLECTION_BOOSTS = [
     ("nawawi40", 3.3),
     ("riyadussalihin", 2.5),
 ]
+_COLLECTION_BOOST_MAP = dict(COLLECTION_BOOSTS)
+
+# Exclude pure isnad-chain entries from all search paths.
+# Uses must_not rather than term:false because isChainRef is only stored on
+# flagged docs — absent field must pass through, not be excluded.
+_CHAIN_REF_FILTER = {"bool": {"must_not": {"term": {"isChainRef": True}}}}
+
+# Grade + collection facet aggregations returned on every search response.
+_FACET_AGGS = {
+    "gradeNorm": {
+        "terms": {"field": "gradeNorm", "size": 10, "missing": "Uncategorized"},
+    },
+    "collection": {
+        "terms": {"field": "collection.keyword", "size": 30},
+    },
+}
+
+_GRADE_NORM_MAP = {
+    "sahih": "Sahih", "صحيح": "Sahih",
+    "muttafaqun 'alayh": "Sahih", "muttafaqun alayh": "Sahih",
+    "hasan": "Hasan", "حسن": "Hasan", "qawi": "Hasan",
+    "hasan sahih": "Hasan", "sahih hasan": "Hasan",
+    "da'if": "Da'if", "daif": "Da'if", "weak": "Da'if", "ضعيف": "Da'if",
+    "munkar": "Da'if", "shadh": "Da'if", "shaz": "Da'if",
+    "maudu'": "Maudu'", "maudu": "Maudu'", "fabricated": "Maudu'", "موضوع": "Maudu'",
+}
+_BUKHARI_MUSLIM = {"bukhari", "muslim"}
+
+
+def _normalize_grade(raw, collection=""):
+    if collection in _BUKHARI_MUSLIM:
+        return "Sahih"
+    if not raw:
+        return "Uncategorized"
+    cleaned = raw.strip()
+    if cleaned.startswith("[") or cleaned.startswith("{"):
+        m = re.search(r'"grade"\s*:\s*"([^"]+)"', cleaned)
+        cleaned = m.group(1) if m else cleaned
+    cleaned = re.sub(r'\s*\([^)]+\)', '', cleaned).lower().strip()
+    cleaned = re.sub(r"^(?:lts|its)\s+(?:isnad|chain)\s+is\s+", "", cleaned).strip()
+    if cleaned in _GRADE_NORM_MAP:
+        return _GRADE_NORM_MAP[cleaned]
+    for k, v in _GRADE_NORM_MAP.items():
+        if cleaned.startswith(k):
+            return v
+    return "Uncategorized"
+
+
+def _dedup_hits(hits, size):
+    """Collapse duplicate groups, keeping the best-collection member per group.
+
+    Within each dupGroup, prefer the member from the most authoritative
+    collection (COLLECTION_BOOSTS), using raw ES score as tiebreaker.
+    Docs with no dupGroup are singletons and always included.
+    """
+    groups = {}
+    singletons = []
+    for h in hits:
+        gid = h["_source"].get("dupGroup")
+        if not gid:
+            singletons.append(h)
+        else:
+            coll = h["_source"].get("collection", "")
+            key = (_COLLECTION_BOOST_MAP.get(coll, 1.0), h["_score"])
+            if gid not in groups or key > groups[gid][1]:
+                groups[gid] = (h, key)
+    merged = singletons + [h for h, _ in groups.values()]
+    merged.sort(key=lambda h: h["_score"], reverse=True)
+    return merged[:size]
 
 
 @app.errorhandler(Exception)
@@ -756,6 +825,7 @@ def _make_mappings(non_indexed_fields, model=None):
         "fields": {"trigram": {"type": "text", "analyzer": "trigram"}},
     }
     props["arabicText"] = {"type": "text", "analyzer": "custom_arabic"}
+    props["gradeNorm"] = {"type": "keyword"}
     props["contentHash"] = {"type": "keyword", "index": False}
     # Reconstruction payloads: kept in _source, kept out of the index entirely.
     props["en"] = {"type": "object", "enabled": False}
@@ -942,6 +1012,7 @@ def index():
             "hadithNumber": hadith["hadithNumber"],
             "arabicText": hadith["hadithText"],
             "grade": hadith["grade1"],
+            "gradeNorm": _normalize_grade(hadith["grade1"], hadith["collection"]),
             "ar": ar_obj,
         }
         arabicHadiths.append(doc)
@@ -967,6 +1038,7 @@ def index():
             "collection": hadith["collection"],
             "hadithText": hadith["hadithText"],
             "grade": hadith["grade1"],
+            "gradeNorm": _normalize_grade(hadith["grade1"], hadith["collection"]),
             "en": dict(hadith),
         }
         # Fold in the matching Arabic side → one bilingual doc. Arabic
@@ -1235,7 +1307,9 @@ def get_filter_from_args(args):
     filters = []
     if collection := args.getlist("collection"):
         filters.append({"terms": {"collection": collection}})
-    if grade := args.getlist("grade"):
+    if gradeNorm := args.getlist("gradeNorm"):
+        filters.append({"terms": {"gradeNorm": gradeNorm}})
+    elif grade := args.getlist("grade"):
         filters.append({"terms": {"grade": grade}})
     return filters
 
@@ -1339,7 +1413,7 @@ def search(language):
                 size=size,
                 query={"function_score": {
                     "query": {"bool": {
-                        "filter": filters,
+                        "filter": [_CHAIN_REF_FILTER] + filters,
                         "should": [
                             {"match_phrase": {"hadithText": phrase}},
                             {"match_phrase": {"arabicText": phrase}},
@@ -1353,6 +1427,7 @@ def search(language):
                     "score_mode": "sum",
                     "boost_mode": "sum",
                 }},
+                aggs=_FACET_AGGS,
                 _source={"excludes": [SEMANTIC_FIELD]},
                 highlight={"number_of_fragments": 0, "fields": {"*": {}}},
             )
@@ -1374,7 +1449,7 @@ def search(language):
             inner["type"] = "cross_fields"
         return {
             "function_score": {
-                "query": {"bool": {"filter": filters, "must": [{query_type: inner}]}},
+                "query": {"bool": {"filter": [_CHAIN_REF_FILTER] + filters, "must": [{query_type: inner}]}},
                 "functions": [
                     {"filter": {"term": {"collection": name}}, "weight": w}
                     for name, w in COLLECTION_BOOSTS
@@ -1388,6 +1463,7 @@ def search(language):
         "index": LEXICAL_INDEX,
         "from_": request.args.get("from", 0),
         "size": size,
+        "aggs": _FACET_AGGS,
         "_source": {"excludes": [SEMANTIC_FIELD]},
         "highlight": {"number_of_fragments": 0, "fields": {"*": {}}},
         "suggest": get_suggest_block(query),
@@ -1429,23 +1505,32 @@ def _execute_semantic_search(search_index, query, filters, from_, size):
         from_=int(from_),
         size=int(size),
         query=build_semantic_query(query, filters),
+        aggs=_FACET_AGGS,
         _source={"excludes": [SEMANTIC_FIELD]},
         suggest=get_suggest_block(query),
     )
 
 
 def _semantic_search(search_index, query, filters):
+    size = int(request.args.get("size", 10))
+    dedup = not _is_truthy(request.args.get("show_dupes", "0"))
+    all_filters = [_CHAIN_REF_FILTER] + filters
+    fetch_size = size * 3 if dedup else size
     try:
         result = _execute_semantic_search(
             search_index,
             query,
-            filters,
+            all_filters,
             request.args.get("from", 0),
-            request.args.get("size", 10),
+            fetch_size,
         )
     except BadRequestError as e:
         return malformed_query_response(e)
-    result.body.setdefault("_meta", {})["route"] = "semantic"
+    if dedup:
+        deduped = _dedup_hits(result.body["hits"]["hits"], size)
+        result.body["hits"]["hits"] = deduped
+        result.body["hits"]["total"]["value"] = len(deduped)
+    result.body["_meta"] = {"route": "semantic", "dedup": dedup}
     return jsonify(result.body)
 
 
