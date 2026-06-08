@@ -1,9 +1,16 @@
 import hashlib
 import logging
+import random
+import re
+import socket
 import sys
 import threading
 import time
+import urllib.request
+import urllib.error
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from enum import Enum
 from flask import Flask, request, jsonify, g
 from werkzeug.exceptions import HTTPException
 import pymysql
@@ -11,12 +18,17 @@ import os
 from dotenv import load_dotenv
 import json
 
-import numpy as np
-from openai import OpenAI
 from elasticsearch import Elasticsearch, helpers, BadRequestError, NotFoundError
 from pythonjsonlogger import jsonlogger
 
+from utils.rate_limiter import RateLimiter
 from utils.shortcode_pattern import SHORTCODE_PATTERN
+from utils.vector_checkpoint import (
+    VectorCheckpoint,
+    NullCheckpoint,
+    checkpoint_path,
+    list_checkpoints,
+)
 
 load_dotenv(".env.local")
 
@@ -61,7 +73,8 @@ def _emit_access_log(response):
 
 
 es_auth = ("elastic", os.environ.get("ELASTIC_PASSWORD"))
-es_base_url = f"http://elasticsearch:{os.environ.get('ES_PORT')}"
+_ES_HOST = os.environ.get("ES_HOST", "elasticsearch")
+es_base_url = f"http://{_ES_HOST}:{os.environ.get('ES_PORT')}"
 es_client = Elasticsearch(
     es_base_url,
     http_auth=es_auth,
@@ -75,134 +88,73 @@ def _is_truthy(value):
     return (value or "").lower() in ("1", "true", "yes")
 
 
-# ── OpenAI centroid search (Arabic + English) ─────────────────────────────────
-
-_OPENAI_ENABLED = _is_truthy(os.environ.get("OPENAI_ENABLED"))
-_openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY")) if _OPENAI_ENABLED else None
-
-ARABIC_OPENAI_INDEX      = "arabic-openai"
-_ARABIC_EMBED_MODEL      = "text-embedding-3-small"
-_ARABIC_CENTROIDS_PATH            = "/code/arabic_cluster_centroids_final.json"
-# Centroids computed over the ~48k translated-only Arabic hadiths (englishURN > 0).
-# Eliminates cluster pollution from Arabic-only collections (ibnabishayba, etc.).
-_ARABIC_TRANSLATED_CENTROIDS_PATH = "/code/arabic_translated_cluster_centroids.json"
-_ENGLISH_CENTROIDS_PATH           = "/code/english_cluster_centroids.json"
-_TOP_N_CLUSTERS                   = 2  # 2 × ~649 avg ≈ 1,300 docs vs 48k
-
-# ── New model centroid paths ───────────────────────────────────────────────────
-# Keyed by model key — centroids for each shared/large index.
-# Files are written by tests/cluster_new_models.py after indexing completes.
-_NEW_MODEL_CENTROID_PATHS = {
-    "english-openai-large": "/code/english-openai-large_centroids.json",
-    "arabic-openai-large":  "/code/arabic-openai-large_centroids.json",
-    "multilingual-e5":      "/code/multilingual-e5_centroids.json",
-    "bge-m3":               "/code/bge-m3_centroids.json",
-    "qwen3-embed":          "/code/qwen3-embed_centroids.json",
-}
-
-# Shape: (k, 1536), L2-normalized — loaded once at startup, None if file absent.
-_ARABIC_CENTROIDS            = None
-_ARABIC_TRANSLATED_CENTROIDS = None
-_ENGLISH_CENTROIDS           = None
-_NEW_MODEL_CENTROIDS         = {}    # {model_key: np.ndarray | None}
+def _int_env(name, default):
+    """Parse an int env var, falling back to `default` on missing/garbage."""
+    try:
+        return int(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        return default
 
 
-def _load_centroids(path, label):
-    if not os.path.exists(path):
-        access_log.warning("centroids_missing", extra={"path": path})
-        return None
-    with open(path) as f:
-        raw = json.load(f)
-    mat   = np.array(raw, dtype=np.float32)
-    norms = np.linalg.norm(mat, axis=1, keepdims=True)
-    mat   = mat / np.maximum(norms, 1e-9)
-    access_log.info("centroids_loaded", extra={"label": label, "n_clusters": len(mat)})
-    return mat
-
-
-def _load_arabic_centroids():
-    global _ARABIC_CENTROIDS, _ARABIC_TRANSLATED_CENTROIDS
-    _ARABIC_CENTROIDS            = _load_centroids(_ARABIC_CENTROIDS_PATH, "arabic-all")
-    _ARABIC_TRANSLATED_CENTROIDS = _load_centroids(_ARABIC_TRANSLATED_CENTROIDS_PATH, "arabic-translated")
-
-
-def _load_english_centroids():
-    global _ENGLISH_CENTROIDS
-    _ENGLISH_CENTROIDS = _load_centroids(_ENGLISH_CENTROIDS_PATH, "english")
-
-
-def _load_new_model_centroids():
-    global _NEW_MODEL_CENTROIDS
-    for key, path in _NEW_MODEL_CENTROID_PATHS.items():
-        _NEW_MODEL_CENTROIDS[key] = _load_centroids(path, key)
-
-
-_load_arabic_centroids()
-_load_english_centroids()
-_load_new_model_centroids()
-
-# ── Sentence-transformers lazy loading ────────────────────────────────────────
-# Models are loaded on first request to avoid startup memory pressure.
-# /tmp/stpkg is the install target used by the indexing scripts.
-_ST_MODELS: dict = {}
-_ST_LOCK = threading.Lock()
-_OPENAI_LARGE_MODEL = "text-embedding-3-large"
-
-
-def _get_st_model(model_key):
-    if model_key in _ST_MODELS:
-        return _ST_MODELS[model_key]
-    with _ST_LOCK:
-        if model_key in _ST_MODELS:
-            return _ST_MODELS[model_key]
-        sys.path.insert(0, "/tmp/stpkg")
-        os.environ.setdefault("HF_HOME", "/tmp/hf_cache")
-        from sentence_transformers import SentenceTransformer  # noqa: PLC0415
-        embed_model = EMBEDDING_MODELS[model_key]["embed_model"]
-        st = SentenceTransformer(embed_model, trust_remote_code=True)
-        _ST_MODELS[model_key] = st
-        return st
-
-
-def _embed_with_st(model_key, query):
-    """Embed a single query string using a sentence-transformers model."""
-    model_cfg = EMBEDDING_MODELS[model_key]
-    prefix = model_cfg.get("query_prefix", "")
-    embed_model_name = model_cfg["embed_model"]
-    st = _get_st_model(model_key)
-    text = prefix + query
-    if "Qwen3" in embed_model_name or "qwen3" in embed_model_name.lower():
-        vec = st.encode([text], normalize_embeddings=True, prompt_name="query")[0]
-    else:
-        vec = st.encode([text], normalize_embeddings=True)[0]
-    return np.array(vec, dtype=np.float32)
-
-
-def _embed_openai_large(query):
-    """Embed query with text-embedding-3-large and L2-normalize."""
-    resp = _openai_client.embeddings.create(model=_OPENAI_LARGE_MODEL, input=query)
-    vec = np.array(resp.data[0].embedding, dtype=np.float32)
-    norm = np.linalg.norm(vec)
-    return vec / norm if norm > 0 else vec
-
-
-# BM25 lexical search uses english-mxbai (has hadithText as full-text field).
+# Pure lexical index — no embeddings, fast to rebuild.
 LEXICAL_INDEX = "english-mxbai"
 
 # Each model gets its own ES index so you can index and switch independently.
 # The semantic field is always called "semantic_text" inside each model's index.
 SEMANTIC_FIELD = "semantic_text"
 
-_OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://host.docker.internal:11434")
+# Clip the incoming query before it hits either search path. Semantic needs it
+# because Ollama doesn't truncate, so over-long input overflows the model's
+# context window (400) or burns CPU and stalls the serial embed queue; lexical
+# benefits too, since huge query_strings are pure ES load with no real intent
+# behind them. Real queries are a phrase or two; 1000 chars only clips garbage.
+# Env-tunable — tighten if context-length 400s reappear (e.g. dense scripts).
+QUERY_MAX_CHARS = _int_env("QUERY_MAX_CHARS", 1000)
 
+_OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://host.docker.internal:11434")
+_HUGGING_FACE_KEY = os.environ.get("HUGGING_FACE_KEY")
+_HF_DEDICATED_URL = os.environ.get(
+    "HF_DEDICATED_URL"
+)  # e.g. https://<id>.endpoints.huggingface.cloud
+
+# Embedding vector dimensions for mxbai-embed-large(-v1). Used for inline chunks.
+_MXBAI_DIMS = 1024
+
+
+def _build_remote_mxbai_inference():
+    """Index-time embedding via a HuggingFace Inference Endpoint running TEI.
+
+    The endpoint exposes an OpenAI-compatible /v1/embeddings route that returns
+    L2-normalized vectors directly. Returns None (→ fall back to ES inference
+    via Ollama at index time) when either env var is missing.
+    """
+    if not (_HUGGING_FACE_KEY and _HF_DEDICATED_URL):
+        return None
+    return {
+        "url": f"{_HF_DEDICATED_URL.rstrip('/')}/v1/embeddings",
+        "api_key": _HUGGING_FACE_KEY,
+        "model_id": "mxbai",  # TEI ignores model field, but OpenAI shape requires it
+        "dims": _MXBAI_DIMS,
+    }
+
+
+SEMANTIC_ENABLED = _is_truthy(os.environ.get("SEMANTIC_ENABLED"))
+
+# When enabled, logs one structured entry per query showing the routing
+# decision: route taken, variant, whether the client mode was overridden.
+# Set ROUTER_LOG=true in .env to turn on. Off by default.
+ROUTER_LOG = _is_truthy(os.environ.get("ROUTER_LOG"))
+
+# Catalog of semantic models. Pure data — no env coupling. Add an entry here
+# to register another model; the on/off switch lives on SEMANTIC_ENABLED above.
 EMBEDDING_MODELS = {
     "mxbai": {
         "label": "mxbai-embed-large",
         "index": "english-mxbai",
         "inference_id": "mxbai-embed-large",
-        "enabled": _is_truthy(os.environ.get("MXBAI_ENABLED")),
         "multilingual": False,
-        # Ollama exposes an OpenAI-compatible API — use that since ES 8.16 has no native ollama service.
+        # ES inference endpoint — always bound to local Ollama (query-time embedding).
+        # Ollama exposes an OpenAI-compatible API; ES 8.16 has no native ollama service.
         "service": "openai",
         "service_settings": {
             "api_key": "ollama",  # Ollama doesn't require auth; ES requires a non-empty value
@@ -210,87 +162,70 @@ EMBEDDING_MODELS = {
             "model_id": "mxbai-embed-large",
             "similarity": "cosine",
         },
-    },
-    "mxbai-dirty": {
-        "label": "mxbai-embed-large (full hadithText with isnad)",
-        "index": "english-mxbai-dirty",
-        "inference_id": "mxbai-embed-large",
-        "enabled": _is_truthy(os.environ.get("MXBAI_ENABLED")),
-        "multilingual": False,
-        "service": "openai",
-        "service_settings": {
-            "api_key": "ollama",
-            "url": f"{_OLLAMA_URL}/v1/embeddings",
-            "model_id": "mxbai-embed-large",
-            "similarity": "cosine",
-        },
-    },
-    "arabic-openai": {
-        "label": "text-embedding-3-small (Arabic matn, cross-lingual)",
-        "index": ARABIC_OPENAI_INDEX,
-        "enabled": _OPENAI_ENABLED,
-        "multilingual": True,
-        "custom_knn": True,
-    },
-    "english-openai": {
-        "label": "text-embedding-3-small (English text)",
-        "index": "english-openai",
-        "enabled": _OPENAI_ENABLED,
-        "multilingual": False,
-        "custom_knn": True,
-    },
-    # ── New models ─────────────────────────────────────────────────────────────
-    "english-openai-large": {
-        "label": "text-embedding-3-large (English matn)",
-        "index": "english-openai-large",
-        "enabled": _OPENAI_ENABLED,
-        "multilingual": False,
-        "custom_knn": True,
-    },
-    "arabic-openai-large": {
-        "label": "text-embedding-3-large (Arabic matn)",
-        "index": "arabic-openai-large",
-        "enabled": _OPENAI_ENABLED,
-        "multilingual": True,
-        "custom_knn": True,
-    },
-    "multilingual-e5": {
-        "label": "multilingual-e5-large (shared English+Arabic)",
-        "index": "multilingual-e5",
-        "enabled": True,
-        "multilingual": True,
-        "custom_knn": True,
-        "embed_model": "intfloat/multilingual-e5-large",
-        "query_prefix": "query: ",
-    },
-    "bge-m3": {
-        "label": "BGE-M3 (shared English+Arabic)",
-        "index": "bge-m3",
-        "enabled": True,
-        "multilingual": True,
-        "custom_knn": True,
-        "embed_model": "BAAI/bge-m3",
-        "query_prefix": "",
-    },
-    "qwen3-embed": {
-        "label": "Qwen3-Embedding (shared English+Arabic)",
-        "index": "qwen3-embed",
-        "enabled": True,
-        "multilingual": True,
-        "custom_knn": True,
-        "embed_model": "Qwen/Qwen3-Embedding",
-        "query_prefix": "",
+        # Optional remote inference for index time only. When set, the indexer
+        # pre-computes vectors via the HF Dedicated Endpoint and ships them
+        # inline in the bulk payload (semantic_text accepts pre-populated chunks
+        # and skips its own inference call). Query time always goes through the
+        # ES inference endpoint above (local Ollama).
+        "remote_inference": _build_remote_mxbai_inference(),
     },
 }
 
-_ENABLED_MODELS = {k: v for k, v in EMBEDDING_MODELS.items() if v["enabled"]}
-SEMANTIC_ENABLED = bool(_ENABLED_MODELS)
+_ENABLED_MODELS = EMBEDDING_MODELS if SEMANTIC_ENABLED else {}
 
-# Bulk timeout — embedding calls during indexing are slow.
-BULK_REQUEST_TIMEOUT = 300 if SEMANTIC_ENABLED else 60
+# Which model `/search?mode=semantic` picks when no `model=` param is given.
+# Override via SEMANTIC_MODEL in .env to switch index without changing code.
+DEFAULT_SEMANTIC_MODEL = os.environ.get("SEMANTIC_MODEL", "mxbai")
 
-SEARCH_MODES = ("lexical", "semantic")
-SEMANTIC_MODES = ("semantic",)
+
+# ── Shadow sampling ─────────────────────────────────────────────────────────
+# Safe semantic rollout: on a random fraction of lexical-served queries, also
+# run the semantic query in the background and persist both results + timings to
+# the `search_metrics` table in a separate searchdb, for offline comparison.
+# The served response is always the lexical one and is never delayed by this.
+#
+# Percent of lexical-served queries to shadow (0–100). 0 (or unset) = disabled,
+# so the feature stays dark until explicitly turned on in prod.
+SEARCH_METRICS_SAMPLE_PERCENT = _int_env("SEARCH_METRICS_SAMPLE_PERCENT", 0)
+# Background worker pool size and a backlog cap: if semantic latency spikes, drop
+# samples rather than let the queue (and memory) grow without bound. Sampling is
+# best-effort telemetry — losing a few rows under load is fine.
+_SHADOW_WORKERS = _int_env("SEARCH_METRICS_WORKERS", 2)
+_SHADOW_MAX_INFLIGHT = _int_env("SEARCH_METRICS_MAX_INFLIGHT", 50)
+
+# Separate searchdb (MySQL) holding `search_metrics`. Lowercase env var names
+# match what's provisioned in prod (see .env.sample).
+_SEARCHDB_CONFIG = {
+    "host": os.environ.get("searchdb_host"),
+    "user": os.environ.get("searchdb_username"),
+    "password": os.environ.get("searchdb_password"),
+    "database": os.environ.get("searchdb_name"),
+}
+
+_SHADOW_EXECUTOR = ThreadPoolExecutor(
+    max_workers=_SHADOW_WORKERS, thread_name_prefix="shadow"
+)
+# Bound the in-flight backlog: a non-blocking acquire fails — and we drop the
+# sample — once _SHADOW_MAX_INFLIGHT tasks are outstanding, instead of letting
+# the executor queue (and memory) grow without bound under load.
+_shadow_slots = threading.BoundedSemaphore(_SHADOW_MAX_INFLIGHT)
+
+# Bulk-indexing timeouts. Semantic bulk can be slow because ES embeds each
+# doc against the inference endpoint (Ollama) unless we shipped inline chunks;
+# lexical bulk is just text ingest and stays fast.
+LEXICAL_BULK_TIMEOUT_S = 60
+SEMANTIC_BULK_TIMEOUT_S = 300
+
+
+class SearchMode(str, Enum):
+    """Search mode for /search?mode=…. str mixin so equality with raw query
+    strings and JSON serialization both produce the underlying value
+    ('lexical' / 'semantic') without extra plumbing.
+    """
+
+    LEXICAL = "lexical"
+    SEMANTIC = "semantic"
+
 
 COLLECTION_BOOSTS = [
     ("bukhari", 5.0),
@@ -307,38 +242,6 @@ COLLECTION_BOOSTS = [
     ("riyadussalihin", 2.5),
 ]
 
-_COLLECTION_BOOST_MAP = {k: v for k, v in COLLECTION_BOOSTS}
-
-# chain-ref filter: exclude hadiths that are pure isnad references with no matn.
-# must_not:true (not term:false) so docs without the field still pass through.
-_CHAIN_REF_FILTER = {"bool": {"must_not": {"term": {"isChainRef": True}}}}
-
-
-def _dedup_hits(hits, size):
-    """Collapse duplicate groups, choosing the best representative per group.
-
-    Within each dupGroup, prefer the member from the most authoritative collection
-    (using COLLECTION_BOOSTS); use raw ES score as tiebreaker. Singletons
-    (dupGroup=0) are kept as-is. Final list is re-sorted by ES score and trimmed
-    to `size`.
-    """
-    groups = {}    # gid -> best hit so far
-    singletons = []
-
-    for h in hits:
-        gid = h["_source"].get("dupGroup", 0)
-        if gid == 0:
-            singletons.append(h)
-        else:
-            coll = h["_source"].get("collection", "")
-            key = (_COLLECTION_BOOST_MAP.get(coll, 1.0), h["_score"])
-            if gid not in groups or key > groups[gid][1]:
-                groups[gid] = (h, key)
-
-    merged = singletons + [h for h, _ in groups.values()]
-    merged.sort(key=lambda h: h["_score"], reverse=True)
-    return merged[:size]
-
 
 @app.errorhandler(Exception)
 def _handle_unexpected(exc):
@@ -346,7 +249,10 @@ def _handle_unexpected(exc):
         return exc
     access_log.exception(
         "unhandled_exception",
-        extra={"request_id": getattr(g, "request_id", None), "exception": type(exc).__name__},
+        extra={
+            "request_id": getattr(g, "request_id", None),
+            "exception": type(exc).__name__,
+        },
     )
     return jsonify({"error": "internal server error"}), 500
 
@@ -358,9 +264,12 @@ def home():
 
 # ── Index management ──────────────────────────────────────────────────────────
 
+
 def _ensure_inference_endpoint(model):
     try:
-        es_client.inference.get(task_type="text_embedding", inference_id=model["inference_id"])
+        es_client.inference.get(
+            task_type="text_embedding", inference_id=model["inference_id"]
+        )
         return
     except NotFoundError:
         pass
@@ -375,7 +284,9 @@ def _ensure_inference_endpoint(model):
 
 
 def _content_hash(doc):
-    payload = {k: v for k, v in doc.items() if k not in ("_id", "contentHash", SEMANTIC_FIELD)}
+    payload = {
+        k: v for k, v in doc.items() if k not in ("_id", "contentHash", SEMANTIC_FIELD)
+    }
     encoded = json.dumps(payload, sort_keys=True, default=str, ensure_ascii=False)
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
@@ -386,12 +297,381 @@ def _prepare_documents(documents):
         doc["contentHash"] = _content_hash(doc)
 
 
-def _bulk_index(actions, index, timeout=None):
+# HF's per-endpoint pool 429s well below TEI's max_concurrent_requests=512.
+# batch_size × max_input_length must stay under TEI's max_batch_tokens (16384).
+_REMOTE_EMBED_CONCURRENCY = int(os.environ.get("HF_DEDICATED_CONCURRENCY", "4"))
+_REMOTE_EMBED_BATCH_SIZE = int(os.environ.get("HF_DEDICATED_BATCH_SIZE", "16"))
+# -1 disables throttling; HF Dedicated bills by compute-time, not RPM.
+_REMOTE_EMBED_RPM = int(os.environ.get("HF_DEDICATED_RPM", "-1"))
+_REMOTE_EMBED_MAX_RETRIES = 6
+_REMOTE_EMBED_BACKOFF_FLOOR_S = 5
+# Cap server-supplied Retry-After so a misbehaving 503 can't park a worker.
+_REMOTE_EMBED_BACKOFF_CEILING_S = 60
+
+# HF Dedicated Endpoints scale-to-zero and pass through a transitional state
+# while spinning up: 503 (cold start) then 400 {"error":"Bad Request: workload
+# is not stopped"} (endpoint mid-deploy, not actually ready). Both are endpoint
+# lifecycle states, not real request errors, so we treat them as retryable and
+# wait for a successful probe before fanning batches out at a cold endpoint.
+_HF_TRANSITIONAL_BODY = "workload is not stopped"
+# Cold-start budget: wait up to 10 min for the endpoint to warm up, re-probing
+# every 10s, before fanning embed batches out at it.
+_REMOTE_READY_TIMEOUT_S = 600
+_REMOTE_READY_POLL_S = 10
+
+# Disk-backed vector cache: persists embedded batches so an interrupted build
+# resumes instead of re-embedding the whole corpus. Defaults on; lives under the
+# app working tree (per-container in prod) and is deleted on a successful build.
+_EMBED_CHECKPOINT_ENABLED = _is_truthy(
+    os.environ.get("EMBED_CHECKPOINT_ENABLED", "true")
+)
+_EMBED_CHECKPOINT_DIR = "data/embed_checkpoints"
+
+
+def _embed_text_key(text):
+    """Cache key for an embedding: a hash of the exact text sent to the model."""
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _remote_headers(cfg):
+    """Auth + content-type headers for the OpenAI-compatible HF embed endpoint."""
+    return {
+        "Authorization": f"Bearer {cfg['api_key']}",
+        "Content-Type": "application/json",
+    }
+
+
+def _remote_payload(cfg, inputs):
+    """OpenAI-shape embed body. TEI accepts `truncate` to silently handle inputs
+    over max_input_length, so we never have to pre-trim."""
+    return json.dumps(
+        {"model": cfg["model_id"], "input": inputs, "truncate": True}
+    ).encode("utf-8")
+
+
+def _open_checkpoint(model):
+    """Resume cache for this model — a no-op NullCheckpoint when disabled, not a
+    semantic model, or unwritable.
+
+    Returning a uniform object (never None) lets callers use it with no guards,
+    and degrades gracefully: a checkpoint that can't be created (e.g. read-only
+    filesystem) must never block an index build.
+    """
+    if not (_EMBED_CHECKPOINT_ENABLED and model and model.get("remote_inference")):
+        return NullCheckpoint()
+    path = checkpoint_path(_EMBED_CHECKPOINT_DIR, model["index"])
+    try:
+        cp = VectorCheckpoint(path)
+    except OSError as e:
+        access_log.warning(
+            "embed_checkpoint_unavailable", extra={"path": path, "reason": str(e)}
+        )
+        return NullCheckpoint()
+    access_log.info("embed_checkpoint_open", extra={"path": path, "cached": len(cp)})
+    return cp
+
+
+def _remote_failure_retryable(status_code, body):
+    """Classify an HTTP failure from the remote embed endpoint as retryable.
+
+    429 and 5xx are the usual transient cases. A 400 is normally fatal (bad
+    input / model id), except HF's "workload is not stopped" — that's a
+    transitional endpoint lifecycle state, not a bad request, so it's retryable.
+    """
+    if status_code == 429 or 500 <= status_code < 600:
+        return True
+    return status_code == 400 and _HF_TRANSITIONAL_BODY in (body or "").lower()
+
+
+def _wait_for_remote_ready(model):
+    """Poll the remote endpoint with a tiny embed until it returns 200.
+
+    Slamming HF_DEDICATED_CONCURRENCY workers at a cold/scaling endpoint is what
+    produced the 503 → 400 "workload is not stopped" chain that aborted the
+    whole run. Block on a single successful probe first (up to
+    _REMOTE_READY_TIMEOUT_S), retrying only transitional states; a genuine error
+    (bad key, bad model id) surfaces immediately.
+    """
+    cfg = model["remote_inference"]
+    headers = _remote_headers(cfg)
+    payload = _remote_payload(cfg, ["ping"])
+    deadline = time.monotonic() + _REMOTE_READY_TIMEOUT_S
+    attempt = 0
+    while True:
+        attempt += 1
+        try:
+            req = urllib.request.Request(
+                cfg["url"], data=payload, headers=headers, method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                resp.read()
+            access_log.info("remote_ready", extra={"attempts": attempt})
+            return
+        except urllib.error.HTTPError as e:
+            body = e.read()[:200].decode("utf-8", errors="replace")
+            if not _remote_failure_retryable(e.code, body):
+                access_log.error(
+                    "remote_ready_failed", extra={"status": e.code, "body": body}
+                )
+                raise
+            status, reason = e.code, body
+        except (urllib.error.URLError, socket.timeout, ConnectionError) as e:
+            status, reason = "network_error", str(e)
+        if time.monotonic() >= deadline:
+            access_log.error(
+                "remote_ready_timeout",
+                extra={"status": status, "reason": reason, "waited_s": _REMOTE_READY_TIMEOUT_S},
+            )
+            raise RuntimeError(
+                f"remote endpoint not ready after {_REMOTE_READY_TIMEOUT_S}s "
+                f"(last status: {status})"
+            )
+        access_log.warning(
+            "remote_ready_wait",
+            extra={"status": status, "attempt": attempt, "wait_s": _REMOTE_READY_POLL_S},
+        )
+        time.sleep(_REMOTE_READY_POLL_S)
+
+
+def _embed_via_remote(model, texts, checkpoint=None):
+    """Batch-embed `texts` via the configured HF Dedicated Endpoint.
+
+    Returns a list of float vectors aligned with input order. Retries on 429,
+    transient 5xx, and HF's transitional 400 ("workload is not stopped") with
+    exponential backoff (Retry-After respected when ≥ floor). Captures the
+    response body on non-retryable failures (e.g. 400 "inputs cannot be empty")
+    to make debugging easier.
+
+    `checkpoint` (a VectorCheckpoint or no-op NullCheckpoint) reuses vectors
+    already persisted from an earlier interrupted run (only the misses are
+    re-embedded), and each completed batch is persisted as it finishes — so even
+    if a later batch raises, the run resumes from where it left off rather than
+    from zero.
+    """
+    cfg = model["remote_inference"]
+    headers = _remote_headers(cfg)
+    limiter = RateLimiter(_REMOTE_EMBED_RPM, log=access_log)
+
+    def _embed_batch(batch_texts):
+        payload = _remote_payload(cfg, batch_texts)
+        for attempt in range(_REMOTE_EMBED_MAX_RETRIES):
+            limiter.acquire()
+            req = urllib.request.Request(
+                cfg["url"], data=payload, headers=headers, method="POST"
+            )
+
+            status = None
+            retry_after = None
+            try:
+                with urllib.request.urlopen(req, timeout=120) as resp:
+                    body = json.loads(resp.read())
+                # TEI's /v1/embeddings returns OpenAI shape with L2-normalized vectors.
+                return [item["embedding"] for item in body["data"]]
+            except urllib.error.HTTPError as e:
+                status = e.code
+                # Read the body up front — classification needs it (HF signals
+                # the transitional state via a 400 body, not a distinct code).
+                body_snippet = e.read()[:400].decode("utf-8", errors="replace")
+                retryable = _remote_failure_retryable(e.code, body_snippet)
+                retry_after = e.headers.get("Retry-After")
+                if not retryable or attempt == _REMOTE_EMBED_MAX_RETRIES - 1:
+                    access_log.error(
+                        "remote_embed_failed",
+                        extra={
+                            "status": e.code,
+                            "body": body_snippet,
+                            "batch_size": len(batch_texts),
+                        },
+                    )
+                    raise
+            except (urllib.error.URLError, socket.timeout, ConnectionError) as e:
+                # DNS failure, connect refused, read timeout, RST mid-stream —
+                # treat as transient and retry rather than killing the run.
+                status = "network_error"
+                if attempt == _REMOTE_EMBED_MAX_RETRIES - 1:
+                    access_log.error(
+                        "remote_embed_failed",
+                        extra={
+                            "status": status,
+                            "reason": str(e),
+                            "batch_size": len(batch_texts),
+                        },
+                    )
+                    raise
+
+            # Shared backoff path for any retryable failure above.
+            parsed = (
+                float(retry_after)
+                if retry_after and retry_after.replace(".", "", 1).isdigit()
+                else 0
+            )
+            # TEI sometimes returns Retry-After: 0 — enforce a floor so we don't
+            # immediately re-fire. Cap Retry-After so a single misbehaving 503
+            # can't park a worker for many minutes.
+            wait = max(
+                min(parsed, _REMOTE_EMBED_BACKOFF_CEILING_S),
+                _REMOTE_EMBED_BACKOFF_FLOOR_S,
+                min(2**attempt, 30),
+            )
+            access_log.warning(
+                "remote_embed_retry",
+                extra={"status": status, "attempt": attempt + 1, "wait_s": wait},
+            )
+            time.sleep(wait)
+
+    checkpoint = checkpoint or NullCheckpoint()
+    keys = [_embed_text_key(t) for t in texts]
+    out = [None] * len(texts)
+
+    # Reuse any vectors a prior interrupted run already persisted (a
+    # NullCheckpoint always misses), so API calls are spent only on the rest.
+    miss = []
+    for i, k in enumerate(keys):
+        cached = checkpoint.get(k)
+        if cached is not None:
+            out[i] = cached
+        else:
+            miss.append(i)
+    if 0 < len(miss) < len(texts):
+        access_log.info(
+            "remote_embed_resumed",
+            extra={"cached": len(texts) - len(miss), "remaining": len(miss)},
+        )
+
+    if not miss:
+        return out
+
+    # Batch over the (global) miss indices so vector positions and cache keys
+    # stay aligned with the original input order.
+    batches = [
+        miss[i : i + _REMOTE_EMBED_BATCH_SIZE]
+        for i in range(0, len(miss), _REMOTE_EMBED_BATCH_SIZE)
+    ]
+    first_error = None
+    with ThreadPoolExecutor(max_workers=_REMOTE_EMBED_CONCURRENCY) as ex:
+        future_to_idxs = {
+            ex.submit(_embed_batch, [texts[i] for i in idxs]): idxs
+            for idxs in batches
+        }
+        # as_completed yields futures in completion order, so a single slow batch
+        # doesn't idle workers that finished after it but were submitted earlier.
+        # Drain every future even after one fails: persist all successes (so the
+        # next run resumes) and raise the first error only once the pool is done.
+        for f in as_completed(future_to_idxs):
+            idxs = future_to_idxs[f]
+            try:
+                vectors = f.result()
+            except Exception as e:  # noqa: BLE001 — re-raised after draining
+                if first_error is None:
+                    first_error = e
+                continue
+            # A short response would let zip() silently leave None holes in out,
+            # which then get indexed as `embeddings: null`. Treat any count
+            # mismatch as a failed batch so the run aborts (and the checkpoint is
+            # preserved) instead of writing corrupt vectors.
+            if len(vectors) != len(idxs):
+                if first_error is None:
+                    first_error = RuntimeError(
+                        f"remote returned {len(vectors)} vectors for a batch of "
+                        f"{len(idxs)} inputs"
+                    )
+                continue
+            for i, vec in zip(idxs, vectors):
+                out[i] = vec
+            checkpoint.put_many((keys[i], vec) for i, vec in zip(idxs, vectors))
+    if first_error is not None:
+        raise first_error
+    return out
+
+
+def _attach_semantic_field(paired):
+    """Attach SEMANTIC_FIELD as plain text on each doc.
+
+    ES then auto-embeds via the bound inference endpoint (Ollama) at bulk time,
+    unless _rewrite_inline_chunks is called first to pre-populate the field
+    with vectors from a remote provider.
+
+    Empty/whitespace-only text is filtered at the SQL source, so by the time we
+    get here every paired text is a non-empty string.
+    """
+    return [{**doc, SEMANTIC_FIELD: text} for doc, text in paired]
+
+
+def _inline_chunk_doc(doc, text, vec, inference_id, model_settings):
+    """Build the doc shape ES's semantic_text accepts when bypassing inference."""
+    return {
+        **doc,
+        SEMANTIC_FIELD: {
+            "text": text,
+            "inference": {
+                "inference_id": inference_id,
+                "model_settings": model_settings,
+                "chunks": [{"text": text, "embeddings": vec}],
+            },
+        },
+    }
+
+
+def _rewrite_inline_chunks(docs, model, checkpoint=None):
+    """Replace each doc's plain-text SEMANTIC_FIELD with the full inline-chunks
+    structure, with vectors fetched from the model's remote inference API.
+
+    Called only on docs about to be bulk-sent (after incremental diffing) so we
+    don't burn API quota embedding unchanged docs.
+
+    The optional `checkpoint` is owned by the caller (open/discard/close): if
+    embedding raises partway, the partial vectors stay persisted so the next run
+    resumes. The caller must only discard() it once the ES bulk step that
+    consumes these vectors has actually succeeded — discarding here would throw
+    the cache away while a downstream bulk failure could still force a full
+    re-embed.
+    """
+    remote = model["remote_inference"]
+    texts = [doc[SEMANTIC_FIELD] for doc in docs]
+
+    access_log.info(
+        "remote_embed_start",
+        extra={
+            "model": model["label"],
+            "doc_count": len(texts),
+            "batch_size": _REMOTE_EMBED_BATCH_SIZE,
+            "concurrency": _REMOTE_EMBED_CONCURRENCY,
+            "rpm": _REMOTE_EMBED_RPM,
+        },
+    )
+    # Pre-flight: wait for the endpoint to be warm before fanning batches out at
+    # it, instead of triggering the cold-start 503 → 400 chain that aborts runs.
+    _wait_for_remote_ready(model)
+
+    t0 = time.time()
+    vectors = _embed_via_remote(model, texts, checkpoint=checkpoint)
+    access_log.info(
+        "remote_embed_done",
+        extra={
+            "model": model["label"],
+            "doc_count": len(texts),
+            "duration_s": round(time.time() - t0, 1),
+        },
+    )
+
+    model_settings = {
+        "task_type": "text_embedding",
+        "dimensions": remote["dims"],
+        "similarity": "cosine",
+        "element_type": "float",
+    }
+    return [
+        _inline_chunk_doc(doc, text, vec, model["inference_id"], model_settings)
+        for doc, text, vec in zip(docs, texts, vectors)
+    ]
+
+
+def _bulk_index(actions, index, timeout):
     return helpers.bulk(
         es_client,
         actions,
         index=index,
-        request_timeout=timeout or BULK_REQUEST_TIMEOUT,
+        request_timeout=timeout,
         raise_on_error=False,
         raise_on_exception=False,
     )
@@ -433,7 +713,13 @@ def _make_settings():
                     "custom_arabic": {
                         "tokenizer": "standard",
                         "char_filter": ["html_strip", "shortcode_strip"],
-                        "filter": ["lowercase", "decimal_digit", "arabic_normalization", "arabic_stemmer", "shingle"],
+                        "filter": [
+                            "lowercase",
+                            "decimal_digit",
+                            "arabic_normalization",
+                            "arabic_stemmer",
+                            "shingle",
+                        ],
                     },
                 },
                 "char_filter": {
@@ -444,8 +730,17 @@ def _make_settings():
                     }
                 },
                 "filter": {
-                    "shingle": {"type": "shingle", "min_shingle_size": 2, "max_shingle_size": 3, "output_unigrams": True},
-                    "synonyms_filter": {"type": "synonym", "lenient": True, "synonyms_path": "synonyms.txt"},
+                    "shingle": {
+                        "type": "shingle",
+                        "min_shingle_size": 2,
+                        "max_shingle_size": 3,
+                        "output_unigrams": True,
+                    },
+                    "synonyms_filter": {
+                        "type": "synonym",
+                        "lenient": True,
+                        "synonyms_path": "synonyms.txt",
+                    },
                     "arabic_stemmer": {"type": "stemmer", "language": "arabic"},
                     "arabic_stop": {"type": "stop", "stopwords": "_arabic_"},
                 },
@@ -463,6 +758,9 @@ def _make_mappings(non_indexed_fields, model=None):
     }
     props["arabicText"] = {"type": "text", "analyzer": "custom_arabic"}
     props["contentHash"] = {"type": "keyword", "index": False}
+    # Reconstruction payloads: kept in _source, kept out of the index entirely.
+    props["en"] = {"type": "object", "enabled": False}
+    props["ar"] = {"type": "object", "enabled": False}
     if model:
         props[SEMANTIC_FIELD] = {
             "type": "semantic_text",
@@ -472,51 +770,89 @@ def _make_mappings(non_indexed_fields, model=None):
 
 
 def _rebuild_index(index_name, documents, non_indexed_fields, model=None):
-    new_index = f"{index_name}-{int(time.time())}"
-    timeout = BULK_REQUEST_TIMEOUT if model else 60
+    # time_ns avoids collisions when two rebuilds land in the same second.
+    new_index = f"{index_name}-{time.time_ns()}"
+    timeout = SEMANTIC_BULK_TIMEOUT_S if model else LEXICAL_BULK_TIMEOUT_S
     es_client.indices.create(
         index=new_index,
         mappings=_make_mappings(non_indexed_fields, model),
         settings=_make_settings(),
     )
-    success, errors = _bulk_index(documents, new_index, timeout=timeout)
-    if success == 0:
-        es_client.indices.delete(index=new_index, ignore_unavailable=True)
-        return {"mode": "rebuild", "success_count": 0, "errors": errors}
+    # Checkpoint lifecycle lives here (not in _rewrite_inline_chunks) so the
+    # resume cache is only discarded once the bulk index + alias swap succeed;
+    # the context manager always close()s it on the way out.
+    with _open_checkpoint(model) as checkpoint:
+        try:
+            if model and model.get("remote_inference"):
+                documents = _rewrite_inline_chunks(documents, model, checkpoint)
+            success, errors = _bulk_index(documents, new_index, timeout=timeout)
+            if success == 0:
+                # Bulk wholesale-failed; keep the checkpoint so a retry resumes.
+                es_client.indices.delete(index=new_index, ignore_unavailable=True)
+                return {"mode": "rebuild", "success_count": 0, "errors": errors}
 
-    old_indices = []
-    if es_client.indices.exists_alias(name=index_name):
-        old_indices = list(es_client.indices.get_alias(name=index_name).keys())
-    elif es_client.indices.exists(index=index_name):
-        es_client.indices.delete(index=index_name)
+            old_indices = []
+            if es_client.indices.exists_alias(name=index_name):
+                old_indices = list(es_client.indices.get_alias(name=index_name).keys())
+            elif es_client.indices.exists(index=index_name):
+                es_client.indices.delete(index=index_name)
 
-    actions = [{"add": {"index": new_index, "alias": index_name}}]
-    for old in old_indices:
-        actions.append({"remove": {"index": old, "alias": index_name}})
-    es_client.indices.update_aliases(actions=actions)
-    for old in old_indices:
-        es_client.indices.delete(index=old, ignore_unavailable=True)
+            actions = [{"add": {"index": new_index, "alias": index_name}}]
+            for old in old_indices:
+                actions.append({"remove": {"index": old, "alias": index_name}})
+            es_client.indices.update_aliases(actions=actions)
+            for old in old_indices:
+                es_client.indices.delete(index=old, ignore_unavailable=True)
+            # Index is live — vectors are durably in ES, so the cache is dead weight.
+            checkpoint.discard()
+        except Exception:
+            es_client.indices.delete(index=new_index, ignore_unavailable=True)
+            raise
 
     return {"mode": "rebuild", "success_count": success, "errors": errors}
 
 
 def _incremental_index(index_name, documents, model=None):
     incoming = {doc["_id"]: doc for doc in documents}
+    if not incoming:
+        # Refuse to wipe the live index when the source returns nothing
+        # (transient DB failure, wrong DATABASE env, etc.).
+        return {
+            "mode": "incremental",
+            "indexed": 0,
+            "deleted": 0,
+            "unchanged": 0,
+            "success_count": 0,
+            "errors": ["source returned 0 documents — refusing to delete live index"],
+        }
     existing_hashes = {}
     for hit in helpers.scan(
         es_client, index=index_name, query={"_source": ["contentHash"]}, size=2000
     ):
         existing_hashes[hit["_id"]] = hit["_source"].get("contentHash")
 
-    to_index = [doc for doc_id, doc in incoming.items()
-                if existing_hashes.get(doc_id) != doc["contentHash"]]
+    to_index = [
+        doc
+        for doc_id, doc in incoming.items()
+        if existing_hashes.get(doc_id) != doc["contentHash"]
+    ]
     to_delete = [doc_id for doc_id in existing_hashes if doc_id not in incoming]
-    actions = to_index + [{"_op_type": "delete", "_id": did} for did in to_delete]
 
-    timeout = BULK_REQUEST_TIMEOUT if model else 60
+    # Checkpoint lifecycle lives here (not in _rewrite_inline_chunks) so the
+    # resume cache is only discarded once the bulk index actually succeeds; the
+    # context manager always close()s it. No real cache unless there's something
+    # to embed (passing model=None yields a no-op NullCheckpoint).
+    timeout = SEMANTIC_BULK_TIMEOUT_S if model else LEXICAL_BULK_TIMEOUT_S
     success, errors = 0, []
-    if actions:
-        success, errors = _bulk_index(actions, index_name, timeout=timeout)
+    with _open_checkpoint(model if to_index else None) as checkpoint:
+        if to_index and model and model.get("remote_inference"):
+            to_index = _rewrite_inline_chunks(to_index, model, checkpoint)
+
+        actions = to_index + [{"_op_type": "delete", "_id": did} for did in to_delete]
+        if actions:
+            success, errors = _bulk_index(actions, index_name, timeout=timeout)
+        # Bulk completed — embedded vectors are durably in ES; drop the cache.
+        checkpoint.discard()
 
     return {
         "mode": "incremental",
@@ -528,7 +864,9 @@ def _incremental_index(index_name, documents, model=None):
     }
 
 
-def _index_one(index_name, documents, non_indexed_fields, model=None, force_rebuild=False):
+def _index_one(
+    index_name, documents, non_indexed_fields, model=None, force_rebuild=False
+):
     """Rebuild or incrementally update a single index."""
     if force_rebuild or not _index_is_incremental(index_name):
         return _rebuild_index(index_name, documents, non_indexed_fields, model)
@@ -537,14 +875,36 @@ def _index_one(index_name, documents, non_indexed_fields, model=None, force_rebu
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
+
 @app.route("/index", methods=["GET"])
 def index():
     start = time.time()
     if request.args.get("password") != os.environ.get("INDEXING_PASSWORD"):
         return "Must provide valid password to index", 401
 
-    target_model = request.args.get("model")  # index only this model when specified
     force_rebuild = _is_truthy(request.args.get("rebuild"))
+
+    # ?targets=… is a comma-separated subset of {lexical, <each enabled model>}.
+    # Missing → build everything. Empty or unknown → 400 (don't silently
+    # misinterpret a typo as "do nothing" or "do everything").
+    valid_targets = {"lexical", *_ENABLED_MODELS}
+    raw_targets = request.args.get("targets")
+    if raw_targets is None:
+        targets = valid_targets
+    else:
+        targets = {t.strip() for t in raw_targets.split(",") if t.strip()}
+        if not targets:
+            return jsonify(
+                {"error": "targets= must be a non-empty comma-separated list"}
+            ), 400
+        unknown = targets - valid_targets
+        if unknown:
+            return jsonify(
+                {
+                    "error": f"unknown targets {sorted(unknown)}; "
+                    f"valid: {sorted(valid_targets)}"
+                }
+            ), 400
 
     connection = pymysql.connect(
         host=os.environ.get("MYSQL_HOST"),
@@ -553,34 +913,75 @@ def index():
         database=os.environ.get("MYSQL_DATABASE"),
     )
     cursor = connection.cursor(pymysql.cursors.DictCursor)
+    # Filter out empty rows at the source so the rest of the pipeline doesn't
+    # have to handle them — TEI rejects empty inputs, ES wastes an _id storing
+    # them, and a hadith with no text can't match any query anyway.
+    #
+    # Each SELECT's columns ARE a language's reconstruction payload  — the names match the website's EnglishHadith/ArabicHadith model
+    # properties, so keep them in sync. bookID is DECIMAL — cast to CHAR so it
+    # JSON-serializes and matches how the website keys books ("1.0").
     cursor.execute(
-        """SELECT arabicURN as urn, collection, hadithNumber, hadithText as arabicText,
-                    matchingEnglishURN, "ar" as lang, grade1 as grade FROM ArabicHadithTable"""
+        """SELECT arabicURN, collection, volumeNumber, bookNumber, hadithNumber,
+                    hadithText, CAST(bookID AS CHAR) AS bookID, grade1,
+                    ourHadithNumber, matchingEnglishURN
+                  FROM ArabicHadithTable
+                  WHERE hadithText IS NOT NULL AND TRIM(hadithText) != ''"""
     )
-    arabicHadiths = cursor.fetchall()
+    arabicRows = cursor.fetchall()
 
-    arabicOnlyHadiths, matchingArabicHadiths = [], {}
-    for h in arabicHadiths:
-        if h["matchingEnglishURN"] == 0:
-            arabicOnlyHadiths.append(h)
+    # One doc per Arabic hadith; index the `ar` payload by matching English URN
+    # so the English pass can fold paired hadiths into one bilingual doc.
+    arabicHadiths = []
+    arabicOnlyHadiths = []
+    arabicByMatchingEnglish = {}
+    for hadith in arabicRows:
+        ar_obj = dict(hadith)
+        doc = {
+            "lang": "ar",
+            "urn": hadith["arabicURN"],
+            "collection": hadith["collection"],
+            "hadithNumber": hadith["hadithNumber"],
+            "arabicText": hadith["hadithText"],
+            "grade": hadith["grade1"],
+            "ar": ar_obj,
+        }
+        arabicHadiths.append(doc)
+        if hadith["matchingEnglishURN"] == 0:
+            arabicOnlyHadiths.append(doc)
         else:
-            matchingArabicHadiths[h["matchingEnglishURN"]] = h
+            arabicByMatchingEnglish[hadith["matchingEnglishURN"]] = ar_obj
 
     cursor.execute(
-        """SELECT englishURN as urn, collection, hadithText,
-                    matchingArabicURN, "en" as lang, grade1 as grade FROM EnglishHadithTable"""
+        """SELECT englishURN, collection, volumeNumber, bookNumber, hadithNumber,
+                    hadithText, CAST(bookID AS CHAR) AS bookID, grade1,
+                    ourHadithNumber, matchingArabicURN
+                  FROM EnglishHadithTable
+                  WHERE hadithText IS NOT NULL AND TRIM(hadithText) != ''"""
     )
-    englishHadiths = cursor.fetchall()
-    for h in englishHadiths:
-        if h["urn"] in matchingArabicHadiths:
-            ar = matchingArabicHadiths[h["urn"]]
-            h["arabicText"] = ar["arabicText"]
-            h["arabicGrade"] = ar["grade"]
-            h["hadithNumber"] = ar["hadithNumber"]
+    englishRows = cursor.fetchall()
+
+    englishHadiths = []
+    for hadith in englishRows:
+        doc = {
+            "lang": "en",
+            "urn": hadith["englishURN"],
+            "collection": hadith["collection"],
+            "hadithText": hadith["hadithText"],
+            "grade": hadith["grade1"],
+            "en": dict(hadith),
+        }
+        # Fold in the matching Arabic side → one bilingual doc. Arabic
+        # hadithNumber stays top-level to preserve search ranking (hadithNumber^2).
+        ar_obj = arabicByMatchingEnglish.get(hadith["englishURN"])
+        if ar_obj is not None:
+            doc["arabicText"] = ar_obj["hadithText"]
+            doc["hadithNumber"] = ar_obj["hadithNumber"]
+            doc["ar"] = ar_obj
+        englishHadiths.append(doc)
 
     connection.close()
 
-    non_indexed = ["urn", "matchingArabicURN", "lang"]
+    non_indexed = ["urn", "lang"]
 
     # Prepare IDs and content hashes. arabicHadiths is a superset of arabicOnlyHadiths
     # (same dict objects), so preparing arabicHadiths covers both.
@@ -594,35 +995,32 @@ def index():
     # embedded, every English doc gets its English text embedded. This lets a multilingual
     # model like text-embedding-3-small retrieve across both languages from one index.
     results = {}
-
-    # Lexical index — built when no model is specified, or when model=lexical.
-    if not target_model or target_model == "lexical":
-        results["lexical"] = _index_one(LEXICAL_INDEX, lexical_docs, non_indexed,
-                                         model=None, force_rebuild=force_rebuild)
-
-    # Model indexes — skip entirely when model=lexical.
-    models_to_index = (
-        {}
-        if target_model == "lexical"
-        else {target_model: _ENABLED_MODELS[target_model]}
-        if target_model and target_model in _ENABLED_MODELS
-        else _ENABLED_MODELS
-    )
+    if "lexical" in targets:
+        results["lexical"] = _index_one(
+            LEXICAL_INDEX,
+            lexical_docs,
+            non_indexed,
+            model=None,
+            force_rebuild=force_rebuild,
+        )
+    models_to_index = {k: v for k, v in _ENABLED_MODELS.items() if k in targets}
     for model_key, model in models_to_index.items():
-        if model.get("custom_knn"):
-            results[model_key] = {"skipped": "pre-built index, use test scripts to index"}
-            continue
         _ensure_inference_endpoint(model)
         if model.get("multilingual"):
             # Full corpus: every Arabic doc embeds Arabic text, every English doc embeds English.
-            en_docs = [{**doc, SEMANTIC_FIELD: doc["hadithText"]} for doc in englishHadiths]
-            ar_docs = [{**doc, SEMANTIC_FIELD: doc["arabicText"]} for doc in arabicHadiths]
-            model_docs = en_docs + ar_docs
+            en_docs = [(doc, doc["hadithText"]) for doc in englishHadiths]
+            ar_docs = [(doc, doc["arabicText"]) for doc in arabicHadiths]
+            paired = en_docs + ar_docs
         else:
-            # English-only — replicates colleague's original PR approach.
-            model_docs = [{**doc, SEMANTIC_FIELD: doc["hadithText"]} for doc in englishHadiths]
+            paired = [(doc, doc["hadithText"]) for doc in englishHadiths]
+
+        model_docs = _attach_semantic_field(paired)
         results[model_key] = _index_one(
-            model["index"], model_docs, non_indexed, model=model, force_rebuild=force_rebuild
+            model["index"],
+            model_docs,
+            non_indexed,
+            model=model,
+            force_rebuild=force_rebuild,
         )
         results[model_key]["failed"] = json.dumps(results[model_key].pop("errors"))
 
@@ -634,26 +1032,132 @@ def index():
     return jsonify(results)
 
 
+def _index_language_counts(index):
+    """Total + per-language doc counts for a live index/alias.
+
+    `lang` is stored but not indexed, so we can't aggregate on it. Instead break
+    down by which text field is present: a doc with hadithText carries an English
+    side, one with arabicText carries an Arabic side. A bilingual doc has both
+    and is counted under each — matching how it's actually searchable in either
+    language, and why "lexical" legitimately reports both English and Arabic.
+    """
+    r = es_client.search(
+        index=index,
+        size=0,
+        track_total_hits=True,
+        aggregations={
+            "english": {"filter": {"exists": {"field": "hadithText"}}},
+            "arabic": {"filter": {"exists": {"field": "arabicText"}}},
+        },
+    )
+    return {
+        "count": r["hits"]["total"]["value"],
+        "english": r["aggregations"]["english"]["doc_count"],
+        "arabic": r["aggregations"]["arabic"]["doc_count"],
+    }
+
+
+def _temp_index_progress(index):
+    """Live doc count + age of an in-flight `{base}-{ns}` rebuild index."""
+    info = {"index": index}
+    try:
+        info["count"] = es_client.count(index=index)["count"]
+        settings = es_client.indices.get_settings(index=index)
+        created_ms = int(settings[index]["settings"]["index"]["creation_date"])
+        info["age_seconds"] = round(time.time() - created_ms / 1000, 1)
+    except Exception as e:  # index can vanish mid-call once a rebuild swaps in
+        info["error"] = str(e)
+    return info
+
+
+def _index_build_status(base):
+    """Status for one logical index, including any rebuild in progress.
+
+    A rebuild bulk-loads a fresh `{base}-{ns}` index and only flips the `{base}`
+    alias onto it at the very end (see _rebuild_index). So a concrete `{base}-*`
+    index the alias doesn't yet point to is a build in progress (or an abandoned
+    one) — surfaced under "building" with its climbing doc count.
+
+    One `_alias` lookup over `{base}*` resolves both the live indices (those the
+    `base` alias serves) and the in-flight ones in a single round-trip.
+    """
+    try:
+        resolved = es_client.indices.get_alias(index=f"{base}*")
+    except NotFoundError:
+        resolved = {}
+    live_indices = {idx for idx, meta in resolved.items() if base in meta["aliases"]}
+    if not live_indices and base in resolved:
+        live_indices = {base}  # plain index, not yet alias-backed
+    building_indices = sorted(
+        idx
+        for idx in resolved
+        if idx.startswith(f"{base}-") and idx not in live_indices
+    )
+
+    out = {"index": base, "indexed": bool(live_indices)}
+    if live_indices:
+        out["live_index"] = sorted(live_indices)
+        out["incremental"] = _index_is_incremental(base)
+        out.update(_index_language_counts(base))
+
+    building = [_temp_index_progress(idx) for idx in building_indices]
+    if building:
+        out["building"] = building
+    return out
+
+
+def _checkpoint_status():
+    """Resume caches on disk → an embed pass is in progress or was interrupted.
+
+    A checkpoint file only exists between the start of a semantic build and its
+    success (it's discarded on completion). During the embed phase the temp ES
+    index exists but holds 0 docs, so the checkpoint's growing size is the
+    progress signal; a stale mtime means a build died and the next run resumes.
+    """
+    out = []
+    for index_name, path in list_checkpoints(_EMBED_CHECKPOINT_DIR):
+        try:
+            st = os.stat(path)
+        except OSError:
+            continue
+        out.append(
+            {
+                "index": index_name,
+                "size_bytes": st.st_size,
+                "idle_seconds": round(time.time() - st.st_mtime, 1),
+            }
+        )
+    return out
+
+
 @app.route("/index/status", methods=["GET"])
 def index_status():
-    out = {}
-    for index_name in [LEXICAL_INDEX] + [m["index"] for m in EMBEDDING_MODELS.values()]:
-        try:
-            r = es_client.search(index=index_name, size=0, track_total_hits=True)
-            out[index_name] = {"indexed": True, "count": r["hits"]["total"]["value"]}
-        except NotFoundError:
-            out[index_name] = {"indexed": False}
-    return jsonify(out)
+    indexes = {"lexical": _index_build_status(LEXICAL_INDEX)}
+    for key, model in EMBEDDING_MODELS.items():
+        indexes[key] = _index_build_status(model["index"])
+    return jsonify(
+        {
+            "semantic_enabled": SEMANTIC_ENABLED,
+            "indexes": indexes,
+            "checkpoints": _checkpoint_status(),
+        }
+    )
 
 
 # ── Search helpers ────────────────────────────────────────────────────────────
 
+
 def get_suggest_query(field):
     return {
-        "field": field, "size": 3, "gram_size": 3,
+        "field": field,
+        "size": 3,
+        "gram_size": 3,
         "direct_generator": [{"field": field, "suggest_mode": "missing"}],
         "highlight": {"pre_tag": "<em>", "post_tag": "</em>"},
-        "collate": {"query": {"source": {"match": {field: "{{suggestion}}"}}}, "prune": False},
+        "collate": {
+            "query": {"source": {"match": {field: "{{suggestion}}"}}},
+            "prune": False,
+        },
     }
 
 
@@ -665,6 +1169,19 @@ def get_suggest_block(query):
     }
 
 
+def _truncate_query(query):
+    """Clip query text to QUERY_MAX_CHARS. Applied once when the request query is
+    read, so it covers both the lexical and semantic paths (and the shadow
+    sampler, which is handed the already-truncated query)."""
+    if query is None or len(query) <= QUERY_MAX_CHARS:
+        return query
+    access_log.warning(
+        "query_truncated",
+        extra={"original_len": len(query), "max_chars": QUERY_MAX_CHARS},
+    )
+    return query[:QUERY_MAX_CHARS]
+
+
 def build_semantic_query(query, filter_clauses):
     return {
         "bool": {
@@ -672,6 +1189,60 @@ def build_semantic_query(query, filter_clauses):
             "must": [{"semantic": {"field": SEMANTIC_FIELD, "query": query}}],
         }
     }
+
+
+_ARABIC_RE = re.compile(r"[؀-ۿ]")
+# Ends with a number (with or without preceding text) — "bukhari 1", "abu dawud 200", "5", "42".
+# Forces lexical: semantic returns 0/9 correct for reference-style lookups, and a bare
+# number has no semantic content worth embedding.
+_REF_RE = re.compile(r"(^|\s)\d+[a-z]?\s*$", re.IGNORECASE)
+# Explicit boolean operators in ES query_string syntax.
+# Semantic embeds AND/OR/NOT as plain text and ignores the logic — keep these on BM25.
+_BOOL_RE = re.compile(r"\b(AND|OR|NOT)\b")
+
+_LOG_ROUTE_VARIANT = {
+    "phrase": "lexical_phrase",
+    "arabic": "lexical_arabic",
+    "reference": "lexical_reference",
+}
+
+def _route_query(query, mode):
+    """Classify the query and return (route, variant, phrase_text).
+
+    route       — "lexical" | mode (passes through for semantic/lexical)
+    variant     — None | "phrase" | "arabic" | "reference"
+    phrase_text — inner text when variant=="phrase", else None
+
+    Rules (applied in order — earlier rules always win):
+      1. Quoted (≥3 chars) → lexical phrase (match_phrase on hadithText + arabicText)
+      2. Any Arabic character → lexical arabic BM25, full corpus
+      3. Ends with a number (or IS a number) → lexical reference, forced off semantic
+      4. Contains AND/OR/NOT → lexical BM25 (operator syntax, semantic ignores these)
+      5. Otherwise → mode as requested (lexical BM25 or semantic)
+
+    Known limitation — multi-word collection names (e.g. "abu dawud 1", "ibn majah 1"):
+    Collection ids are stored as single tokens ("abudawud", "ibnmajah"). BM25 tokenizes
+    the query into ["abu", "dawud", "1"] — none of which match the compound token — so
+    the collection field gives no BM25 signal. Bukhari's higher flat boost (5.0) then
+    beats Abu Dawud's (3.0) whenever hadith number 1 is in both. Fix: add query-time
+    synonyms to synonyms.txt (e.g. "abu dawud, abudawud") with a custom search_analyzer
+    on the collection field.
+    """
+    q = query.strip()
+
+    if len(q) >= 3 and q[0] == '"' and q[-1] == '"':
+        return "lexical", "phrase", q[1:-1]
+
+    if _ARABIC_RE.search(q):
+        return "lexical", "arabic", None
+
+    if _REF_RE.search(q):
+        return "lexical", "reference", None
+
+    if _BOOL_RE.search(q):
+        return "lexical", None, None
+
+    return mode, None, None
 
 
 def get_filter_from_args(args):
@@ -684,35 +1255,121 @@ def get_filter_from_args(args):
 
 
 def _resolve_mode(args):
-    mode = args.get("mode", "lexical").lower()
-    if mode not in SEARCH_MODES:
-        mode = "lexical"
-    if mode in SEMANTIC_MODES and not SEMANTIC_ENABLED:
-        mode = "lexical"
+    """Normalize ?mode=... to a SearchMode. Falls back to LEXICAL for unknown
+    values and whenever SEMANTIC_ENABLED is off.
+    """
+    try:
+        mode = SearchMode((args.get("mode") or "").lower())
+    except ValueError:
+        return SearchMode.LEXICAL
+    if mode == SearchMode.SEMANTIC and not SEMANTIC_ENABLED:
+        return SearchMode.LEXICAL
     return mode
 
 
 def _resolve_model_key(args):
-    key = args.get("model")
+    """Returns (key, error_message). error_message is non-None for explicit invalid input."""
+    key = args.get("model") or DEFAULT_SEMANTIC_MODEL
     if key in _ENABLED_MODELS:
-        return key
-    return next(iter(_ENABLED_MODELS), None)
+        return key, None
+    return None, f"unknown model '{key}'; enabled: {sorted(_ENABLED_MODELS)}"
 
 
 def malformed_query_response(exc):
-    access_log.warning("malformed_query", extra={"request_id": getattr(g, "request_id", None), "detail": str(exc)})
+    access_log.warning(
+        "malformed_query",
+        extra={"request_id": getattr(g, "request_id", None), "detail": str(exc)},
+    )
     return jsonify({"error": "malformed query"}), 400
 
 
 @app.route("/<language>/search", methods=["GET"])
 def search(language):
-    query = request.args.get("q")
+    query = _truncate_query(request.args.get("q"))
     filters = get_filter_from_args(request.args)
     mode = _resolve_mode(request.args)
-    model_key = _resolve_model_key(request.args) if mode in SEMANTIC_MODES else None
-    model = _ENABLED_MODELS.get(model_key) if model_key else None
-    search_index = model["index"] if model else LEXICAL_INDEX
+    size = int(request.args.get("size", 10))
 
+    route, variant, phrase_text = _route_query(query, mode)
+
+    # English route restricts to docs that have hadithText (excludes Arabic-only docs).
+    # lang is stored but not indexed, so we can't term-filter on it — exists on
+    # hadithText is equivalent: English/bilingual docs always have it, Arabic-only never do.
+    # Arabic variant skips this block to search the full corpus.
+    if variant != "arabic" and language == "english":
+        filters = filters + [{"exists": {"field": "hadithText"}}]
+
+    if ROUTER_LOG:
+        log_route = _LOG_ROUTE_VARIANT.get(variant) or ("semantic" if route == SearchMode.SEMANTIC else "lexical")
+        # overridden = True when phrase/arabic/reference forced lexical despite mode=semantic
+        overridden = route == "lexical" and mode == SearchMode.SEMANTIC
+        access_log.info(
+            "router_decision",
+            extra={
+                "request_id": getattr(g, "request_id", None),
+                "query": query,
+                "mode_requested": str(mode),
+                "route": log_route,
+                "variant": variant,
+                "overridden": overridden,
+            },
+        )
+
+    # ── Semantic path ──────────────────────────────────────────────────────────
+    if route == SearchMode.SEMANTIC:
+        model_key, err = _resolve_model_key(request.args)
+        if err:
+            return jsonify({"error": err}), 400
+        model = _ENABLED_MODELS[model_key]
+        access_log.info(
+            "semantic_search",
+            extra={
+                "request_id": getattr(g, "request_id", None),
+                "mode": mode,
+                "model": model_key,
+                "query": query,
+            },
+        )
+        return _semantic_search(model["index"], query, filters)
+
+    # ── Lexical paths ──────────────────────────────────────────────────────────
+
+    # Phrase search: quoted query → match_phrase on hadithText + arabicText
+    if variant == "phrase":
+        try:
+            result = es_client.search(
+                index=LEXICAL_INDEX,
+                from_=int(request.args.get("from", 0)),
+                size=size,
+                query={"function_score": {
+                    "query": {"bool": {
+                        "filter": filters,
+                        "should": [
+                            {"match_phrase": {"hadithText": phrase_text}},
+                            {"match_phrase": {"arabicText": phrase_text}},
+                        ],
+                        "minimum_should_match": 1,
+                    }},
+                    "functions": [
+                        {"filter": {"term": {"collection": name}}, "weight": w}
+                        for name, w in COLLECTION_BOOSTS
+                    ],
+                    "score_mode": "sum",
+                    "boost_mode": "sum",
+                }},
+                _source={"excludes": [SEMANTIC_FIELD]},
+                highlight={"number_of_fragments": 0, "fields": {"*": {}}},
+            )
+        except (BadRequestError, NotFoundError) as e:
+            return malformed_query_response(e)
+        result.body["_meta"] = {"route": "lexical_phrase"}
+        return jsonify(result.body)
+
+    # Arabic BM25 and standard BM25 share the same cross-fields query structure.
+    # arabicText is mapped with custom_arabic — query_string uses each field's own
+    # analyzer automatically, so Arabic tokens get correct morphological analysis
+    # without explicit annotation. The Arabic route skips the lang filter (full corpus)
+    # and sets _meta.route: lexical_arabic; standard BM25 restricts to lang:en.
     fields = ["hadithNumber^2", "hadithText", "arabicText", "collection^2"]
 
     def build_lexical(query_type):
@@ -731,320 +1388,172 @@ def search(language):
             }
         }
 
-    if mode in SEMANTIC_MODES:
-        access_log.info("semantic_search", extra={
-            "request_id": getattr(g, "request_id", None),
-            "mode": mode, "model": model_key, "query": query,
-        })
-        if model_key == "arabic-openai":
-            return _arabic_openai_search(query, filters)
-        if model_key == "english-openai":
-            return _english_openai_search(query, filters)
-        if model_key == "english-openai-large":
-            return _english_openai_large_search(query, filters)
-        if model_key == "arabic-openai-large":
-            return _arabic_openai_large_search(query, filters)
-        if model_key in ("multilingual-e5", "bge-m3", "qwen3-embed"):
-            return _multilingual_shared_search(model_key, query, filters)
-        if model_key == "mxbai":
-            return _mxbai_search(search_index, query, filters)
-        return _semantic_search(search_index, query, filters)
-
-    # Lexical path
     kwargs = {
         "index": LEXICAL_INDEX,
         "from_": request.args.get("from", 0),
-        "size": request.args.get("size", 10),
+        "size": size,
         "_source": {"excludes": [SEMANTIC_FIELD]},
         "highlight": {"number_of_fragments": 0, "fields": {"*": {}}},
         "suggest": get_suggest_block(query),
     }
+    lexical_start = time.perf_counter()
     try:
         try:
             result = es_client.search(query=build_lexical("query_string"), **kwargs)
         except BadRequestError:
-            result = es_client.search(query=build_lexical("simple_query_string"), **kwargs)
+            result = es_client.search(
+                query=build_lexical("simple_query_string"), **kwargs
+            )
     except BadRequestError as e:
         return malformed_query_response(e)
+    lexical_ms = (time.perf_counter() - lexical_start) * 1000
+
+    if variant == "arabic":
+        result.body["_meta"] = {"route": "lexical_arabic"}
+        return jsonify(result.body)
+
+    _maybe_shadow_sample(
+        query,
+        filters,
+        request.args.get("from", 0),
+        size,
+        result.body,
+        lexical_ms,
+    )
+    route_tag = "lexical_reference" if variant == "reference" else "lexical"
+    result.body.setdefault("_meta", {})["route"] = route_tag
     return jsonify(result.body)
+
+
+def _execute_semantic_search(search_index, query, filters, from_, size):
+    """Run the semantic ES query. Shared by the request route and the shadow
+    sampler so the query shape (timeout, source excludes, suggest) lives once."""
+    return es_client.options(request_timeout=130).search(
+        index=search_index,
+        from_=int(from_),
+        size=int(size),
+        query=build_semantic_query(query, filters),
+        _source={"excludes": [SEMANTIC_FIELD]},
+        suggest=get_suggest_block(query),
+    )
 
 
 def _semantic_search(search_index, query, filters):
     try:
-        result = es_client.options(request_timeout=130).search(
-            index=search_index,
-            from_=int(request.args.get("from", 0)),
-            size=int(request.args.get("size", 10)),
-            query=build_semantic_query(query, filters),
-            _source={"excludes": [SEMANTIC_FIELD]},
-            suggest=get_suggest_block(query),
+        result = _execute_semantic_search(
+            search_index,
+            query,
+            filters,
+            request.args.get("from", 0),
+            request.args.get("size", 10),
         )
     except BadRequestError as e:
         return malformed_query_response(e)
+    result.body.setdefault("_meta", {})["route"] = "semantic"
     return jsonify(result.body)
 
 
-def _embed_arabic_query(query):
-    """Embed query with text-embedding-3-small and L2-normalize."""
-    resp = _openai_client.embeddings.create(model=_ARABIC_EMBED_MODEL, input=query)
-    vec = np.array(resp.data[0].embedding, dtype=np.float32)
-    norm = np.linalg.norm(vec)
-    return vec / norm if norm > 0 else vec
+# ── Shadow sampling ─────────────────────────────────────────────────────────
 
 
-def _top_clusters(centroids, query_vec, n=_TOP_N_CLUSTERS):
-    """Return the n cluster IDs whose centroids are closest to query_vec."""
-    scores = centroids @ query_vec  # cosine sims via dot on unit vectors
-    return np.argsort(scores)[::-1][:n].tolist()
+def _shadow_sampling_enabled():
+    """True only when everything sampling needs is configured: a non-zero rate,
+    semantic search enabled with at least one model, and searchdb credentials."""
+    return (
+        SEARCH_METRICS_SAMPLE_PERCENT > 0
+        and SEMANTIC_ENABLED
+        and bool(_ENABLED_MODELS)
+        and all(_SEARCHDB_CONFIG.values())
+    )
 
 
-def _top_arabic_clusters(query_vec, n=_TOP_N_CLUSTERS):
-    # Prefer translated-only centroids: avoids routing to Arabic-only collection clusters.
-    # Falls back to all-hadith centroids if translated file not yet generated.
-    cents = _ARABIC_TRANSLATED_CENTROIDS if _ARABIC_TRANSLATED_CENTROIDS is not None else _ARABIC_CENTROIDS
-    return _top_clusters(cents, query_vec, n)
+def _run_semantic_shadow(search_index, query, filters, from_, size):
+    """Run the semantic query for comparison. Returns (result_body, elapsed_ms).
+
+    Runs the same query as the request route (via _execute_semantic_search) but
+    is request-context-free — it runs on a background thread, where Flask's
+    `request`/`g` are gone, so all inputs are passed in.
+    """
+    t0 = time.perf_counter()
+    result = _execute_semantic_search(search_index, query, filters, from_, size)
+    return result.body, (time.perf_counter() - t0) * 1000
 
 
-def _top_english_clusters(query_vec, n=_TOP_N_CLUSTERS):
-    return _top_clusters(_ENGLISH_CENTROIDS, query_vec, n)
-
-
-def _mxbai_search(search_index, query, filters):
-    size = int(request.args.get("size", 10))
-    dedup = not _is_truthy(request.args.get("show_dupes", "0"))
-    fetch_size = size * 3 if dedup else size
-
-    all_filters = [_CHAIN_REF_FILTER] + filters
-
+def _persist_search_metrics(
+    query,
+    lexical_results,
+    lexical_ms,
+    semantic_results,
+    semantic_ms,
+    model_name,
+    routing_decision=None,
+):
+    """Insert one row into search_metrics. Opens a fresh connection per write —
+    sampled volume is low, so a pool isn't worth the added lifecycle."""
+    conn = pymysql.connect(charset="utf8mb4", **_SEARCHDB_CONFIG)
     try:
-        result = es_client.options(request_timeout=130).search(
-            index=search_index,
-            size=fetch_size,
-            query=build_semantic_query(query, all_filters),
-            _source={"excludes": [SEMANTIC_FIELD]},
-        )
-    except BadRequestError as e:
-        return malformed_query_response(e)
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """INSERT INTO search_metrics
+                       (query, lexical_results, lexical_query_time_ms,
+                        semantic_results, semantic_query_time_ms,
+                        semantic_model_name, routing_decision)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                (
+                    query,
+                    json.dumps(lexical_results, ensure_ascii=False, default=str),
+                    round(lexical_ms, 3),
+                    json.dumps(semantic_results, ensure_ascii=False, default=str),
+                    round(semantic_ms, 3),
+                    model_name,
+                    routing_decision,
+                ),
+            )
+        conn.commit()
+    finally:
+        conn.close()
 
-    if dedup:
-        deduped = _dedup_hits(result.body["hits"]["hits"], size)
-        result.body["hits"]["hits"] = deduped
-        result.body["hits"]["total"]["value"] = len(deduped)
 
-    result.body["_meta"] = {"dedup": dedup}
-    return jsonify(result.body)
-
-
-def _english_openai_search(query, filters):
-    size  = int(request.args.get("size", 10))
-    dedup = not _is_truthy(request.args.get("show_dupes", "0"))
-
-    t0        = time.perf_counter()
-    query_vec = _embed_arabic_query(query)   # same model (text-embedding-3-small)
-    embed_ms  = round((time.perf_counter() - t0) * 1000, 1)
-
-    # Full HNSW over 48k English docs — no centroid pre-filter needed at this scale.
-    fetch_size   = size * 3 if dedup else size
-    base_filters = [_CHAIN_REF_FILTER] + filters
-    knn_filter   = {"bool": {"must": base_filters}} if len(base_filters) > 1 else base_filters[0]
-
+def _shadow_sample_task(query, filters, from_, size, lexical_body, lexical_ms):
+    """Background task: run the semantic side and persist both results. Swallows
+    every error — shadow telemetry must never affect the served request, and it
+    already returned by the time this runs."""
     try:
-        result = es_client.options(request_timeout=30).search(
-            index="english-openai",
-            knn={
-                "field": "embedding",
-                "query_vector": query_vec.tolist(),
-                "k": fetch_size,
-                "num_candidates": min(fetch_size * 20, 1000),
-                "filter": knn_filter,
-            },
-            size=fetch_size,
-            _source={"excludes": ["embedding"]},
+        model = _ENABLED_MODELS[DEFAULT_SEMANTIC_MODEL]
+        semantic_body, semantic_ms = _run_semantic_shadow(
+            model["index"], query, filters, from_, size
         )
-    except BadRequestError as e:
-        return malformed_query_response(e)
+        _persist_search_metrics(
+            query,
+            lexical_body,
+            lexical_ms,
+            semantic_body,
+            semantic_ms,
+            model["label"],
+        )
+    except Exception:
+        access_log.exception("shadow_sample_failed", extra={"query": query})
+    finally:
+        _shadow_slots.release()
 
-    if dedup:
-        deduped = _dedup_hits(result.body["hits"]["hits"], size)
-        result.body["hits"]["hits"] = deduped
-        result.body["hits"]["total"]["value"] = len(deduped)
 
-    result.body["_meta"] = {"embed_ms": embed_ms, "dedup": dedup}
-    return jsonify(result.body)
-
-
-def _arabic_openai_search(query, filters):
-    if _ARABIC_CENTROIDS is None and _ARABIC_TRANSLATED_CENTROIDS is None:
-        return jsonify({"error": "arabic centroid index not loaded"}), 503
-
-    size = int(request.args.get("size", 10))
-    t0   = time.perf_counter()
-    query_vec   = _embed_arabic_query(query)
-    cluster_ids = _top_arabic_clusters(query_vec)
-    embed_ms    = round((time.perf_counter() - t0) * 1000, 1)
-
-    # Use clusterIdTranslated when available (translated-only centroids); else fall back.
-    cluster_field  = "clusterIdTranslated" if _ARABIC_TRANSLATED_CENTROIDS is not None else "clusterIdFinal"
-    cluster_filter = {"terms": {cluster_field: cluster_ids}}
-    # Only return hadiths with an English translation.
-    translated_filter = {"exists": {"field": "englishText"}}
-    all_filters = [cluster_filter, translated_filter, _CHAIN_REF_FILTER] + filters
-    knn_filter  = {"bool": {"must": all_filters}}
-
+def _maybe_shadow_sample(query, filters, from_, size, lexical_body, lexical_ms):
+    """Roll the dice on a lexical-served query and, if it wins, hand the semantic
+    comparison off to the background pool. Returns immediately; never raises."""
+    if not query or not _shadow_sampling_enabled():
+        return
+    if random.randint(1, 100) > SEARCH_METRICS_SAMPLE_PERCENT:
+        return
+    if not _shadow_slots.acquire(blocking=False):
+        access_log.warning("shadow_sample_dropped")
+        return
     try:
-        result = es_client.options(request_timeout=30).search(
-            index=ARABIC_OPENAI_INDEX,
-            knn={
-                "field": "embedding",
-                "query_vector": query_vec.tolist(),
-                "k": size,
-                "num_candidates": min(size * 20, 500),
-                "filter": knn_filter,
-            },
-            size=size,
-            _source={"excludes": ["embedding"]},
+        _SHADOW_EXECUTOR.submit(
+            _shadow_sample_task, query, filters, from_, size, lexical_body, lexical_ms
         )
-    except BadRequestError as e:
-        return malformed_query_response(e)
-
-    body = result.body
-    body["_meta"] = {
-        "clusters": cluster_ids,
-        "cluster_field": cluster_field,
-        "embed_ms": embed_ms,
-    }
-    return jsonify(body)
-
-
-def _english_openai_large_search(query, filters):
-    size  = int(request.args.get("size", 10))
-    dedup = not _is_truthy(request.args.get("show_dupes", "0"))
-
-    t0        = time.perf_counter()
-    query_vec = _embed_openai_large(query)
-    embed_ms  = round((time.perf_counter() - t0) * 1000, 1)
-
-    fetch_size   = size * 3 if dedup else size
-    base_filters = [_CHAIN_REF_FILTER] + filters
-    knn_filter   = {"bool": {"must": base_filters}} if len(base_filters) > 1 else base_filters[0]
-
-    cents = _NEW_MODEL_CENTROIDS.get("english-openai-large")
-    if cents is not None:
-        cluster_ids    = _top_clusters(cents, query_vec)
-        cluster_filter = {"terms": {"clusterIdLarge": cluster_ids}}
-        knn_filter     = {"bool": {"must": [cluster_filter] + base_filters}}
-
-    try:
-        result = es_client.options(request_timeout=30).search(
-            index="english-openai-large",
-            knn={
-                "field": "embedding",
-                "query_vector": query_vec.tolist(),
-                "k": fetch_size,
-                "num_candidates": min(fetch_size * 20, 1000),
-                "filter": knn_filter,
-            },
-            size=fetch_size,
-            _source={"excludes": ["embedding"]},
-        )
-    except NotFoundError:
-        return jsonify({"error": "english-openai-large index not found — not yet indexed"}), 404
-    except BadRequestError as e:
-        return malformed_query_response(e)
-
-    if dedup:
-        deduped = _dedup_hits(result.body["hits"]["hits"], size)
-        result.body["hits"]["hits"] = deduped
-        result.body["hits"]["total"]["value"] = len(deduped)
-
-    result.body["_meta"] = {"embed_ms": embed_ms, "dedup": dedup}
-    return jsonify(result.body)
-
-
-def _arabic_openai_large_search(query, filters):
-    cents = _NEW_MODEL_CENTROIDS.get("arabic-openai-large")
-    if cents is None:
-        return jsonify({"error": "arabic-openai-large centroid index not loaded"}), 503
-
-    size = int(request.args.get("size", 10))
-    t0   = time.perf_counter()
-    query_vec   = _embed_openai_large(query)
-    cluster_ids = _top_clusters(cents, query_vec)
-    embed_ms    = round((time.perf_counter() - t0) * 1000, 1)
-
-    cluster_filter    = {"terms": {"clusterIdLarge": cluster_ids}}
-    translated_filter = {"exists": {"field": "englishText"}}
-    all_filters       = [cluster_filter, translated_filter, _CHAIN_REF_FILTER] + filters
-    knn_filter        = {"bool": {"must": all_filters}}
-
-    try:
-        result = es_client.options(request_timeout=30).search(
-            index="arabic-openai-large",
-            knn={
-                "field": "embedding",
-                "query_vector": query_vec.tolist(),
-                "k": size,
-                "num_candidates": min(size * 20, 500),
-                "filter": knn_filter,
-            },
-            size=size,
-            _source={"excludes": ["embedding"]},
-        )
-    except NotFoundError:
-        return jsonify({"error": "arabic-openai-large index not found — not yet indexed"}), 404
-    except BadRequestError as e:
-        return malformed_query_response(e)
-
-    body = result.body
-    body["_meta"] = {"clusters": cluster_ids, "embed_ms": embed_ms}
-    return jsonify(body)
-
-
-def _multilingual_shared_search(model_key, query, filters):
-    size  = int(request.args.get("size", 10))
-    dedup = not _is_truthy(request.args.get("show_dupes", "0"))
-
-    t0        = time.perf_counter()
-    query_vec = _embed_with_st(model_key, query)
-    embed_ms  = round((time.perf_counter() - t0) * 1000, 1)
-
-    fetch_size   = size * 3 if dedup else size
-    base_filters = [_CHAIN_REF_FILTER] + filters
-
-    cents = _NEW_MODEL_CENTROIDS.get(model_key)
-    if cents is not None:
-        cluster_ids    = _top_clusters(cents, query_vec)
-        cluster_filter = {"terms": {"clusterIdShared": cluster_ids}}
-        knn_filter     = {"bool": {"must": [cluster_filter] + base_filters}}
-    else:
-        knn_filter = {"bool": {"must": base_filters}} if len(base_filters) > 1 else base_filters[0]
-
-    index_name = EMBEDDING_MODELS[model_key]["index"]
-    try:
-        result = es_client.options(request_timeout=60).search(
-            index=index_name,
-            knn={
-                "field": "embedding",
-                "query_vector": query_vec.tolist(),
-                "k": fetch_size,
-                "num_candidates": min(fetch_size * 20, 1000),
-                "filter": knn_filter,
-            },
-            size=fetch_size,
-            _source={"excludes": ["embedding"]},
-        )
-    except NotFoundError:
-        return jsonify({"error": f"{index_name} index not found — not yet indexed"}), 404
-    except BadRequestError as e:
-        return malformed_query_response(e)
-
-    if dedup:
-        deduped = _dedup_hits(result.body["hits"]["hits"], size)
-        result.body["hits"]["hits"] = deduped
-        result.body["hits"]["total"]["value"] = len(deduped)
-
-    result.body["_meta"] = {"embed_ms": embed_ms, "dedup": dedup, "model": model_key}
-    return jsonify(result.body)
+    except RuntimeError:
+        # Executor shutting down (e.g. interpreter exit) — release the slot.
+        _shadow_slots.release()
 
 
 if __name__ == "__main__":

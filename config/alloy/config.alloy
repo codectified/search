@@ -52,6 +52,8 @@ loki.process "add_env" {
       duration_ms = "duration_ms",
       path        = "path",
       method      = "method",
+      remote_addr = "remote_addr",
+      user_agent  = "user_agent",
     }
   }
 

@@ -26,18 +26,26 @@ services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ES_STACK_VERSION}
     container_name: elasticsearch
+    restart: unless-stopped
+    mem_limit: 2g
     environment:
       - node.name=elasticsearch
       - discovery.type=single-node
       - xpack.security.enabled=true
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
-      - "ES_JAVA_OPTS=-Xms600m -Xmx1g"
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
     volumes:
       - ./config/synonyms.txt:/usr/share/elasticsearch/config/synonyms.txt
       - es-data:/usr/share/elasticsearch/data
       - es-logs:/usr/share/elasticsearch/logs
     env_file:
       - .env
+    # ES itself calls Ollama on the host for query/index-time embedding via its
+    # OpenAI-compatible inference endpoint, so it also needs host.docker.internal
+    # to resolve on Linux (host-gateway = the host's IP on the bridge network).
+    # Without this, registering the inference endpoint fails with "Invalid host".
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       default:
         ipv4_address: 172.31.250.10
@@ -84,4 +92,3 @@ networks:
 volumes:
   es-logs:
   es-data:
-

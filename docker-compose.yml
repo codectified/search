@@ -9,9 +9,26 @@ services:
       - ./db:/docker-entrypoint-initdb.d/:ro
     env_file:
       - .env
+  searchdb:
+    image: mysql:5.7.22
+    platform: linux/amd64
+    command: --default-authentication-plugin=mysql_native_password
+    # Holds the search_metrics shadow-sampling table. Its own DB/user/password
+    # come from the searchdb_* vars in .env (see .env.sample); the root password
+    # is reused from MYSQL_ROOT_PASSWORD. 01-search_metrics.sql creates the table
+    # on first init.
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${searchdb_name}
+      - MYSQL_USER=${searchdb_username}
+      - MYSQL_PASSWORD=${searchdb_password}
+    volumes:
+      - ./searchdb:/docker-entrypoint-initdb.d/:ro
+      - searchdb-data:/var/lib/mysql
   web:
     depends_on:
       - "db"
+      - "searchdb"
       - "elasticsearch"
     build: .
     command: flask run --host=0.0.0.0
@@ -23,6 +40,7 @@ services:
       - .env
     extra_hosts:
       - "elasticsearch:172.31.250.10"
+      - "host.docker.internal:host-gateway"
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ES_STACK_VERSION}
     container_name: elasticsearch
@@ -33,10 +51,13 @@ services:
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
       - cluster.routing.allocation.disk.threshold_enabled=false
       - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - path.repo=/snapshots
     volumes:
       - ./config/synonyms.txt:/usr/share/elasticsearch/config/synonyms.txt
       - es-data:/usr/share/elasticsearch/data
       - es-logs:/usr/share/elasticsearch/logs
+      - es-data:/usr/share/elasticsearch/data
+      - ./data/es-snapshots:/snapshots
     env_file:
       - .env
     networks:
@@ -84,4 +105,6 @@ networks:
 volumes:
   es-data:
   es-logs:
+  es-data:
+  searchdb-data:
 

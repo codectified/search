@@ -1,26 +1,26 @@
-*.sql
+db/01-hadithdb.sql
 .env
 __pycache__
 data/
+# Generated embedding checkpoint and cluster output files
+*_done.json
+*_cluster_map.json
+english_matn_map.json
 # Root-level container artifacts (scripts write here inside Docker, copy to test results & reports/)
 /db_structure_report.md
 /book_centroids.json
 /book_centroids.md
 /cluster_centroids.json
-/cluster_map.json
 /cluster_report.md
 /cross_collection_duplicates.md
 /narrator_hub_analysis.md
 /narrator_stats.md
 /arabic_matn_embeddings.json
 /arabic_cluster_centroids.json
-/arabic_cluster_map.json
 /arabic_cluster_report.md
 /matn_boundaries.json
 /arabic_cluster_centroids_v3.json
-/arabic_cluster_map_v3.json
 /arabic_cluster_report_v3.md
 /arabic_cluster_centroids_final.json
-/arabic_cluster_map_final.json
 /arabic_cluster_report_final.md
 /k_sweep_report.md

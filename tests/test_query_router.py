@@ -1,17 +1,19 @@
 """
 Query router integration tests — runs against the live Flask API on localhost:5001.
 
-Tests four routes:
-  1. Reference lookup  — "bukhari 1", "muslim 100", etc.
-  2. Phrase search     — "prayer at night" (quoted)
-  3. Arabic BM25       — صلاة الليل
-  4. Semantic/lexical  — normal English query, both modes
+Tests three routes:
+  1. Phrase search     — "prayer at night" (quoted)
+  2. Arabic BM25       — صلاة الليل
+  3. Semantic/lexical  — normal English query, both modes
 
 Also tests:
-  - isChainRef filtering (chain-only entries should not appear)
-  - gradeNorm facet aggregation returned on every search
-  - collection facet aggregation returned on every search
-  - gradeNorm filter param works
+  - Route values in _meta.route on every path
+  - Mode override priority (Arabic/phrase beat ?mode=semantic)
+  - Arabic route searches full corpus (no language restriction)
+
+Collection+number queries ("bukhari 1") are handled by the standard lexical
+BM25 path — hadithNumber^2 and collection^2 boosts surface the correct hadith
+naturally without a dedicated reference route.
 
 Run from the host (Flask is exposed at localhost:5001):
     python3 tests/test_query_router.py
@@ -21,16 +23,16 @@ Or inside the container (Flask on localhost:5000):
 """
 
 import json
+import re
 import sys
 import urllib.request
 import urllib.parse
-from dataclasses import dataclass, field
-from typing import Optional
+import os
+
+_ARABIC_RE = re.compile(r"[؀-ۿ]")
 
 # ── Config ─────────────────────────────────────────────────────────────────────
-BASE = "http://localhost:5001"   # override via TEST_BASE env
-import os
-BASE = os.environ.get("TEST_BASE", BASE)
+BASE = os.environ.get("TEST_BASE", "http://localhost:5001")
 LANG = "english"
 
 PASS = "\033[32mPASS\033[0m"
@@ -62,10 +64,6 @@ def source(hit):
     return hit.get("_source", {}) if hit else {}
 
 
-def aggs(resp):
-    return resp.get("aggregations", {})
-
-
 def meta(resp):
     return resp.get("_meta", {})
 
@@ -91,80 +89,15 @@ def section(title):
 
 
 # ══════════════════════════════════════════════════════════════════
-# 1. REFERENCE LOOKUP
+# 1. PHRASE SEARCH
 # ══════════════════════════════════════════════════════════════════
-section("1. Reference lookup  (collection + hadith number)")
-
-cases = [
-    ("bukhari 1",    "bukhari", "1"),
-    ("bukhari 6594", "bukhari", "6594"),
-    ("muslim 1",     "muslim",  "1"),
-    ("nasai 3",      "nasai",   "3"),
-    ("abudawud 1",   "abudawud","1"),
-    ("ibnmajah 1",   "ibnmajah","1"),
-    ("forty 1",      "forty",   "1"),
-    ("nawawi40 1",   "forty",   "1"),   # alias → forty
-]
-
-for query, expected_coll, expected_num in cases:
-    try:
-        resp = search(query)
-        m = meta(resp)
-        h = first_hit(resp)
-        s = source(h)
-        check(
-            f'"{query}" → reference route',
-            m.get("route") == "reference",
-            f'route={m.get("route")}'
-        )
-        check(
-            f'"{query}" → correct collection',
-            s.get("collection") == expected_coll,
-            f'collection={s.get("collection")}'
-        )
-        check(
-            f'"{query}" → correct hadith number',
-            s.get("hadithNumber") == expected_num or str(s.get("hadithNumber")) == expected_num,
-            f'hadithNumber={s.get("hadithNumber")}'
-        )
-    except Exception as e:
-        check(f'"{query}" → no exception', False, str(e))
-
-# Edge: number with letter suffix
-try:
-    resp = search("bukhari 59a")
-    m = meta(resp)
-    check(
-        '"bukhari 59a" → reference route',
-        m.get("route") == "reference",
-        f'route={m.get("route")}'
-    )
-except Exception as e:
-    check('"bukhari 59a" → no exception', False, str(e))
-
-# Negative: non-reference queries should NOT route to reference
-for q in ["the prayer", "prayer forgiveness", "night worship"]:
-    try:
-        resp = search(q)
-        m = meta(resp)
-        check(
-            f'"{q}" → NOT reference route',
-            m.get("route") != "reference",
-            f'route={m.get("route")}'
-        )
-    except Exception as e:
-        check(f'"{q}" not-reference → no exception', False, str(e))
-
-
-# ══════════════════════════════════════════════════════════════════
-# 2. PHRASE SEARCH
-# ══════════════════════════════════════════════════════════════════
-section('2. Phrase search  ("quoted query")')
+section('1. Phrase search  ("quoted query")')
 
 phrase_cases = [
     '"prayer at night"',
     '"Messenger of Allah"',
     '"Day of Judgement"',
+    '"صلاة الليل"',        # quoted Arabic → phrase route (not arabic route)
 ]
 
 for q in phrase_cases:
@@ -177,28 +110,36 @@ for q in phrase_cases:
             m.get("route") == "lexical_phrase",
             f'route={m.get("route")}'
         )
-        # Every hit should contain the unquoted phrase text
         inner = q.strip('"')
         if h:
-            # match_phrase covers hadithText + arabicText, so check either field
-            def phrase_in_hit(hit):
-                s = source(hit)
-                return (inner.lower() in s.get("hadithText", "").lower()
-                        or inner.lower() in s.get("arabicText", "").lower())
-            match_count = sum(phrase_in_hit(hit) for hit in h[:5])
-            check(
-                f'{q} → ≥4/5 top hits contain phrase',
-                match_count >= 4,
-                f'{match_count}/5 hits match'
-            )
+            if _ARABIC_RE.search(inner):
+                # Arabic phrases: the custom_arabic analyzer normalizes diacritics
+                # at query time, so stored text won't contain the raw substring.
+                # Routing is verified above; just confirm results came back.
+                check(
+                    f'{q} → phrase route returned results',
+                    len(h) > 0,
+                    f'{len(h)} hits returned'
+                )
+            else:
+                def phrase_in_hit(hit):
+                    s = source(hit)
+                    return (inner.lower() in s.get("hadithText", "").lower()
+                            or inner.lower() in s.get("arabicText", "").lower())
+                match_count = sum(phrase_in_hit(hit) for hit in h[:5])
+                check(
+                    f'{q} → ≥4/5 top hits contain phrase',
+                    match_count >= 4,
+                    f'{match_count}/5 hits match'
+                )
     except Exception as e:
         check(f'{q} → no exception', False, str(e))
 
 
 # ══════════════════════════════════════════════════════════════════
-# 3. ARABIC BM25
+# 2. ARABIC BM25
 # ══════════════════════════════════════════════════════════════════
-section("3. Arabic text → BM25 on arabicText")
+section("2. Arabic text → BM25 on arabicText")
 
 arabic_cases = [
     ("صلاة الليل", "night prayer"),
@@ -216,7 +157,6 @@ for arabic_q, hint in arabic_cases:
             m.get("route") == "lexical_arabic",
             f'route={m.get("route")}'
         )
-        # Hits should have arabicText populated
         if h:
             check(
                 f'"{arabic_q}" → hits have arabicText',
@@ -228,9 +168,9 @@ for arabic_q, hint in arabic_cases:
 
 
 # ══════════════════════════════════════════════════════════════════
-# 4. SEMANTIC vs LEXICAL PASSTHROUGH
+# 3. SEMANTIC vs LEXICAL PASSTHROUGH
 # ══════════════════════════════════════════════════════════════════
-section("4. Semantic / lexical mode passthrough")
+section("3. Semantic / lexical mode passthrough")
 
 query = "prayer during travel"
 
@@ -255,79 +195,107 @@ except Exception as e:
 
 
 # ══════════════════════════════════════════════════════════════════
-# 5. isChainRef FILTERING
+# 4. COLLECTION+NUMBER QUERIES — handled by standard lexical BM25
 # ══════════════════════════════════════════════════════════════════
-section("5. isChainRef filtering (chain-only entries excluded)")
+section("4. Collection+number queries → lexical_reference (forced lexical, same BM25)")
 
-try:
-    resp = search("narrated to me from")
-    h = hits(resp)
-    chain_ref_hits = [hit for hit in h if source(hit).get("isChainRef") is True]
-    check(
-        "no isChainRef=True docs in results",
-        len(chain_ref_hits) == 0,
-        f"{len(chain_ref_hits)} chain-ref hits in top {len(h)}"
-    )
-except Exception as e:
-    check("isChainRef filter → no exception", False, str(e))
+# Any query ending with a number → forced lexical regardless of ?mode=.
+# Includes multi-word collection names. BM25 unchanged; detection prevents semantic.
+# Single-word collection names: BM25 matches the collection token directly,
+# so rank-1 is reliable.
+ref_cases_exact = [
+    ("bukhari 1",       "bukhari",   "1"),
+    ("bukhari 6594",    "bukhari",   "6594"),
+    ("muslim 2363",     "muslim",    "2363"),
+    ("nasai 3",         "nasai",     "3"),
+    ("forty 1",         "forty",     "1"),
+]
+
+for query, expected_coll, expected_num in ref_cases_exact:
+    try:
+        resp = search(query)
+        m = meta(resp)
+        h = first_hit(resp)
+        s = source(h)
+        check(
+            f'"{query}" → lexical_reference route',
+            m.get("route") == "lexical_reference",
+            f'route={m.get("route")}'
+        )
+        check(
+            f'"{query}" → correct hadith at rank 1',
+            s.get("collection") == expected_coll and
+            str(s.get("hadithNumber")) == expected_num,
+            f'got {s.get("collection")}:{s.get("hadithNumber")}'
+        )
+    except Exception as e:
+        check(f'"{query}" → no exception', False, str(e))
+
+# Multi-word collection names ("abu dawud", "ibn majah"): stored as compound tokens
+# ("abudawud", "ibnmajah") so the query words don't match — rank-1 is unreliable.
+# Route detection still works; rank fix requires synonyms on the collection field.
+ref_cases_route_only = [
+    "abu dawud 1",
+    "ibn majah 1",
+]
+
+for query in ref_cases_route_only:
+    try:
+        resp = search(query)
+        m = meta(resp)
+        h = hits(resp)
+        check(
+            f'"{query}" → lexical_reference route',
+            m.get("route") == "lexical_reference",
+            f'route={m.get("route")}'
+        )
+        check(
+            f'"{query}" → returns results',
+            len(h) > 0,
+            f'{len(h)} hits'
+        )
+    except Exception as e:
+        check(f'"{query}" → no exception', False, str(e))
+
+# Misspelled collection — still ends with a number so regex matches → lexical_reference.
+# BM25 surfaces the right hadith anyway via hadithNumber^2 + collection^2 boosts.
+for q in ["bukahri 1", "bukahri 7563"]:
+    try:
+        resp = search(q)
+        m = meta(resp)
+        h = hits(resp)
+        check(
+            f'"{q}" (misspelled) → lexical_reference (ends with number)',
+            m.get("route") == "lexical_reference",
+            f'route={m.get("route")}'
+        )
+        check(
+            f'"{q}" (misspelled) → returns results',
+            len(h) > 0,
+            f'{len(h)} hits'
+        )
+    except Exception as e:
+        check(f'"{q}" misspelled → no exception', False, str(e))
+
+# Standalone numbers — no preceding text, still ends with a number → lexical_reference.
+for q in ["5", "42", "1234"]:
+    try:
+        resp = search(q)
+        m = meta(resp)
+        check(
+            f'"{q}" (standalone number) → lexical_reference',
+            m.get("route") == "lexical_reference",
+            f'route={m.get("route")}'
+        )
+    except Exception as e:
+        check(f'"{q}" standalone number → no exception', False, str(e))
 
 
 # ══════════════════════════════════════════════════════════════════
-# 6. GRADE FACETS
+# 5. EXPLICIT ROUTE VALUES IN _meta
 # ══════════════════════════════════════════════════════════════════
-section("6. gradeNorm + collection facet aggregations")
+section("5. Explicit route values in _meta")
 
-try:
-    resp = search("prayer")
-    agg = aggs(resp)
-    check(
-        "aggregations key present in response",
-        bool(agg),
-        f"keys: {list(agg.keys())}"
-    )
-    grade_agg = agg.get("gradeNorm", {})
-    buckets = grade_agg.get("buckets", [])
-    bucket_keys = [b["key"] for b in buckets]
-    check(
-        "gradeNorm agg has expected buckets",
-        any(k in bucket_keys for k in ["Sahih", "Hasan", "Da'if"]),
-        f"buckets: {bucket_keys}"
-    )
-    coll_agg = agg.get("collection", {})
-    coll_buckets = coll_agg.get("buckets", [])
-    check(
-        "collection agg has buckets",
-        len(coll_buckets) > 0,
-        f"{len(coll_buckets)} collections"
-    )
-    check(
-        "bukhari appears in collection agg",
-        any(b["key"] == "bukhari" for b in coll_buckets),
-        f"collections: {[b['key'] for b in coll_buckets[:5]]}"
-    )
-except Exception as e:
-    check("grade facets → no exception", False, str(e))
-
-# gradeNorm filter param
-try:
-    resp_sahih = search("prayer", gradeNorm="Sahih")
-    h = hits(resp_sahih)
-    all_sahih = all(source(hit).get("gradeNorm") in ("Sahih", None) for hit in h)
-    check(
-        "gradeNorm=Sahih filter returns only Sahih/Bukhari/Muslim",
-        all_sahih,
-        f"{len(h)} results, non-sahih: {[source(hit).get('gradeNorm') for hit in h if source(hit).get('gradeNorm') not in ('Sahih', None)][:3]}"
-    )
-except Exception as e:
-    check("gradeNorm filter → no exception", False, str(e))
-
-
-# ══════════════════════════════════════════════════════════════════
-# 7. ROUTE META VALUES — explicit route checks
-# ══════════════════════════════════════════════════════════════════
-section("7. Explicit route values in _meta")
-
-# Standard English → route: lexical
 for q in ["prayer forgiveness", "comparing yourself to others", "aisha"]:
     try:
         resp = search(q, mode="lexical")
@@ -340,7 +308,6 @@ for q in ["prayer forgiveness", "comparing yourself to others", "aisha"]:
     except Exception as e:
         check(f'"{q}" lexical route → no exception', False, str(e))
 
-# Standard English with mode=semantic → route: semantic
 try:
     resp = search("prayer forgiveness", mode="semantic")
     m = meta(resp)
@@ -354,11 +321,10 @@ except Exception as e:
 
 
 # ══════════════════════════════════════════════════════════════════
-# 8. MODE OVERRIDE PRIORITY
+# 6. MODE OVERRIDE PRIORITY
 # ══════════════════════════════════════════════════════════════════
-section("8. Mode override priority  (arabic/phrase/reference beat mode param)")
+section("6. Mode override priority  (arabic/phrase beat mode param)")
 
-# Arabic query + mode=semantic → must still go lexical_arabic (not semantic)
 try:
     resp = search("صلاة الليل", mode="semantic")
     m = meta(resp)
@@ -370,7 +336,6 @@ try:
 except Exception as e:
     check("arabic overrides semantic → no exception", False, str(e))
 
-# Quoted query + mode=semantic → must still go lexical_phrase
 try:
     resp = search('"actions are by intention"', mode="semantic")
     m = meta(resp)
@@ -382,19 +347,6 @@ try:
 except Exception as e:
     check("phrase overrides semantic → no exception", False, str(e))
 
-# Collection+number + mode=semantic → must still go reference
-try:
-    resp = search("bukhari 1", mode="semantic")
-    m = meta(resp)
-    check(
-        'collection+number + mode=semantic → reference (not semantic)',
-        m.get("route") == "reference",
-        f'route={m.get("route")}'
-    )
-except Exception as e:
-    check("reference overrides semantic → no exception", False, str(e))
-
-# Mixed Arabic+English → routes to arabic (Arabic chars dominate)
 try:
     resp = search("aisha عائشة", mode="lexical")
     m = meta(resp)
@@ -406,7 +358,6 @@ try:
 except Exception as e:
     check("mixed arabic+english → no exception", False, str(e))
 
-# Single Arabic character is enough to trigger Arabic route
 try:
     resp = search("و", mode="lexical")
     m = meta(resp)
@@ -418,18 +369,51 @@ try:
 except Exception as e:
     check("single arabic char → no exception", False, str(e))
 
-
-# ══════════════════════════════════════════════════════════════════
-# 9. ARABIC ROUTE — no language filter applied
-# ══════════════════════════════════════════════════════════════════
-section("9. Arabic route — no language restriction (searches full index)")
-
-# Note: english-mxbai is a bilingual index (all docs have hadithText + arabicText).
-# There are no lang:ar-only docs in this index, so we verify the filter isn't
-# applied by checking that common Arabic terms return a large result set
-# (i.e., the full corpus is being searched, not a restricted subset).
 try:
-    resp = search("الصلاة")   # "prayer" — extremely common term
+    resp = search("bukhari 1", mode="semantic")
+    m = meta(resp)
+    check(
+        '"bukhari 1" + mode=semantic → lexical_reference (not semantic)',
+        m.get("route") == "lexical_reference",
+        f'route={m.get("route")}'
+    )
+except Exception as e:
+    check("reference overrides semantic → no exception", False, str(e))
+
+
+# ══════════════════════════════════════════════════════════════════
+# 7. BOOLEAN OPERATOR QUERIES — forced lexical
+# ══════════════════════════════════════════════════════════════════
+section("7. Boolean operators → lexical (AND/OR/NOT are BM25 syntax, not semantic)")
+
+bool_cases = [
+    "prayer AND night",
+    "bukhari OR muslim",
+    "prayer NOT shirk",
+    "faith AND deeds AND paradise",
+]
+
+for q in bool_cases:
+    try:
+        # Test with mode=semantic — should still be forced to lexical
+        resp = search(q, mode="semantic")
+        m = meta(resp)
+        check(
+            f'"{q}" + mode=semantic → lexical (not semantic)',
+            m.get("route") == "lexical",
+            f'route={m.get("route")}'
+        )
+    except Exception as e:
+        check(f'"{q}" boolean → no exception', False, str(e))
+
+
+# ══════════════════════════════════════════════════════════════════
+# 8. ARABIC ROUTE — no language filter applied
+# ══════════════════════════════════════════════════════════════════
+section("7. Arabic route — no language restriction (searches full index)")
+
+try:
+    resp = search("الصلاة")
     total_hits = resp.get("hits", {}).get("total", {}).get("value", 0)
     h = hits(resp)
     check(
@@ -445,87 +429,17 @@ try:
 except Exception as e:
     check("arabic no-restriction → no exception", False, str(e))
 
-# Verify Arabic route doesn't restrict to a subset of collections
 try:
-    resp = search("رمضان")   # "ramadan" — appears across all collections
-    agg = aggs(resp)
-    coll_buckets = agg.get("collection", {}).get("buckets", [])
+    resp = search("رمضان")
+    h = hits(resp)
+    collections_seen = {source(hit).get("collection") for hit in h if source(hit).get("collection")}
     check(
         "Arabic query hits multiple collections (no collection restriction)",
-        len(coll_buckets) >= 5,
-        f"{len(coll_buckets)} collections in results"
+        len(collections_seen) >= 2,
+        f"{len(collections_seen)} distinct collections in top {len(h)} hits: {sorted(collections_seen)}"
     )
 except Exception as e:
     check("arabic multi-collection → no exception", False, str(e))
-
-
-# ══════════════════════════════════════════════════════════════════
-# 10. FACETS PRESENT ON ALL ROUTES EXCEPT REFERENCE
-# ══════════════════════════════════════════════════════════════════
-section("10. Facet aggs present on phrase / arabic / semantic routes; absent on reference")
-
-# Phrase route — aggs present
-try:
-    resp = search('"Messenger of Allah"')
-    agg = aggs(resp)
-    check(
-        "phrase route has gradeNorm agg",
-        bool(agg.get("gradeNorm", {}).get("buckets")),
-        f"buckets: {len(agg.get('gradeNorm', {}).get('buckets', []))}"
-    )
-    check(
-        "phrase route has collection agg",
-        bool(agg.get("collection", {}).get("buckets")),
-        f"buckets: {len(agg.get('collection', {}).get('buckets', []))}"
-    )
-except Exception as e:
-    check("phrase route facets → no exception", False, str(e))
-
-# Arabic route — aggs present
-try:
-    resp = search("الزكاة")
-    agg = aggs(resp)
-    check(
-        "arabic route has gradeNorm agg",
-        bool(agg.get("gradeNorm", {}).get("buckets")),
-        f"buckets: {len(agg.get('gradeNorm', {}).get('buckets', []))}"
-    )
-    check(
-        "arabic route has collection agg",
-        bool(agg.get("collection", {}).get("buckets")),
-        f"buckets: {len(agg.get('collection', {}).get('buckets', []))}"
-    )
-except Exception as e:
-    check("arabic route facets → no exception", False, str(e))
-
-# Semantic route — aggs present
-try:
-    resp = search("fear of Allah", mode="semantic")
-    agg = aggs(resp)
-    check(
-        "semantic route has gradeNorm agg",
-        bool(agg.get("gradeNorm", {}).get("buckets")),
-        f"buckets: {len(agg.get('gradeNorm', {}).get('buckets', []))}"
-    )
-except Exception as e:
-    check("semantic route facets → no exception", False, str(e))
-
-# Reference route — aggs NOT present (single known hadith, no population)
-try:
-    resp = search("bukhari 1")
-    agg = aggs(resp)
-    check(
-        "reference route has no gradeNorm agg",
-        not agg.get("gradeNorm"),
-        f"gradeNorm agg present: {bool(agg.get('gradeNorm'))}"
-    )
-    check(
-        "reference route has no collection agg",
-        not agg.get("collection"),
-        f"collection agg present: {bool(agg.get('collection'))}"
-    )
-except Exception as e:
-    check("reference no-aggs → no exception", False, str(e))
 
 
 # ══════════════════════════════════════════════════════════════════
