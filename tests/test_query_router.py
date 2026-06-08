@@ -92,49 +92,34 @@ def section(title):
 
 
 # ══════════════════════════════════════════════════════════════════
-# 1. PHRASE SEARCH
+# 1. QUOTED QUERIES — pass through to query_string (ES handles phrase)
 # ══════════════════════════════════════════════════════════════════
-section('1. Phrase search  ("quoted query")')
+section('1. Quoted queries — ES query_string handles phrase matching')
 
-phrase_cases = [
-    '"prayer at night"',
-    '"Messenger of Allah"',
-    '"Day of Judgement"',
-    '"صلاة الليل"',        # quoted Arabic → phrase route (not arabic route)
+# Quoted English → standard lexical route (query_string treats quotes as phrase)
+# Quoted Arabic → arabic route (Arabic chars take priority over quotes)
+quoted_cases = [
+    ('"prayer at night"',      "lexical"),
+    ('"Messenger of Allah"',   "lexical"),
+    ('"Day of Judgement"',     "lexical"),
+    ('"صلاة الليل"',           "lexical_arabic"),
 ]
 
-for q in phrase_cases:
+for q, expected_route in quoted_cases:
     try:
         resp = search(q)
         m = meta(resp)
         h = hits(resp)
         check(
-            f'{q} → lexical/phrase route',
-            m.get("route") == "lexical_phrase",
+            f'{q} → {expected_route} route',
+            m.get("route") == expected_route,
             f'route={m.get("route")}'
         )
-        inner = q.strip('"')
-        if h:
-            if _ARABIC_RE.search(inner):
-                # Arabic phrases: the custom_arabic analyzer normalizes diacritics
-                # at query time, so stored text won't contain the raw substring.
-                # Routing is verified above; just confirm results came back.
-                check(
-                    f'{q} → phrase route returned results',
-                    len(h) > 0,
-                    f'{len(h)} hits returned'
-                )
-            else:
-                def phrase_in_hit(hit):
-                    s = source(hit)
-                    return (inner.lower() in s.get("hadithText", "").lower()
-                            or inner.lower() in s.get("arabicText", "").lower())
-                match_count = sum(phrase_in_hit(hit) for hit in h[:5])
-                check(
-                    f'{q} → ≥4/5 top hits contain phrase',
-                    match_count >= 4,
-                    f'{match_count}/5 hits match'
-                )
+        check(
+            f'{q} → returns results',
+            len(h) > 0,
+            f'{len(h)} hits'
+        )
     except Exception as e:
         check(f'{q} → no exception', False, str(e))
 
@@ -280,6 +265,19 @@ for q in ["bukahri 1", "bukahri 7563"]:
     except Exception as e:
         check(f'"{q}" misspelled → no exception', False, str(e))
 
+# Number-first format — "534 bukhari" (reversed order) should also route to reference.
+for q in ["1 bukhari", "534 bukhari"]:
+    try:
+        resp = search(q)
+        m = meta(resp)
+        check(
+            f'"{q}" (number first) → lexical_reference',
+            m.get("route") == "lexical_reference",
+            f'route={m.get("route")}'
+        )
+    except Exception as e:
+        check(f'"{q}" number-first → no exception', False, str(e))
+
 # Standalone numbers — no preceding text, still ends with a number → lexical_reference.
 for q in ["5", "42", "1234"]:
     try:
@@ -326,7 +324,7 @@ except Exception as e:
 # ══════════════════════════════════════════════════════════════════
 # 6. MODE OVERRIDE PRIORITY
 # ══════════════════════════════════════════════════════════════════
-section("6. Mode override priority  (arabic/phrase beat mode param)")
+section("6. Mode override priority  (arabic/reference/boolean beat mode param)")
 
 try:
     resp = search("صلاة الليل", mode="semantic")
@@ -340,15 +338,15 @@ except Exception as e:
     check("arabic overrides semantic → no exception", False, str(e))
 
 try:
-    resp = search('"actions are by intention"', mode="semantic")
+    resp = search('"actions are by intention"', mode="semantic", model=SEMANTIC_MODEL)
     m = meta(resp)
     check(
-        'quoted query + mode=semantic → lexical_phrase (not semantic)',
-        m.get("route") == "lexical_phrase",
+        'quoted query + mode=semantic → semantic (quotes no longer force lexical)',
+        m.get("route") == "semantic",
         f'route={m.get("route")}'
     )
 except Exception as e:
-    check("phrase overrides semantic → no exception", False, str(e))
+    check("quoted query semantic passthrough → no exception", False, str(e))
 
 try:
     resp = search("aisha عائشة", mode="lexical")

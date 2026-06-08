@@ -704,10 +704,10 @@ def build_semantic_query(query, filter_clauses):
 
 
 _ARABIC_RE = re.compile(r"[؀-ۿ]")
-# Ends with a number (with or without preceding text) — "bukhari 1", "abu dawud 200", "5", "42".
+# Hadith reference queries: number at either end — "bukhari 1", "abu dawud 200", "5", "534 bukhari".
 # Forces lexical: semantic returns 0/9 correct for reference-style lookups, and a bare
 # number has no semantic content worth embedding.
-_REF_RE = re.compile(r"(^|\s)\d+[a-z]?\s*$", re.IGNORECASE)
+_REF_RE = re.compile(r"(^|\s)\d+[a-z]?\s*$|^\d+[a-z]?\s+\S", re.IGNORECASE)
 # Explicit boolean operators in ES query_string syntax.
 # Semantic embeds AND/OR/NOT as plain text and ignores the logic — keep these on BM25.
 _BOOL_RE = re.compile(r"\b(AND|OR|NOT)\b")
@@ -743,48 +743,37 @@ def _is_spam(query):
     return False
 
 _LOG_ROUTE_VARIANT = {
-    "phrase": "lexical_phrase",
     "arabic": "lexical_arabic",
     "reference": "lexical_reference",
 }
 
 def _route_query(query, mode):
-    """Classify the query and return (route, variant, phrase_text).
+    """Classify the query and return (route, variant).
 
-    route       — "lexical" | mode (passes through for semantic/lexical)
-    variant     — None | "phrase" | "arabic" | "reference"
-    phrase_text — inner text when variant=="phrase", else None
+    route   — "lexical" | mode (passes through for semantic/lexical)
+    variant — None | "arabic" | "reference"
 
     Rules (applied in order — earlier rules always win):
-      1. Quoted (≥3 chars) → lexical phrase (match_phrase on hadithText + arabicText)
-      2. Any Arabic character → lexical arabic BM25, full corpus
-      3. Ends with a number (or IS a number) → lexical reference, forced off semantic
-      4. Contains AND/OR/NOT → lexical BM25 (operator syntax, semantic ignores these)
-      5. Otherwise → mode as requested (lexical BM25 or semantic)
+      1. Any Arabic character → lexical arabic BM25, full corpus
+      2. Number at start or end of query → lexical reference, forced off semantic
+      3. Contains AND/OR/NOT → lexical BM25 (operator syntax, semantic ignores these)
+      4. Otherwise → mode as requested (lexical BM25 or semantic)
 
-    Known limitation — multi-word collection names (e.g. "abu dawud 1", "ibn majah 1"):
-    Collection ids are stored as single tokens ("abudawud", "ibnmajah"). BM25 tokenizes
-    the query into ["abu", "dawud", "1"] — none of which match the compound token — so
-    the collection field gives no BM25 signal. Bukhari's higher flat boost (5.0) then
-    beats Abu Dawud's (3.0) whenever hadith number 1 is in both. Fix: add query-time
-    synonyms to synonyms.txt (e.g. "abu dawud, abudawud") with a custom search_analyzer
-    on the collection field.
+    Quoted queries are passed through to query_string, which handles phrase
+    matching natively. No special route needed.
     """
     q = query.strip()
 
-    if len(q) >= 3 and q[0] == '"' and q[-1] == '"':
-        return "lexical", "phrase", q[1:-1]
-
     if _ARABIC_RE.search(q):
-        return "lexical", "arabic", None
+        return "lexical", "arabic"
 
     if _REF_RE.search(q):
-        return "lexical", "reference", None
+        return "lexical", "reference"
 
     if _BOOL_RE.search(q):
-        return "lexical", None, None
+        return "lexical", None
 
-    return mode, None, None
+    return mode, None
 
 
 def get_filter_from_args(args):
@@ -837,7 +826,7 @@ def search(language):
     mode = _resolve_mode(request.args)
     size = int(request.args.get("size", 10))
 
-    route, variant, phrase_text = _route_query(query, mode)
+    route, variant = _route_query(query, mode)
 
     # English route restricts to docs that have hadithText (excludes Arabic-only docs).
     # lang is stored but not indexed, so we can't term-filter on it — exists on
@@ -880,37 +869,6 @@ def search(language):
         return _semantic_search(model, query, filters)
 
     # ── Lexical paths ──────────────────────────────────────────────────────────
-
-    # Phrase search: quoted query → match_phrase on hadithText + arabicText
-    if variant == "phrase":
-        try:
-            result = es_client.search(
-                index=LEXICAL_INDEX,
-                from_=int(request.args.get("from", 0)),
-                size=size,
-                query={"function_score": {
-                    "query": {"bool": {
-                        "filter": filters,
-                        "should": [
-                            {"match_phrase": {"hadithText": phrase_text}},
-                            {"match_phrase": {"arabicText": phrase_text}},
-                        ],
-                        "minimum_should_match": 1,
-                    }},
-                    "functions": [
-                        {"filter": {"term": {"collection": name}}, "weight": w}
-                        for name, w in COLLECTION_BOOSTS
-                    ],
-                    "score_mode": "sum",
-                    "boost_mode": "sum",
-                }},
-                _source={"excludes": [SEMANTIC_FIELD]},
-                highlight={"number_of_fragments": 0, "fields": {"*": {}}},
-            )
-        except (BadRequestError, NotFoundError) as e:
-            return malformed_query_response(e)
-        result.body["_meta"] = {"route": "lexical_phrase"}
-        return jsonify(result.body)
 
     # Arabic BM25 and standard BM25 share the same cross-fields query structure.
     # arabicText is mapped with custom_arabic — query_string uses each field's own

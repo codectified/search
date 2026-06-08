@@ -28,6 +28,12 @@
 # pixima => pixma
 
 
+# Collection name synonyms — multi-word aliases map to the stored single-token id
+abu dawud, abu dawood => abudawud
+ibn majah, ibn maja => ibnmajah
+nawawi 40, nawawi forty => nawawi40
+riyad salihin, riyadus salihin, riyad al salihin => riyadussalihin
+
 jesus, isa, eesa, messiah
 zakat, chariti, alm, zakah, zakaah
 sawm, fasting, siyam, saum, roza, rozay
