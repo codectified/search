@@ -3,7 +3,7 @@
 ## How it works
 
 `_route_query(query, mode)` runs once per request before any ES call. It inspects
-the raw query string and returns a 3-tuple `(route, variant, extra)`. The `search()`
+the raw query string and returns a 2-tuple `(route, variant)`. The `search()`
 handler then branches on `route`.
 
 Each request passes through a spam check first, then the router. Rules are applied **in strict priority order** — earlier rules always win:
@@ -100,6 +100,52 @@ The Arabic rule has higher priority: `"صلاة الليل"` (quoted Arabic) sti
 Sending it to a semantic model would ignore that signal and return thematically similar
 hadiths rather than exact-phrase matches.
 
+**How the analyzer affects phrase matching:**
+
+`hadithText` uses the `synonym` analyzer. This runs on the quoted phrase at query time
+exactly as it does for unquoted queries — stemming, stop word removal, and synonym
+expansion all still apply. The phrase constraint is on the *analyzed* token positions,
+not the raw words.
+
+Example — `"actions are by intention"`:
+
+```
+analyze("actions are by intention") → action(pos 0)  intent(pos 3)
+                                       ↑ stemmed       ↑ stemmed
+                                       "are" → removed (pos 1 gap)
+                                       "by"  → removed (pos 2 gap)
+```
+
+The phrase query looks for `action` at position *p* and `intent` at position *p+3*
+(the gap where the two stop words were). The document "Actions are through intentions."
+indexes `action(0) through(2) intent(3)`, which satisfies `action(0) … intent(3)` — so
+it matches.
+
+Synonym expansion also applies inside phrases:
+
+```python
+# All three return 94 identical hits on the live index:
+"prayer at night"  →  94 hits   # prayer → [prayer, salah, salat, namaz, ...]
+"salah at night"   →  94 hits   # same expanded token set
+"namaz at night"   →  94 hits
+```
+
+This means a quoted search expresses "these *concepts* in this order" rather than
+"these exact words in this order". Users who want truly literal matching would need a
+`keyword` sub-field; that is not currently indexed.
+
+**`query_string` quotes vs `match_phrase`:** Empirically identical — same hit count,
+same scores, same ranking for all tested queries. Both go through the field analyzer;
+`query_string` just supports multi-field and boolean operators around the quoted span.
+
+**Stop words and position gaps:** Omitting a stop word from the quoted phrase shifts the
+positional constraint, finding a different (smaller) set of documents:
+
+```
+"prayer at night"  →  94 hits  (gap at position 1 where "at" was)
+"prayer night"     →  28 hits  (prayer and night must be adjacent)
+```
+
 **Response `_meta`:** `{"route": "lexical"}` (same as standard BM25 — no separate
 `lexical_phrase` value; the phrase behaviour is entirely inside ES's `query_string`.)
 
@@ -153,6 +199,10 @@ GET /english-mxbai/_search
   }
 }
 ```
+
+**Full-corpus scale:** `الصلاة` returns ~3,960 total hits across multiple collections
+(Bukhari, Muslim, etc.) — confirming the exists filter is not applied. Standard BM25
+on `/english/search` without the Arabic route would return 0 hits for Arabic-only docs.
 
 **Why BM25 over an Arabic semantic model:** Arabic semantic models (multilingual-e5,
 arabic-openai) live in separate indexes and require a separate embed call. BM25
@@ -316,6 +366,18 @@ The router is a pure code change — no index rebuild required. The `english-mxb
   without any term filter. Misspellings (`bukahri 1`) still end with a number, staying on
   lexical and returning sensible results via BM25.
 
+```
+"bukhari 1"    → rank 1: bukhari:1    ✓
+"bukhari 6594" → rank 1: bukhari:6594 ✓
+"muslim 2363"  → rank 1: muslim:2363  ✓
+"bukahri 1"    → rank 1: bukhari:1    ✓  (misspelling tolerated via BM25)
+```
+
+The regex does **not** match number-first queries like `99 names` or `7 levels of hell` —
+those end with a word, not a number, so they fall through to the default mode. This is
+intentional: "last 10 nights" is a conceptual query that semantic handles better than
+a reference lookup.
+
 An earlier design used an exact `term` filter on `collection` + `hadithNumber`. It was removed because misspellings silently returned zero results.
 
 **Boolean operators** — `_BOOL_RE` catches uppercase `AND`/`OR`/`NOT`. These are explicit
@@ -333,4 +395,4 @@ entirely — keeping these on BM25 ensures the operators actually work as intend
 | `query_string` → `simple_query_string` fallback is silent | Client can't tell which was used | Logged server-side |
 | Multi-word collection names with spaces | `abu dawud 1`, `ibn majah 1` end with a number so `_REF_RE` matches — they route `lexical_reference` correctly | No issue |
 | Multi-word collection name synonyms not expanded at query time | Searching `abu dawud 3` retrieves the right hadith via `hadithNumber^2` boost, but `abu dawud` alone won't match the stored token `abudawud` | Requires (1) `synonym_graph` token filter in index settings, (2) a `search_analyzer` on the `collection` field using that filter, (3) collection name entries in `synonyms.txt`, and (4) a full reindex — not yet implemented |
-| Quoted phrase precision depends on analyser stemming | `"actions are by intention"` matches stemmed variants (e.g. "intend") because `query_string` phrase matching still runs through the field's analyser | Minor — acceptable for current use |
+| Quoted phrases expand synonyms and stem | `"prayer at night"` matches docs containing "salah at night" or "namaz at night" (94 hits each) — the `synonym` analyzer runs on the phrase at query time. Users expecting literal word matching won't get it. A `keyword` sub-field would be needed for truly literal phrases; not currently indexed. | By design — synonyms intentionally improve recall; document the behaviour for users |
