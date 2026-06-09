@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 # Load before any os.environ reads below — config is imported first by every
 # entrypoint, so this also populates env for main.py and embedding.py.
-load_dotenv()
+load_dotenv(".env.local")
 
 
 def _is_truthy(value):

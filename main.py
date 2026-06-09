@@ -695,9 +695,19 @@ def _truncate_query(query):
 
 def build_semantic_query(query, filter_clauses):
     return {
-        "bool": {
-            "filter": filter_clauses,
-            "must": [{"semantic": {"field": SEMANTIC_FIELD, "query": query}}],
+        "function_score": {
+            "query": {
+                "bool": {
+                    "filter": filter_clauses,
+                    "must": [{"semantic": {"field": SEMANTIC_FIELD, "query": query}}],
+                }
+            },
+            "functions": [
+                {"filter": {"term": {"collection": name}}, "weight": w}
+                for name, w in COLLECTION_BOOSTS
+            ],
+            "score_mode": "sum",
+            "boost_mode": "sum",
         }
     }
 

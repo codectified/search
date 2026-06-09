@@ -13,24 +13,26 @@ Browser / PHP website
   Flask API (this repo)
         │
         ├── query router (_route_query)
-        │       ├── "quoted query"    → match_phrase (en docs)         ─┐
-        │       ├── any Arabic text  → cross_fields BM25 (all docs)    │
-        │       ├── ends with number → cross_fields BM25 (en docs)     ├─ english-mxbai
-        │       ├── AND / OR / NOT   → cross_fields BM25 (en docs)     │
-        │       └── everything else  → cross_fields BM25 (en docs)    ─┘
+        │       ├── any Arabic text  → cross_fields BM25 (all docs)    ─┐
+        │       ├── "quoted query"   → cross_fields BM25 (en docs)      │
+        │       ├── ends with number → cross_fields BM25 (en docs)      ├─ english-lexical
+        │       ├── AND / OR / NOT   → cross_fields BM25 (en docs)      │
+        │       └── everything else  → cross_fields BM25 (en docs)     ─┘
         │
-        └── mode=semantic             → kNN            ── english-mxbai
-                                                           (semantic_text)
+        └── mode=semantic             → kNN       ── english-<model>
+                                                      (semantic_text)
         └── Elasticsearch
-                └── english-mxbai  — single index for all paths
+                ├── english-lexical   — lexical index (all BM25 paths)
+                │       text fields:  hadithText, arabicText
+                └── english-<model>   — one index per semantic model
                         text fields:  hadithText, arabicText
-                        vector field: semantic_text (configurable embedding model)
+                        vector field: semantic_text
 
   Ollama (host, port 11434) — embeds queries at search time
   HF Dedicated Endpoint (optional) — embeds documents at index time
 ```
 
-`english-mxbai` serves all query types. BM25 paths use `hadithText` and `arabicText` as standard text fields; the semantic path uses the `semantic_text` ES inference field. A separate `english-lexical` index is no longer required.
+BM25 paths all run against `english-lexical`. Semantic paths run against the index for the active model (e.g. `english-mxbai`, `english-embeddinggemma-qat-q4`). Both index types share the same text fields; the semantic index adds a `semantic_text` vector field.
 
 Each index name in ES is an **alias** (e.g. `english-mxbai`) pointing to a timestamped backing index. Reindexing builds a new backing index and atomically swaps the alias — the live index keeps serving traffic during the rebuild.
 
@@ -185,7 +187,7 @@ The query router is a **pure code change** — no index rebuild or schema migrat
 
 2. **Review a day of traffic.** Key things to check:
    - Arabic queries route to `lexical_arabic` and not falling through to standard BM25.
-   - Quoted queries route to `lexical_phrase`.
+   - Quoted queries route to `lexical` (quotes force BM25; `query_string` handles phrase natively).
    - No legitimate English queries accidentally route to `lexical_arabic` — this happens if a query contains a stray Arabic character. Look for `overridden: true` on queries that look English.
 
 3. **Correlate with shadow sampling** (if `SEARCH_METRICS_SAMPLE_PERCENT > 0`). The `routing_decision` column in `search_metrics` records the route taken alongside lexical and semantic result bodies for each sampled request — useful for comparing what each route returned on the same real queries.
@@ -230,7 +232,7 @@ always gets the lexical response, unchanged and undelayed; the semantic run is
 fire-and-forget.
 
 The `routing_decision` column records which query route was taken (`lexical`,
-`lexical_arabic`, `lexical_phrase`, `semantic`) so sampled results can be grouped
+`lexical_arabic`, `lexical_reference`, `semantic`) so sampled results can be grouped
 and compared by query type.
 
 This produces an apples-to-apples dataset (same real queries, both engines) to
@@ -261,7 +263,7 @@ needed beyond `docker compose up`. In prod, searchdb is an externally-managed DB
 
 ## Index field mapping
 
-All search paths run against `english-mxbai`. Fields:
+Fields (same mapping on both `english-lexical` and the semantic model indexes):
 
 | Field | ES type | Analyzer / notes |
 |---|---|---|
@@ -292,8 +294,8 @@ Every incoming query is classified by `_route_query()` before any ES call. Rules
 
 | Priority | Query shape | Route | `_meta.route` | Example |
 |---|---|---|---|---|
-| 1 | Wrapped in double quotes (≥3 chars) | Phrase (`match_phrase`) | `lexical_phrase` | `"angel of death"` |
-| 2 | Any Arabic Unicode character present | `cross_fields` BM25, full corpus | `lexical_arabic` | `صلاة`, `aisha عائشة` |
+| 1 | Any Arabic Unicode character present | `cross_fields` BM25, full corpus | `lexical_arabic` | `صلاة`, `aisha عائشة` |
+| 2 | Wrapped in double quotes (≥3 chars) | `cross_fields` BM25, forced off semantic | `lexical` | `"angel of death"` |
 | 3 | Ends with a number (`/(^|\s)\d+[a-z]?\s*$/`) | `cross_fields` BM25, forced off semantic | `lexical_reference` | `bukhari 1`, `abu dawud 200`, `42` |
 | 4 | Contains `AND` / `OR` / `NOT` (uppercase) | `cross_fields` BM25, forced off semantic | `lexical` | `prayer AND night` |
 | 5 | Everything else | Client `mode` (`?mode=lexical` or `?mode=semantic`) | `lexical` or `semantic` | `prayer at night` |
@@ -310,7 +312,7 @@ Every incoming query is classified by `_route_query()` before any ES call. Rules
 
 ### Collection boosts
 
-All lexical routes (phrase, Arabic BM25, reference, standard BM25) are wrapped in a `function_score` that adds a flat weight to docs from authoritative collections before the score is summed:
+All routes — lexical (Arabic BM25, reference, standard BM25) and semantic — are wrapped in a `function_score` that adds a flat weight to docs from authoritative collections before the score is summed. When two results have nearly equal BM25 or cosine scores, the boost surfaces the more-authenticated collection.
 
 | Weight | Collections |
 |---|---|

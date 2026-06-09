@@ -172,7 +172,7 @@ route skips this, searching the full corpus — Arabic-only docs (`lang:ar`) hav
 Example for query `صلاة الليل` (no filter — full corpus):
 
 ```json
-GET /english-mxbai/_search
+GET /english-<model>/_search
 {
   "query": {
     "function_score": {
@@ -229,7 +229,7 @@ Tries `query_string` first (supports `AND`/`OR`/`-` operators); falls back to
 Example for query `prayer at night` on `/english/search`:
 
 ```json
-GET /english-mxbai/_search
+GET /english-<model>/_search
 {
   "query": {
     "function_score": {
@@ -281,30 +281,43 @@ lift authoritative collections above identical term matches in weaker ones.
 ## Route: `semantic`
 
 **Triggered by:** `?mode=semantic` in the request, AND the query didn't match any
-of the four override rules (phrase, Arabic, number, boolean — those always force lexical).
+of the override rules (Arabic, quoted, number, boolean — those always force lexical).
 
-**ES query:** `semantic` query on the `semantic_text` field, which calls the
-configured inference endpoint (Ollama → mxbai-embed-large) at query time.
+**ES query:** `semantic` query on the `semantic_text` field, wrapped in the same
+`function_score` collection boosts as the lexical routes. The inference endpoint
+(Ollama on the host) embeds the query at search time — no client-side embedding needed.
 
 Example for query `comparing yourself to others` with `?mode=semantic` on `/english/search`:
 
 ```json
-GET /english-mxbai/_search
+GET /english-<model>/_search
 {
   "query": {
-    "bool": {
-      "filter": [{"exists": {"field": "hadithText"}}],
-      "must": [
-        {"semantic": {"field": "semantic_text", "query": "comparing yourself to others"}}
-      ]
+    "function_score": {
+      "query": {
+        "bool": {
+          "filter": [{"exists": {"field": "hadithText"}}],
+          "must": [
+            {"semantic": {"field": "semantic_text", "query": "comparing yourself to others"}}
+          ]
+        }
+      },
+      "functions": [
+        {"filter": {"term": {"collection": "bukhari"}},        "weight": 5.0},
+        {"filter": {"term": {"collection": "muslim"}},         "weight": 4.8},
+        {"filter": {"term": {"collection": "nawawi40"}},       "weight": 3.3},
+        {"filter": {"term": {"collection": "riyadussalihin"}}, "weight": 2.5}
+      ],
+      "score_mode": "sum",
+      "boost_mode": "sum"
     }
   }
 }
 ```
 
-The `semantic` query type is handled by the ES inference plugin — it embeds the
-query string at search time using the same model used at index time
-(mxbai-embed-large via Ollama). No client-side embedding needed.
+The `semantic` query type is handled by the ES inference plugin — it embeds the query
+string at search time using the configured model via Ollama. When two results have
+nearly equal cosine scores, the collection boost surfaces the more-authenticated one.
 
 **Response `_meta`:** `{"route": "semantic"}`
 
