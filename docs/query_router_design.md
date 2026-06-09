@@ -14,11 +14,12 @@ query string
     ├─ spam / junk? (URL, phone number, repeated chars, long token, high symbol density)
     │       → 400 "invalid query"  (logged as spam_rejected)
     │
-    ├─ starts and ends with " " (≥3 chars)?
-    │       → route: lexical  │  variant: phrase
-    │
     ├─ contains any Arabic Unicode character?
     │       → route: lexical  │  variant: arabic
+    │         (takes priority over quotes so quoted Arabic still searches full corpus)
+    │
+    ├─ starts and ends with " " (≥3 chars)?
+    │       → route: lexical  │  variant: —  (query_string handles phrase natively)
     │
     ├─ ends with a number /(^|\s)\d+[a-z]?\s*$/ (text + number, or bare number)?
     │       → route: lexical  │  variant: reference
@@ -40,18 +41,19 @@ _BOOL_RE   = re.compile(r'\b(AND|OR|NOT)\b')
 
 def _route_query(query, mode):
     q = query.strip()
-    if len(q) >= 3 and q[0] == '"' and q[-1] == '"':
-        return "lexical", "phrase", q[1:-1]
     if _ARABIC_RE.search(q):
-        return "lexical", "arabic", None
+        return "lexical", "arabic"
+    if len(q) >= 3 and q[0] == '"' and q[-1] == '"':
+        return "lexical", None
     if _REF_RE.search(q):
-        return "lexical", "reference", None
+        return "lexical", "reference"
     if _BOOL_RE.search(q):
-        return "lexical", None, None
-    return mode, None, None
+        return "lexical", None
+    return mode, None
 ```
 
-Priority is absolute. All four rules force `route: lexical` regardless of `?mode=`.
+Returns a 2-tuple `(route, variant)`. Priority is absolute — earlier rules always win
+and all four force `route: lexical` regardless of `?mode=`.
 
 The reference rule now catches bare numbers too — `5`, `42`, `bukhari 1`, `abu dawud 200`,
 `ibn majah 12` all match. A bare number has no semantic content worth embedding; a
@@ -80,49 +82,26 @@ Arabic is not penalised by the symbol-density check.
 
 ---
 
-## Route: `lexical` / variant `phrase`
+## Quoted queries — forced lexical, `query_string` handles phrase
 
-**Triggered by:** Query wrapped in double quotes: `"actions are by intention"`.
+**Triggered by:** Query wrapped in double quotes of at least 3 characters total:
+`"actions are by intention"`.
 
-**ES query:** `match_phrase` on both `hadithText` and `arabicText` (minimum one
-must match), wrapped in `function_score` for collection boosts. Requires all
-tokens to appear in order with no gaps.
+**What changes:** The route is forced to `lexical` (semantic is skipped). The query
+string is passed **unchanged** — quotes and all — to the standard `query_string` ES
+query. ES natively interprets quoted tokens as phrase queries, so `"actions are by
+intention"` already means "these words in order" inside `query_string`. No separate
+`match_phrase` handler or stripped-quote logic is needed.
 
-Example for query `"actions are by intention"` on `/english/search`:
+The Arabic rule has higher priority: `"صلاة الليل"` (quoted Arabic) still routes to
+`lexical_arabic` so the full corpus is searched without the `hadithText` exists filter.
 
-```json
-GET /english-mxbai/_search
-{
-  "query": {
-    "function_score": {
-      "query": {
-        "bool": {
-          "filter": [{"exists": {"field": "hadithText"}}],
-          "should": [
-            {"match_phrase": {"hadithText": "actions are by intention"}},
-            {"match_phrase": {"arabicText": "actions are by intention"}}
-          ],
-          "minimum_should_match": 1
-        }
-      },
-      "functions": [
-        {"filter": {"term": {"collection": "bukhari"}},         "weight": 3.5},
-        {"filter": {"term": {"collection": "muslim"}},          "weight": 3.5},
-        {"filter": {"term": {"collection": "forty"}},           "weight": 3.3},
-        {"filter": {"term": {"collection": "riyadussalihin"}},  "weight": 3.3}
-      ],
-      "score_mode": "sum",
-      "boost_mode": "sum"
-    }
-  }
-}
-```
+**Why force lexical:** A quoted query is an explicit user signal that word order matters.
+Sending it to a semantic model would ignore that signal and return thematically similar
+hadiths rather than exact-phrase matches.
 
-**Why override mode:** A quoted query is an explicit user signal that word order
-matters. Running it through a semantic model would ignore that signal and return
-"similar" hadiths rather than exact-phrase matches.
-
-**Response `_meta`:** `{"route": "lexical_phrase"}`
+**Response `_meta`:** `{"route": "lexical"}` (same as standard BM25 — no separate
+`lexical_phrase` value; the phrase behaviour is entirely inside ES's `query_string`.)
 
 ---
 
@@ -287,10 +266,9 @@ Every response includes `_meta.route`. Values:
 
 | Value | Path |
 |-------|------|
-| `lexical_phrase` | `match_phrase` on quoted query |
 | `lexical_arabic` | cross-fields BM25, full corpus (Arabic variant) |
 | `lexical_reference` | cross-fields BM25, English docs (number queries: `bukhari 1`, `42`, etc. — forced off semantic) |
-| `lexical` | cross-fields BM25, English docs (standard path, includes boolean-forced queries) |
+| `lexical` | cross-fields BM25, English docs (standard path — also covers quoted and boolean-forced queries) |
 | `semantic` | Vector similarity via inference endpoint |
 
 ---
@@ -354,3 +332,5 @@ entirely — keeping these on BM25 ensures the operators actually work as intend
 | Single Arabic character routes to Arabic path | `aisha عائشة` goes Arabic even though intent may be English | Acceptable — Arabic tokens dominate intent |
 | `query_string` → `simple_query_string` fallback is silent | Client can't tell which was used | Logged server-side |
 | Multi-word collection names with spaces | `abu dawud 1`, `ibn majah 1` end with a number so `_REF_RE` matches — they route `lexical_reference` correctly | No issue |
+| Multi-word collection name synonyms not expanded at query time | Searching `abu dawud 3` retrieves the right hadith via `hadithNumber^2` boost, but `abu dawud` alone won't match the stored token `abudawud` | Requires (1) `synonym_graph` token filter in index settings, (2) a `search_analyzer` on the `collection` field using that filter, (3) collection name entries in `synonyms.txt`, and (4) a full reindex — not yet implemented |
+| Quoted phrase precision depends on analyser stemming | `"actions are by intention"` matches stemmed variants (e.g. "intend") because `query_string` phrase matching still runs through the field's analyser | Minor — acceptable for current use |
