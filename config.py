@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 # Load before any os.environ reads below — config is imported first by every
 # entrypoint, so this also populates env for main.py and embedding.py.
-load_dotenv(".env.local")
+load_dotenv()
 
 
 def _is_truthy(value):
@@ -29,7 +29,7 @@ def _int_env(name, default):
 
 
 # Pure lexical index — no embeddings, fast to rebuild.
-LEXICAL_INDEX = "english-mxbai"
+LEXICAL_INDEX = "english-lexical"
 
 # Each model gets its own ES index so you can index and switch independently.
 # The semantic field is always called "semantic_text" inside each model's index.
