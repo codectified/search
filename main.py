@@ -704,10 +704,10 @@ def build_semantic_query(query, filter_clauses):
 
 
 _ARABIC_RE = re.compile(r"[؀-ۿ]")
-# Hadith reference queries: number at either end — "bukhari 1", "abu dawud 200", "5", "534 bukhari".
+# Ends with a number (with or without preceding text) — "bukhari 1", "abu dawud 200", "5", "42".
 # Forces lexical: semantic returns 0/9 correct for reference-style lookups, and a bare
 # number has no semantic content worth embedding.
-_REF_RE = re.compile(r"(^|\s)\d+[a-z]?\s*$|^\d+[a-z]?\s+\S", re.IGNORECASE)
+_REF_RE = re.compile(r"(^|\s)\d+[a-z]?\s*$", re.IGNORECASE)
 # Explicit boolean operators in ES query_string syntax.
 # Semantic embeds AND/OR/NOT as plain text and ignores the logic — keep these on BM25.
 _BOOL_RE = re.compile(r"\b(AND|OR|NOT)\b")
@@ -754,18 +754,20 @@ def _route_query(query, mode):
     variant — None | "arabic" | "reference"
 
     Rules (applied in order — earlier rules always win):
-      1. Any Arabic character → lexical arabic BM25, full corpus
-      2. Number at start or end of query → lexical reference, forced off semantic
-      3. Contains AND/OR/NOT → lexical BM25 (operator syntax, semantic ignores these)
-      4. Otherwise → mode as requested (lexical BM25 or semantic)
-
-    Quoted queries are passed through to query_string, which handles phrase
-    matching natively. No special route needed.
+      1. Any Arabic character → lexical arabic BM25, full corpus (takes priority over quotes
+         so that quoted Arabic still searches the full corpus, not just English docs)
+      2. Quoted (≥3 chars) → lexical BM25; query_string handles phrase matching natively
+      3. Ends with a number (or IS a number) → lexical reference, forced off semantic
+      4. Contains AND/OR/NOT → lexical BM25 (operator syntax, semantic ignores these)
+      5. Otherwise → mode as requested (lexical BM25 or semantic)
     """
     q = query.strip()
 
     if _ARABIC_RE.search(q):
         return "lexical", "arabic"
+
+    if len(q) >= 3 and q[0] == '"' and q[-1] == '"':
+        return "lexical", None
 
     if _REF_RE.search(q):
         return "lexical", "reference"

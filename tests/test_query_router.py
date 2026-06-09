@@ -94,9 +94,9 @@ def section(title):
 # ══════════════════════════════════════════════════════════════════
 # 1. QUOTED QUERIES — pass through to query_string (ES handles phrase)
 # ══════════════════════════════════════════════════════════════════
-section('1. Quoted queries — ES query_string handles phrase matching')
+section('1. Quoted queries — forced lexical, query_string handles phrase matching')
 
-# Quoted English → standard lexical route (query_string treats quotes as phrase)
+# Quoted English → forced lexical (not semantic); query_string treats quotes as phrase
 # Quoted Arabic → arabic route (Arabic chars take priority over quotes)
 quoted_cases = [
     ('"prayer at night"',      "lexical"),
@@ -265,19 +265,6 @@ for q in ["bukahri 1", "bukahri 7563"]:
     except Exception as e:
         check(f'"{q}" misspelled → no exception', False, str(e))
 
-# Number-first format — "534 bukhari" (reversed order) should also route to reference.
-for q in ["1 bukhari", "534 bukhari"]:
-    try:
-        resp = search(q)
-        m = meta(resp)
-        check(
-            f'"{q}" (number first) → lexical_reference',
-            m.get("route") == "lexical_reference",
-            f'route={m.get("route")}'
-        )
-    except Exception as e:
-        check(f'"{q}" number-first → no exception', False, str(e))
-
 # Standalone numbers — no preceding text, still ends with a number → lexical_reference.
 for q in ["5", "42", "1234"]:
     try:
@@ -338,15 +325,15 @@ except Exception as e:
     check("arabic overrides semantic → no exception", False, str(e))
 
 try:
-    resp = search('"actions are by intention"', mode="semantic", model=SEMANTIC_MODEL)
+    resp = search('"actions are by intention"', mode="semantic")
     m = meta(resp)
     check(
-        'quoted query + mode=semantic → semantic (quotes no longer force lexical)',
-        m.get("route") == "semantic",
+        'quoted query + mode=semantic → lexical (quotes force off semantic)',
+        m.get("route") == "lexical",
         f'route={m.get("route")}'
     )
 except Exception as e:
-    check("quoted query semantic passthrough → no exception", False, str(e))
+    check("quoted query overrides semantic → no exception", False, str(e))
 
 try:
     resp = search("aisha عائشة", mode="lexical")
