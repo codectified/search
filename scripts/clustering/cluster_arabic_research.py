@@ -239,11 +239,6 @@ def run_streaming(vec_field, cluster_field, slug):
         coll_counts = defaultdict(int)
         for m in mds:
             coll_counts[m["collection"]] += 1
-        # Use a sample for scoring
-        sample_mds = mds[:200]
-        scores = [cosine(cent.astype(np.float32), np.array(
-            [0], dtype=np.float32)) for _ in sample_mds]  # placeholder — recalc below
-
         centroids_out[cid] = {
             "size":     count,
             "cohesion": 0.0,  # skip full cohesion for 3072-dim (expensive)
