@@ -53,7 +53,7 @@ lines = [
 for rank, (cid, c) in enumerate(by_cohesion, 1):
     colls = ", ".join(f"{k}({v})" for k, v in list(c["top_collections"].items())[:3])
     rh = c["representative_hadiths"]
-    snippet = (rh[0]["text"][:70].replace("|", "/") + "…") if rh else ""
+    snippet = (rh[0]["text"][:120].replace("|", "/") + "…") if rh else ""
     pct = 100 * c["size"] / total
     lines.append(
         f"| {rank} | {cid} | {c['size']:,} | {pct:.1f}% | {c['cohesion']} | {colls} | {snippet} |"
@@ -88,8 +88,8 @@ for rank, (cid, c) in enumerate(by_cohesion, 1):
         grade = f" `{rh['gradeNorm']}`" if rh.get("gradeNorm") and rh["gradeNorm"] != "Uncategorized" else ""
         score_str = f"(score {rh['score']})" if rh.get("score") else ""
         lines.append(
-            f"- **{rh['collection']}**{grade} {score_str}  \n"
-            f"  {rh['text'][:400]}"
+            f"- **{rh['collection']}** #{rh.get('hadithNumber','')} {grade} {score_str}  \n"
+            f"  {rh['text']}"
         )
     lines.append("")
 

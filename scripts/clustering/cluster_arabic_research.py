@@ -69,13 +69,24 @@ def build_centroids_json(labels, X, metas, K):
             [(scores[i], mds[i]) for i in range(len(mds)) if not mds[i].get("isChainRef")],
             key=lambda x: -x[0]
         )
+        seen_groups: set = set()
+        deduped = []
+        for s, m in ranked:
+            g = m.get("dupGroup") or 0
+            if g and g in seen_groups:
+                continue
+            if g:
+                seen_groups.add(g)
+            deduped.append((s, m))
+            if len(deduped) >= 5:
+                break
         out[cid] = {
             "size":     len(vecs),
             "cohesion": round(float(np.mean(scores)), 4),
             "top_collections": dict(sorted(coll_counts.items(), key=lambda x: -x[1])[:8]),
             "centroid": cent.tolist(),
             "representative_hadiths": [
-                {"score": round(s, 4), **m} for s, m in ranked[:5]
+                {"score": round(s, 4), **m} for s, m in deduped
             ],
         }
     return out
@@ -90,7 +101,7 @@ def run_standard(vec_field, cluster_field, slug):
     for hit in es_scan(es, index=INDEX,
             query={"query": {"exists": {"field": vec_field}}},
             _source=[vec_field, "arabicMatn", "collection", "hadithNumber",
-                     "gradeNorm", "isChainRef", "arabicURN"],
+                     "gradeNorm", "isChainRef", "arabicURN", "dupGroup"],
             size=500):
         s = hit["_source"]
         vec = s.get(vec_field)
@@ -104,7 +115,8 @@ def run_standard(vec_field, cluster_field, slug):
             "gradeNorm":    s.get("gradeNorm", ""),
             "isChainRef":   s.get("isChainRef", False),
             "arabicURN":    s.get("arabicURN", 0),
-            "text":         (s.get("arabicMatn") or "").strip()[:300],
+            "dupGroup":     s.get("dupGroup", 0),
+            "text":         (s.get("arabicMatn") or "").strip(),
         })
 
     X = normalize(np.array(vectors, dtype=np.float32), norm="l2")
@@ -170,7 +182,7 @@ def run_streaming(vec_field, cluster_field, slug):
     for hit in es_scan(es, index=INDEX,
             query={"query": {"exists": {"field": vec_field}}},
             _source=[vec_field, "arabicMatn", "collection", "hadithNumber",
-                     "gradeNorm", "isChainRef", "arabicURN"],
+                     "gradeNorm", "isChainRef", "arabicURN", "dupGroup"],
             size=ES_BATCH):
         s = hit["_source"]
         v = s.get(vec_field)
@@ -187,7 +199,8 @@ def run_streaming(vec_field, cluster_field, slug):
             "gradeNorm":    s.get("gradeNorm", ""),
             "isChainRef":   s.get("isChainRef", False),
             "arabicURN":    s.get("arabicURN", 0),
-            "text":         (s.get("arabicMatn") or "").strip()[:300],
+            "dupGroup":     s.get("dupGroup", 0),
+            "text":         (s.get("arabicMatn") or "").strip(),
         })
         if len(doc_ids) % 20000 == 0:
             print(f"    {len(doc_ids):,} predicted — {time.time()-t1:.0f}s")
@@ -239,13 +252,24 @@ def run_streaming(vec_field, cluster_field, slug):
         coll_counts = defaultdict(int)
         for m in mds:
             coll_counts[m["collection"]] += 1
+        seen_groups: set = set()
+        deduped = []
+        for m in mds:
+            g = m.get("dupGroup") or 0
+            if g and g in seen_groups:
+                continue
+            if g:
+                seen_groups.add(g)
+            deduped.append(m)
+            if len(deduped) >= 5:
+                break
         centroids_out[cid] = {
             "size":     count,
             "cohesion": 0.0,  # skip full cohesion for 3072-dim (expensive)
             "top_collections": dict(sorted(coll_counts.items(), key=lambda x: -x[1])[:8]),
             "centroid": cent.astype(np.float32).tolist(),
             "representative_hadiths": [
-                {"score": 0.0, **m} for m in mds[:5]
+                {"score": 0.0, **m} for m in deduped
             ],
         }
 
