@@ -20,9 +20,15 @@ Index names:
     Qwen/Qwen3-Embedding   → qwen3-embed
 """
 import os, sys, json, re, time
-# sentence-transformers may be installed to /tmp/stpkg if the container user
-# doesn't have write access to site-packages
-sys.path.insert(0, "/tmp/stpkg")
+# Persistent model cache: ./data/hf-cache on host, mounted to /code/data/hf-cache
+# in the container. Survives restarts. Falls back to /tmp/stpkg for older runs.
+HF_CACHE = os.environ.get("HF_HOME", "/code/data/hf-cache")
+os.environ["HF_HOME"] = HF_CACHE
+os.makedirs(HF_CACHE, exist_ok=True)
+ST_PKG = os.path.join(HF_CACHE, "stpkg")
+os.makedirs(ST_PKG, exist_ok=True)
+sys.path.insert(0, ST_PKG)
+sys.path.insert(0, "/tmp/stpkg")  # backwards compat if already installed there
 import numpy as np
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import scan as es_scan, bulk as es_bulk

@@ -32,7 +32,7 @@ import matplotlib.cm as cm
 INDEX = sys.argv[1] if len(sys.argv) > 1 else "multilingual-e5"
 N_UMAP = int(sys.argv[2]) if len(sys.argv) > 2 else 5000
 
-OUT_DIR = "/code/test results & reports/viz"
+OUT_DIR = f"/code/reports/clusters/{INDEX}/viz"
 os.makedirs(OUT_DIR, exist_ok=True)
 
 es = Elasticsearch("http://172.31.250.10:9200",
