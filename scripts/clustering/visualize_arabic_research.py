@@ -70,13 +70,15 @@ for vec_field in FIELDS:
     MAX_FETCH = max(N_UMAP * 3, 20_000)
     t0 = time.time()
     ids, X, labels_stored = [], [], []
+    meta_collection, meta_matn_len, meta_chainref = [], [], []
 
     for hit in es_scan(es, index=INDEX,
             query={"query": {"bool": {"must": [
                 {"exists": {"field": vec_field}},
                 {"exists": {"field": cluster_field}},
             ]}}},
-            _source=[vec_field, cluster_field], size=500):
+            _source=[vec_field, cluster_field, "collection", "arabicMatn", "isChainRef"],
+            size=500):
         s = hit["_source"]
         vec = s.get(vec_field)
         if not vec:
@@ -84,6 +86,9 @@ for vec_field in FIELDS:
         ids.append(hit["_id"])
         X.append(vec)
         labels_stored.append(s.get(cluster_field, -1))
+        meta_collection.append(s.get("collection", ""))
+        meta_matn_len.append(len((s.get("arabicMatn") or "")))
+        meta_chainref.append(bool(s.get("isChainRef", False)))
         if len(ids) >= MAX_FETCH:
             break
 
@@ -158,6 +163,7 @@ for vec_field in FIELDS:
         emb2d = reducer.fit_transform(X_sub)
         print(f"  UMAP done in {time.time()-t1:.0f}s")
 
+        # 1. Colored by cluster ID
         fig, ax = plt.subplots(figsize=(12, 10))
         sc = ax.scatter(emb2d[:, 0], emb2d[:, 1],
                         c=labels_sub, cmap="tab20", s=4, alpha=0.6, linewidths=0)
@@ -168,6 +174,55 @@ for vec_field in FIELDS:
         out = f"{BASE}/umap/{fname_base}.png"
         plt.savefig(out, dpi=150); plt.close()
         print(f"  Saved: {out}")
+
+        # 2. Colored by collection
+        colls_sub = [meta_collection[i] for i in idx]
+        unique_colls = sorted(set(colls_sub))
+        coll_idx = {c: i for i, c in enumerate(unique_colls)}
+        coll_nums = np.array([coll_idx[c] for c in colls_sub], dtype=float)
+        cmap_c = plt.get_cmap("tab20", len(unique_colls))
+        fig, ax = plt.subplots(figsize=(14, 10))
+        sc = ax.scatter(emb2d[:, 0], emb2d[:, 1],
+                        c=coll_nums, cmap=cmap_c, vmin=-0.5, vmax=len(unique_colls)-0.5,
+                        s=4, alpha=0.6, linewidths=0)
+        ax.set_title(f"arabic-research — {label} — by Collection (n={len(X_sub):,})")
+        ax.set_xticks([]); ax.set_yticks([])
+        cbar = plt.colorbar(sc, ax=ax, fraction=0.03, ticks=range(len(unique_colls)))
+        cbar.ax.set_yticklabels(unique_colls, fontsize=6)
+        plt.tight_layout()
+        out = f"{BASE}/umap/{fname_base}_by_collection.png"
+        plt.savefig(out, dpi=150); plt.close()
+        print(f"  Saved: {out}")
+
+        # 3. Colored by matn length (log scale)
+        lens_sub = np.array([meta_matn_len[i] for i in idx], dtype=float)
+        lens_log = np.log1p(lens_sub)
+        fig, ax = plt.subplots(figsize=(12, 10))
+        sc = ax.scatter(emb2d[:, 0], emb2d[:, 1],
+                        c=lens_log, cmap="viridis", s=4, alpha=0.6, linewidths=0)
+        ax.set_title(f"arabic-research — {label} — by Matn Length (log chars, n={len(X_sub):,})")
+        ax.set_xticks([]); ax.set_yticks([])
+        plt.colorbar(sc, ax=ax, label="log(matn chars + 1)", fraction=0.03)
+        plt.tight_layout()
+        out = f"{BASE}/umap/{fname_base}_by_length.png"
+        plt.savefig(out, dpi=150); plt.close()
+        print(f"  Saved: {out}")
+
+        # 4. Colored by isChainRef
+        chain_sub = np.array([meta_chainref[i] for i in idx], dtype=float)
+        fig, ax = plt.subplots(figsize=(12, 10))
+        ax.scatter(emb2d[chain_sub == 0, 0], emb2d[chain_sub == 0, 1],
+                   s=4, alpha=0.5, linewidths=0, color="steelblue", label="Matn")
+        ax.scatter(emb2d[chain_sub == 1, 0], emb2d[chain_sub == 1, 1],
+                   s=6, alpha=0.9, linewidths=0, color="crimson", label="Chain-ref only")
+        ax.set_title(f"arabic-research — {label} — Matn vs Chain-ref (n={len(X_sub):,})")
+        ax.set_xticks([]); ax.set_yticks([])
+        ax.legend(markerscale=3, fontsize=10)
+        plt.tight_layout()
+        out = f"{BASE}/umap/{fname_base}_chainrefs.png"
+        plt.savefig(out, dpi=150); plt.close()
+        print(f"  Saved: {out}")
+
     except ImportError:
         print("  umap-learn not available — skipping UMAP")
     except Exception as e:
