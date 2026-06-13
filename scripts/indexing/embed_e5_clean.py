@@ -67,11 +67,8 @@ def run(src_field, vec_field):
     buf_ids, buf_texts = [], []
     done = skipped = errors = 0
 
-    query = {"bool": {"must": [
-        {"exists": {"field": src_field}},
-    ], "must_not": [
-        {"exists": {"field": vec_field}},
-    ]}}
+    # vec fields ARE indexed; src text fields have index:False so can't use exists on them
+    query = {"bool": {"must_not": [{"exists": {"field": vec_field}}]}}
 
     def flush():
         nonlocal done, errors
