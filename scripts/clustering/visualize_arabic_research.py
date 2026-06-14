@@ -1,5 +1,5 @@
 """
-Generate cluster visualizations for all four vector fields in arabic-research.
+Generate cluster visualizations for vector fields in arabic-research.
 
 Outputs to type-organized folders under /code/reports/viz/:
   umap/     — UMAP 2D projections
@@ -17,7 +17,7 @@ Usage (inside container):
 Env vars:
     K       cluster count used (default 150) — used for field names and filenames
     N_UMAP  sample size for UMAP (default 5000)
-    FIELDS  comma-separated subset to visualize (default: all four)
+    FIELDS  comma-separated subset to visualize (default: all six)
 """
 import os, sys, time
 import numpy as np
@@ -39,7 +39,8 @@ from elasticsearch.helpers import scan as es_scan
 es = Elasticsearch(f"http://{ES_HOST}:9200",
                    basic_auth=("elastic", ES_PW), request_timeout=120)
 
-ALL_FIELDS = ["vec_openai", "vec_openai_large", "vec_e5_crosslingual", "vec_e5_arabic"]
+ALL_FIELDS = ["vec_openai", "vec_openai_large", "vec_e5_crosslingual", "vec_e5_arabic",
+              "vec_e5_matn", "vec_e5_full"]
 FIELDS = [f.strip() for f in os.environ.get("FIELDS", ",".join(ALL_FIELDS)).split(",")]
 
 FIELD_SLUG = {
@@ -47,12 +48,16 @@ FIELD_SLUG = {
     "vec_openai_large":    "openai_large",
     "vec_e5_crosslingual": "e5_crosslingual",
     "vec_e5_arabic":       "e5_arabic",
+    "vec_e5_matn":         "e5_matn",
+    "vec_e5_full":         "e5_full",
 }
 FIELD_LABEL = {
     "vec_openai":          "OpenAI 1536d",
     "vec_openai_large":    "OpenAI 3072d",
     "vec_e5_crosslingual": "E5 cross-lingual 1024d",
     "vec_e5_arabic":       "E5 Arabic-matn 1024d",
+    "vec_e5_matn":         "E5 multilingual (matn only) 1024d",
+    "vec_e5_full":         "E5 multilingual (full text) 1024d",
 }
 
 BASE = "/code/reports/viz"

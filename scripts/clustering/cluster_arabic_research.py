@@ -1,5 +1,5 @@
 """
-Cluster all four vector fields in the arabic-research index and write
+Cluster vector fields in the arabic-research index and write
 cluster IDs + centroid JSONs for each.
 
 Cluster field names include the k value: cluster_{model}_k{K}
@@ -8,13 +8,16 @@ Centroid files:                         arabic-research_{model}_k{K}.json
 vec_openai_large (3072d) uses streaming partial_fit to avoid loading
 ~1.6 GB into RAM at once — all other fields load fully.
 
+Supported fields: vec_openai, vec_openai_large, vec_e5_crosslingual,
+                  vec_e5_arabic, vec_e5_matn, vec_e5_full
+
 Run inside container:
     docker exec -e ELASTIC_PASSWORD=docker123 -e ES_HOST=172.31.250.10 \\
         search-web-1 python3 /code/scripts/clustering/cluster_arabic_research.py
 
 Env vars:
     K       number of clusters (default 150)
-    FIELDS  comma-separated subset (default: all four)
+    FIELDS  comma-separated subset (default: all six)
 """
 import os, json, time
 import numpy as np
@@ -34,7 +37,8 @@ os.makedirs(OUT_DIR, exist_ok=True)
 es = Elasticsearch(f"http://{ES_HOST}:9200",
                    basic_auth=("elastic", ES_PW), request_timeout=120)
 
-ALL_FIELDS = ["vec_openai", "vec_openai_large", "vec_e5_crosslingual", "vec_e5_arabic"]
+ALL_FIELDS = ["vec_openai", "vec_openai_large", "vec_e5_crosslingual", "vec_e5_arabic",
+              "vec_e5_matn", "vec_e5_full"]
 FIELDS = [f.strip() for f in os.environ.get("FIELDS", ",".join(ALL_FIELDS)).split(",")]
 
 FIELD_SLUG = {
@@ -42,6 +46,8 @@ FIELD_SLUG = {
     "vec_openai_large":    "openai_large",
     "vec_e5_crosslingual": "e5_crosslingual",
     "vec_e5_arabic":       "e5_arabic",
+    "vec_e5_matn":         "e5_matn",
+    "vec_e5_full":         "e5_full",
 }
 
 
