@@ -34,7 +34,7 @@ TAG_RE = re.compile(r'\[/?[a-zA-Z][^\]]*\]')
 def strip_markup(text):
     if not text:
         return ""
-    cleaned = TAG_RE.sub('', text)
+    cleaned = TAG_RE.sub(' ', text)          # space, not empty — preserves word boundaries
     return re.sub(r'\s+', ' ', cleaned).strip()
 
 
