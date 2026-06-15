@@ -27,7 +27,9 @@ INDEX   = "arabic-research"
 MODEL_NAME = "intfloat/multilingual-e5-large"
 PREFIX  = "passage: "
 
-HF_CACHE = os.environ.get("HF_HOME", "/code/data/hf-cache")
+_default_cache = os.path.join(os.path.expanduser("~"), ".cache", "huggingface") \
+    if os.name == "nt" else "/code/data/hf-cache"
+HF_CACHE = os.environ.get("HF_HOME", _default_cache)
 os.environ["HF_HOME"] = HF_CACHE
 ST_PKG = os.path.join(HF_CACHE, "stpkg")
 
