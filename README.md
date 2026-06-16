@@ -10,18 +10,18 @@ Flask + Elasticsearch search service for sunnah.com. Supports lexical (BM25) and
 Browser / PHP website
         │
         ▼
-  Flask API (this repo) ──► Elasticsearch
-                                  │
-                      ┌───────────┴───────────┐
-                      │  english-lexical       │  BM25, no embeddings
-                      │  english-mxbai         │  mxbai-embed-large vectors
-                      └───────────────────────┘
+  Flask API (this repo)
+        │
+        ├── spam filter → 400 on URLs, phones, gibberish
+        │
+        └── search by ?mode= → lexical (BM25) or semantic (kNN)
+              (a query router also classifies each query for analytics — see Query routing)
 
-  Ollama (host, port 11434) — embeds search queries
-  HF Dedicated Endpoint (optional) — embeds documents at index time
+  Infinity server (host, port 7997) — embeds queries (semantic path only)
+  HF Dedicated Endpoint (optional)  — embeds documents at index time
 ```
 
-Each index name in ES is an **alias** (e.g. `english-mxbai`) pointing to a timestamped backing index. Reindexing builds a new backing index and atomically swaps the alias — the live index keeps serving traffic during the rebuild.
+Each index name in ES is an **alias** pointing to a timestamped backing index. Reindexing builds a new backing index and atomically swaps the alias — the live index keeps serving traffic during the rebuild.
 
 ---
 
@@ -30,7 +30,7 @@ Each index name in ES is an **alias** (e.g. `english-mxbai`) pointing to a times
 ### Prerequisites
 
 - Docker + Docker Compose
-- [Ollama](https://ollama.com) installed and running on your machine
+- [Infinity](https://github.com/michaelf34/infinity) installed and running on your machine
 
 ### 1. Configure environment
 
@@ -38,14 +38,16 @@ Each index name in ES is an **alias** (e.g. `english-mxbai`) pointing to a times
 cp .env.sample .env
 ```
 
-Semantic search is on by default (`SEMANTIC_ENABLED=true`). Set it to `false` if you want lexical-only and don't want to run Ollama. `OLLAMA_URL` defaults to `http://host.docker.internal:11434`, which works on Docker Desktop (Mac/Windows) — leave it unset locally.
+Semantic search is on by default (`SEMANTIC_ENABLED=true`). Set it to `false` if you want lexical-only and don't want to run the Infinity server. `INFINITY_URL` defaults to `http://host.docker.internal:7997`, which works on Docker Desktop (Mac/Windows) — leave it unset locally.
 
-To offload index-time embedding to a HuggingFace Dedicated Inference Endpoint (recommended for prod — orders of magnitude faster on a small GPU than Ollama on a CPU instance), also set `HUGGING_FACE_KEY` and `HF_DEDICATED_URL` in `.env`. The endpoint must run [TEI](https://github.com/huggingface/text-embeddings-inference) with `mixedbread-ai/mxbai-embed-large-v1`. Leaving either var unset falls back to embedding via Ollama at index time too.
+To offload index-time embedding to a HuggingFace Dedicated Inference Endpoint (recommended for prod — orders of magnitude faster on a small GPU than Infinity on a CPU instance), also set `HUGGING_FACE_KEY` and `HF_DEDICATED_URL` in `.env`. The endpoint must run [TEI](https://github.com/huggingface/text-embeddings-inference) with `mixedbread-ai/mxbai-embed-large-v1`. Leaving either var unset falls back to embedding via the Infinity server at index time too.
 
-### 2. Pull the model
+### 2. Serve the model
+
+Pull whichever embedding model is configured in `EMBEDDING_MODELS` in `main.py`:
 
 ```bash
-ollama pull mxbai-embed-large
+infinity_emb v2 --model-id mixedbread-ai/mxbai-embed-xsmall-v1 --port 7997
 ```
 
 ### 3. Start the stack
@@ -62,13 +64,13 @@ Flask is exposed on **port 5000**.
 http://localhost:5000/index?password=index123
 ```
 
-This reads all hadiths from MySQL and builds **both** the lexical and semantic indexes by default — that's almost always what you want. Embedding ~48k English hadiths takes ~9 min via the HF Dedicated Endpoint (or considerably longer through Ollama if no remote endpoint is configured).
+This reads all hadiths from MySQL and builds **both** the lexical and semantic indexes by default — that's almost always what you want. Embedding ~48k English hadiths takes ~9 min via the HF Dedicated Endpoint (or considerably longer through the Infinity server if no remote endpoint is configured).
 
 To build a subset, pass `targets=` (comma-separated):
 ```
-http://localhost:5000/index?password=index123&targets=lexical          # lexical only
-http://localhost:5000/index?password=index123&targets=mxbai            # one semantic model
-http://localhost:5000/index?password=index123&targets=lexical,mxbai    # both (same as default)
+http://localhost:5000/index?password=index123&targets=lexical              # lexical only
+http://localhost:5000/index?password=index123&targets=<model-key>          # one semantic model
+http://localhost:5000/index?password=index123&targets=lexical,<model-key>  # both
 ```
 
 To force a full rebuild instead of incremental:
@@ -125,15 +127,15 @@ searchdb_password=<password>
 SEARCH_METRICS_SAMPLE_PERCENT=0
 ```
 
-### 2. Ollama on Linux
+### 2. Infinity server on Linux
 
-Install [Ollama](https://ollama.com) on the host and pull the model before starting the stack:
+Run an [Infinity](https://github.com/michaelf34/infinity) server on the host, serving the embedding model, before starting the stack:
 
 ```bash
-ollama pull mxbai-embed-large
+infinity_emb v2 --model-id mixedbread-ai/mxbai-embed-xsmall-v1 --port 7997
 ```
 
-`host.docker.internal` only works on Docker Desktop (Mac/Windows), not on Linux. The prod compose file adds `host-gateway` so this hostname resolves correctly on Linux too — the default `OLLAMA_URL` works without any extra `.env` changes.
+`host.docker.internal` only works on Docker Desktop (Mac/Windows), not on Linux. The prod compose file adds `host-gateway` so this hostname resolves correctly on Linux too — the default `INFINITY_URL` works without any extra `.env` changes.
 
 ### 3. Start the stack
 
@@ -149,45 +151,55 @@ The prod stack is exposed on **port 7650**. Builds both lexical and semantic by 
 http://<server>:7650/index?password=<INDEXING_PASSWORD>
 ```
 
-Add `&targets=lexical` or `&targets=mxbai` to build a subset.
+Add `&targets=lexical` or `&targets=<model-key>` to build a subset.
 
 Check index status:
 ```
 http://<server>:7650/index/status
 ```
 
+### Query-router audit logging
+
+Set `ROUTER_LOG=true` to emit one `router_decision` log line per request (off by
+default; adds access-log noise). See [Query routing](#query-routing).
+
 ---
 
 ## Embedding model
 
+The active model(s) are declared in `EMBEDDING_MODELS` in `config.py`. Model selection is under active evaluation — see `tests/small_model_comparison.py` for the comparison script.
+
 | Key | Model | Query-time | Index-time | Dimensions |
 |---|---|---|---|---|
-| `mxbai` | mxbai-embed-large | Ollama (host) | HF Dedicated Endpoint (optional) → else Ollama | 1024 |
-| `mxbai-xsmall` | mxbai-embed-xsmall | Ollama (host) | HF Dedicated Endpoint (optional) → else Ollama | 384 |
+| `mxbai` | mxbai-embed-large | Infinity (host) | HF Dedicated Endpoint (optional) → else Infinity | 1024 |
+| `mxbai-xsmall` | mxbai-embed-xsmall | Infinity (host) | HF Dedicated Endpoint (optional) → else Infinity | 384 |
 
-Queries are always embedded via **Ollama on the host machine** (not inside Docker) — the container reaches it at `http://host.docker.internal:11434` via ES 8.16's OpenAI-compatible inference endpoint. Index-time embedding is offloaded to a remote TEI endpoint when `HUGGING_FACE_KEY` + `HF_DEDICATED_URL` are set: the indexer fetches vectors over HTTP and ships them inline with the bulk payload (ES's `semantic_text` accepts pre-populated chunks and skips its own inference call). Vectors from TEI and Ollama for the same model are bit-compatible (cosine ≈ 0.9999), so queries can match docs embedded by either side.
+Queries are always embedded via the **Infinity server on the host machine** (not inside Docker) — the container reaches it at `http://host.docker.internal:7997` via ES 8.16's OpenAI-compatible inference endpoint. Index-time embedding is offloaded to a remote TEI endpoint when `HUGGING_FACE_KEY` + `HF_DEDICATED_URL` are set: the indexer fetches vectors over HTTP and ships them inline with the bulk payload (ES's `semantic_text` accepts pre-populated chunks and skips its own inference call). Vectors from TEI and Infinity for the same model are bit-compatible (cosine ≈ 0.9999), so queries can match docs embedded by either side.
 
-Per-run tuning via env vars: `HF_DEDICATED_CONCURRENCY` (default 4), `HF_DEDICATED_BATCH_SIZE` (default 16, must keep `batch × max_input_length ≤ TEI's max_batch_tokens`), `HF_DEDICATED_RPM` (default -1, disabled).
+Per-run tuning via env vars: `HF_DEDICATED_CONCURRENCY` (default 4), `HF_DEDICATED_BATCH_SIZE` (default 16), `HF_DEDICATED_RPM` (default -1, disabled).
 
 ### Adding a model
 
 1. Add an entry to `EMBEDDING_MODELS` in `main.py` — copy the mxbai entry as a template (~10 lines).
-2. Pull the model on the Ollama host: `ollama pull your-model-name`.
+2. Serve the model on the Infinity host: `infinity_emb v2 --model-id your-model-name`.
 3. Hit `/index?password=...&targets=newkey` to build its index. (`/index` with no `targets=` will pick it up too, alongside lexical and the other semantic models.)
 4. Add the alias name to `SEMANTIC_INDEXES` in `tests/batch_search.py`.
 5. If it should be the default for `/search?mode=semantic` without a `&model=` param, point `DEFAULT_SEMANTIC_MODEL` at the new key.
 
-`SEMANTIC_ENABLED` is a single global toggle — you don't add a per-model env var.
+`SEMANTIC_ENABLED` is a single global toggle — there is no per-model on/off switch.
 
 ---
 
 ## Shadow sampling (semantic rollout)
 
-To roll semantic search out safely, the service can **shadow-sample** live traffic:
-on a random fraction of lexical-served `/search` queries it also runs the semantic
-query in a background thread and records both sides — results and query timings —
-to a `search_metrics` table in a separate **searchdb** (MySQL). The user always
-gets the lexical response, unchanged and undelayed; the semantic run is fire-and-forget.
+On a random fraction of lexical-served `/search` queries the service also runs the
+semantic query in a background thread and records both sides — results and query
+timings — to a `search_metrics` table in a separate **searchdb** (MySQL). The user
+always gets the lexical response, unchanged and undelayed; the semantic run is
+fire-and-forget.
+
+The `routing_decision` column tags each sample with the query router's label (see
+[Query routing](#query-routing)) so samples can be grouped and compared by query type.
 
 This produces an apples-to-apples dataset (same real queries, both engines) to
 compare result quality and latency before flipping semantic on for everyone.
@@ -206,12 +218,18 @@ are dropped under load, default 50).
 
 `search_metrics` columns: `query`, `lexical_results` / `semantic_results` (full
 ES response bodies as JSON), `lexical_query_time_ms` / `semantic_query_time_ms`,
-`semantic_model_name`, and `routing_decision` (reserved for a future query router).
+`semantic_model_name`, `routing_decision`.
 
 Locally, the `searchdb` service in `docker-compose.yml` provisions this DB and
 creates the table from `searchdb/01-search_metrics.sql` on first start — no setup
 needed beyond `docker compose up`. In prod, searchdb is an externally-managed DB
 (like the hadith MySQL); just point the `searchdb_*` env vars at it.
+
+---
+
+## Query routing
+
+See [`docs/query_router_design.md`](docs/query_router_design.md) (`query_router.py`).
 
 ---
 
@@ -228,7 +246,7 @@ Mode is passed as a query parameter:
 /english/search?q=prayer&mode=lexical
 ```
 
-`mode=semantic` uses the model named in `DEFAULT_SEMANTIC_MODEL` (currently `mxbai`) when no `&model=` is supplied. Pass `&model=<key>` to pick a different enabled model.
+`mode=semantic` uses the model named in `DEFAULT_SEMANTIC_MODEL` when no `&model=` is supplied. Pass `&model=<key>` to pick a different enabled model.
 
 ---
 

@@ -37,6 +37,7 @@ from embedding import (
     _open_checkpoint,
     _rewrite_inline_chunks,
 )
+from query_router import is_spam, route_query, routing_decision
 from utils.shortcode_pattern import SHORTCODE_PATTERN
 from utils.vector_checkpoint import list_checkpoints
 
@@ -80,6 +81,11 @@ es_client = Elasticsearch(
     request_timeout=10,
 )
 
+
+# When enabled, logs one structured entry per query showing the route the query
+# router *would* take (observational only — routing does not affect the served
+# path; see query_router.py). Set ROUTER_LOG=true in .env to turn on. Off by default.
+ROUTER_LOG = _is_truthy(os.environ.get("ROUTER_LOG"))
 
 # Shadow-sampling runtime (sizing constants live in config). The executor and
 # backlog semaphore are live objects, so they're built here where the sampler
@@ -150,12 +156,12 @@ def _prepare_documents(documents):
 def _attach_semantic_field(paired, model):
     """Attach SEMANTIC_FIELD as plain text on each doc.
 
-    ES then auto-embeds via the bound inference endpoint (Ollama) at bulk time,
+    ES then auto-embeds via the bound inference endpoint (Infinity) at bulk time,
     unless _rewrite_inline_chunks is called first to pre-populate the field
     with vectors from a remote provider.
 
     The model's document prompt (if any) is baked into the stored text here so it
-    covers BOTH index paths uniformly — the remote embedder and ES→Ollama both
+    covers BOTH index paths uniformly — the remote embedder and ES→Infinity both
     read this field as their embedding input. SEMANTIC_FIELD is excluded from
     _source on every search response, so the prefix is never user-visible. It's
     applied after contentHash is computed (_content_hash skips SEMANTIC_FIELD), so
@@ -517,7 +523,6 @@ def index():
             ar_docs = [(doc, doc["arabicText"]) for doc in arabicHadiths]
             paired = en_docs + ar_docs
         else:
-            # English-only — replicates colleague's original PR approach.
             paired = [(doc, doc["hadithText"]) for doc in englishHadiths]
 
         model_docs = _attach_semantic_field(paired, model)
@@ -688,13 +693,57 @@ def _truncate_query(query):
     return query[:QUERY_MAX_CHARS]
 
 
-def build_semantic_query(query, filter_clauses):
+def _collection_boosted(must_clause, filter_clauses):
+    """Wrap a single must-clause in bool(filter) + the collection-boost
+    function_score. Shared by the lexical and semantic paths so the boost config
+    (weights, score/boost modes) lives in exactly one place."""
     return {
-        "bool": {
-            "filter": filter_clauses,
-            "must": [{"semantic": {"field": SEMANTIC_FIELD, "query": query}}],
+        "function_score": {
+            "query": {"bool": {"filter": filter_clauses, "must": [must_clause]}},
+            "functions": [
+                {"filter": {"term": {"collection": name}}, "weight": w}
+                for name, w in COLLECTION_BOOSTS
+            ],
+            "score_mode": "sum",
+            "boost_mode": "sum",
         }
     }
+
+
+def build_semantic_query(query, filter_clauses):
+    return _collection_boosted(
+        {"semantic": {"field": SEMANTIC_FIELD, "query": query}}, filter_clauses
+    )
+
+
+# Fields the frontend renders highlights for; shared by both search paths.
+HIGHLIGHT_FIELDS = {"hadithText": {}, "arabicText": {}, "collection": {}}
+
+
+def _lexical_inner(query, query_type):
+    """query_type is "query_string" (strict, for ranking) or "simple_query_string"
+    (lenient, used as ranking fallback and for highlight queries)."""
+    # cross_fields lets each field use its own analyzer (e.g. Arabic morphology).
+    fields = ["hadithNumber^2", "hadithText", "arabicText", "collection^2"]
+    inner = {"query": query, "fields": fields}
+    if query_type == "query_string":
+        inner["type"] = "cross_fields"
+    return {query_type: inner}
+
+
+def build_lexical_query(query, query_type, filter_clauses):
+    return _collection_boosted(_lexical_inner(query, query_type), filter_clauses)
+
+
+def _highlight(highlight_query=None):
+    """Shared highlight config. number_of_fragments=0 returns the whole field. The
+    semantic path passes highlight_query to highlight literal terms on semantic hits
+    (the semantic index carries the same analyzed fields); the lexical path's own
+    query already drives highlighting."""
+    block = {"number_of_fragments": 0, "fields": HIGHLIGHT_FIELDS}
+    if highlight_query is not None:
+        block["highlight_query"] = highlight_query
+    return block
 
 
 def get_filter_from_args(args):
@@ -735,12 +784,44 @@ def malformed_query_response(exc):
     return jsonify({"error": "malformed query"}), 400
 
 
+def _log_router_decision(query, mode):
+    """Emit one structured access-log line describing the route the query router
+    would choose. Observational only — does not affect the served path. Gated by
+    ROUTER_LOG; see query_router.py."""
+    _, variant = route_query(query, mode)
+    decision = routing_decision(query, mode)
+    access_log.info(
+        "router_decision",
+        extra={
+            "request_id": getattr(g, "request_id", None),
+            "query": query,
+            "mode_requested": str(mode),
+            "route": decision,
+            "variant": variant,
+            # overridden = router would force lexical despite ?mode=semantic
+            "overridden": mode == SearchMode.SEMANTIC and decision != "semantic",
+        },
+    )
+
+
 @app.route("/<language>/search", methods=["GET"])
 def search(language):
     query = _truncate_query(request.args.get("q"))
+
+    if is_spam(query):
+        access_log.info("spam_rejected", extra={"query": query})
+        return jsonify({"error": "invalid query"}), 400
+
     filters = get_filter_from_args(request.args)
     mode = _resolve_mode(request.args)
 
+    # The query router is observational for now: it does not change the served
+    # path. Production routes purely on ?mode=; the router's decision is only
+    # logged here and recorded in shadow-sampling metrics (see _maybe_shadow_sample).
+    if ROUTER_LOG:
+        _log_router_decision(query, mode)
+
+    # ── Semantic path ──────────────────────────────────────────────────────────
     if mode == SearchMode.SEMANTIC:
         model_key, err = _resolve_model_key(request.args)
         if err:
@@ -757,41 +838,13 @@ def search(language):
         )
         return _semantic_search(model, query, filters)
 
-    # Lexical path
-    fields = ["hadithNumber^2", "hadithText", "arabicText", "collection^2"]
+    # ── Lexical path ─────────────────────────────────────────────────────────
 
-    def build_lexical(query_type):
-        inner = {"query": query, "fields": fields}
-        if query_type == "query_string":
-            inner["type"] = "cross_fields"
-        return {
-            "function_score": {
-                "query": {"bool": {"filter": filters, "must": [{query_type: inner}]}},
-                "functions": [
-                    {"filter": {"term": {"collection": name}}, "weight": w}
-                    for name, w in COLLECTION_BOOSTS
-                ],
-                "score_mode": "sum",
-                "boost_mode": "sum",
-            }
-        }
-
-    kwargs = {
-        "index": LEXICAL_INDEX,
-        "from_": request.args.get("from", 0),
-        "size": request.args.get("size", 10),
-        "_source": {"excludes": [SEMANTIC_FIELD]},
-        "highlight": {"number_of_fragments": 0, "fields": {"*": {}}},
-        "suggest": get_suggest_block(query),
-    }
     lexical_start = time.perf_counter()
     try:
-        try:
-            result = es_client.search(query=build_lexical("query_string"), **kwargs)
-        except BadRequestError:
-            result = es_client.search(
-                query=build_lexical("simple_query_string"), **kwargs
-            )
+        result = _execute_lexical_search(
+            query, filters, request.args.get("from", 0), request.args.get("size", 10)
+        )
     except BadRequestError as e:
         return malformed_query_response(e)
     lexical_ms = (time.perf_counter() - lexical_start) * 1000
@@ -803,17 +856,39 @@ def search(language):
         request.args.get("size", 10),
         result.body,
         lexical_ms,
+        mode,
     )
+    result.body.setdefault("_meta", {})["route"] = "lexical"
     return jsonify(result.body)
 
 
-def _execute_semantic_search(model, query, filters, from_, size):
-    """Run the semantic ES query. Shared by the request route and the shadow
-    sampler so the query shape (timeout, source excludes, suggest) lives once.
+def _execute_lexical_search(query, filters, from_, size):
+    """Lexical BM25 query, falling back to simple_query_string on syntax the strict
+    parser rejects. Shared by the lexical route and the semantic fallback path; a
+    BadRequestError from the fallback propagates for callers to map."""
+    kwargs = {
+        "index": LEXICAL_INDEX,
+        "from_": from_,
+        "size": size,
+        "_source": {"excludes": [SEMANTIC_FIELD]},
+        "highlight": _highlight(),
+        "suggest": get_suggest_block(query),
+    }
+    try:
+        return es_client.search(
+            query=build_lexical_query(query, "query_string", filters), **kwargs
+        )
+    except BadRequestError:
+        return es_client.search(
+            query=build_lexical_query(query, "simple_query_string", filters), **kwargs
+        )
 
-    The model's query prompt is applied only to the text ES embeds; the raw query
-    still feeds get_suggest_block so spelling suggestions aren't built from the
-    instruction prefix."""
+
+def _execute_semantic_search(model, query, filters, from_, size):
+    """Semantic ES query, shared by the request route and the shadow sampler. The
+    model's query prompt is applied only to the embedded text; the raw query still
+    feeds get_suggest_block so suggestions aren't built from the instruction prefix.
+    Highlights use a literal-term highlight_query so semantic hits carry them too."""
     return es_client.options(request_timeout=130).search(
         index=model["index"],
         from_=int(from_),
@@ -821,20 +896,26 @@ def _execute_semantic_search(model, query, filters, from_, size):
         query=build_semantic_query(_apply_prompt(model, "query", query), filters),
         _source={"excludes": [SEMANTIC_FIELD]},
         suggest=get_suggest_block(query),
+        highlight=_highlight(_lexical_inner(query, "simple_query_string")),
     )
 
 
 def _semantic_search(model, query, filters):
+    from_ = request.args.get("from", 0)
+    size = request.args.get("size", 10)
+    route = "semantic"
     try:
-        result = _execute_semantic_search(
-            model,
-            query,
-            filters,
-            request.args.get("from", 0),
-            request.args.get("size", 10),
-        )
-    except BadRequestError as e:
-        return malformed_query_response(e)
+        result = _execute_semantic_search(model, query, filters, from_, size)
+    except Exception:
+        # Degrade gracefully: any semantic failure (inference endpoint down,
+        # timeout, etc.) falls back to lexical so the user still gets results.
+        access_log.exception("semantic_search_failed", extra={"query": query})
+        try:
+            result = _execute_lexical_search(query, filters, from_, size)
+        except BadRequestError as e:
+            return malformed_query_response(e)
+        route = "lexical_fallback"
+    result.body.setdefault("_meta", {})["route"] = route
     return jsonify(result.body)
 
 
@@ -852,6 +933,14 @@ def _shadow_sampling_enabled():
     )
 
 
+def _result_urns(body):
+    """Ordered list of hadith URNs from an ES response body. Hit `_id`s are
+    `lang:urn` (see _prepare_documents); we keep just the urn, in result order.
+    Used to record shadow samples compactly instead of full result bodies."""
+    hits = (body or {}).get("hits", {}).get("hits", [])
+    return [hit.get("_id", "").split(":", 1)[-1] for hit in hits]
+
+
 def _run_semantic_shadow(model, query, filters, from_, size):
     """Run the semantic query for comparison. Returns (result_body, elapsed_ms).
 
@@ -866,6 +955,7 @@ def _run_semantic_shadow(model, query, filters, from_, size):
 
 def _persist_search_metrics(
     query,
+    query_from,
     lexical_results,
     lexical_ms,
     semantic_results,
@@ -873,22 +963,25 @@ def _persist_search_metrics(
     model_name,
     routing_decision=None,
 ):
-    """Insert one row into search_metrics. Opens a fresh connection per write —
-    sampled volume is low, so a pool isn't worth the added lifecycle."""
+    """Insert one row into search_metrics. The result bodies are reduced to their
+    ordered URN lists (see _result_urns) before storage — recording full result
+    bodies took far too much space. Opens a fresh connection per write — sampled
+    volume is low, so a pool isn't worth the added lifecycle."""
     conn = pymysql.connect(charset="utf8mb4", **_SEARCHDB_CONFIG)
     try:
         with conn.cursor() as cursor:
             cursor.execute(
                 """INSERT INTO search_metrics
-                       (query, lexical_results, lexical_query_time_ms,
+                       (query, query_from, lexical_results, lexical_query_time_ms,
                         semantic_results, semantic_query_time_ms,
                         semantic_model_name, routing_decision)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
                 (
                     query,
-                    json.dumps(lexical_results, ensure_ascii=False, default=str),
+                    int(query_from),
+                    json.dumps(_result_urns(lexical_results), ensure_ascii=False),
                     round(lexical_ms, 3),
-                    json.dumps(semantic_results, ensure_ascii=False, default=str),
+                    json.dumps(_result_urns(semantic_results), ensure_ascii=False),
                     round(semantic_ms, 3),
                     model_name,
                     routing_decision,
@@ -899,7 +992,9 @@ def _persist_search_metrics(
         conn.close()
 
 
-def _shadow_sample_task(query, filters, from_, size, lexical_body, lexical_ms):
+def _shadow_sample_task(
+    query, filters, from_, size, lexical_body, lexical_ms, routing_decision
+):
     """Background task: run the semantic side and persist both results. Swallows
     every error — shadow telemetry must never affect the served request, and it
     already returned by the time this runs."""
@@ -910,11 +1005,13 @@ def _shadow_sample_task(query, filters, from_, size, lexical_body, lexical_ms):
         )
         _persist_search_metrics(
             query,
+            from_,
             lexical_body,
             lexical_ms,
             semantic_body,
             semantic_ms,
             model["label"],
+            routing_decision,
         )
     except Exception:
         access_log.exception("shadow_sample_failed", extra={"query": query})
@@ -922,9 +1019,12 @@ def _shadow_sample_task(query, filters, from_, size, lexical_body, lexical_ms):
         _shadow_slots.release()
 
 
-def _maybe_shadow_sample(query, filters, from_, size, lexical_body, lexical_ms):
+def _maybe_shadow_sample(query, filters, from_, size, lexical_body, lexical_ms, mode):
     """Roll the dice on a lexical-served query and, if it wins, hand the semantic
-    comparison off to the background pool. Returns immediately; never raises."""
+    comparison off to the background pool. Returns immediately; never raises.
+
+    The query router's decision for this query is recorded in the sample's
+    routing_decision column (observational — it did not affect the served path)."""
     if not query or not _shadow_sampling_enabled():
         return
     if random.randint(1, 100) > SEARCH_METRICS_SAMPLE_PERCENT:
@@ -932,9 +1032,17 @@ def _maybe_shadow_sample(query, filters, from_, size, lexical_body, lexical_ms):
     if not _shadow_slots.acquire(blocking=False):
         access_log.warning("shadow_sample_dropped")
         return
+    decision = routing_decision(query, mode)
     try:
         _SHADOW_EXECUTOR.submit(
-            _shadow_sample_task, query, filters, from_, size, lexical_body, lexical_ms
+            _shadow_sample_task,
+            query,
+            filters,
+            from_,
+            size,
+            lexical_body,
+            lexical_ms,
+            decision,
         )
     except RuntimeError:
         # Executor shutting down (e.g. interpreter exit) — release the slot.
