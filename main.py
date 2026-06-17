@@ -98,37 +98,6 @@ _SHADOW_EXECUTOR = ThreadPoolExecutor(
 # the executor queue (and memory) grow without bound under load.
 _shadow_slots = threading.BoundedSemaphore(_SHADOW_MAX_INFLIGHT)
 
-# Bulk-indexing timeouts. Semantic bulk can be slow because ES embeds each
-# doc against the inference endpoint (Ollama) unless we shipped inline chunks;
-# lexical bulk is just text ingest and stays fast.
-LEXICAL_BULK_TIMEOUT_S = 60
-SEMANTIC_BULK_TIMEOUT_S = 300
-
-
-class SearchMode(str, Enum):
-    """Search mode for /search?mode=…. str mixin so equality with raw query
-    strings and JSON serialization both produce the underlying value
-    ('lexical' / 'semantic') without extra plumbing.
-    """
-
-    LEXICAL = "lexical"
-    SEMANTIC = "semantic"
-
-
-COLLECTION_BOOSTS = [
-    ("bukhari", 5.0),
-    ("muslim", 4.8),
-    ("nasai", 3.5),
-    ("abudawud", 3.0),
-    ("tirmidhi", 2.5),
-    ("ibnmajah", 2.0),
-    ("malik", 2.5),
-    ("ahmad", 2.5),
-    ("darimi", 2.0),
-    ("mishkat", 2.5),
-    ("nawawi40", 3.3),
-    ("riyadussalihin", 2.5),
-]
 _COLLECTION_BOOST_MAP = dict(COLLECTION_BOOSTS)
 
 # Exclude pure isnad-chain entries from all search paths.
