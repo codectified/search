@@ -51,6 +51,11 @@ es = Elasticsearch(f"http://{ES_HOST}:9200",
 print(f"Loading {MODEL_NAME}...")
 model = SentenceTransformer(MODEL_NAME, cache_folder=HF_CACHE)
 print("  Model ready.")
+print("  Warming up CUDA kernels...")
+_ = model.encode(["passage: warm up"] * min(BATCH_SIZE, 8),
+                 batch_size=min(BATCH_SIZE, 8),
+                 normalize_embeddings=True, show_progress_bar=False)
+print("  CUDA warm-up done.")
 
 DO_MATN = FIELD in ("matn", "both")
 DO_FULL = FIELD in ("full", "both")
@@ -94,7 +99,7 @@ def run(src_field, vec_field):
         buf_texts.clear()
 
     for hit in es_scan(es, index=INDEX, query={"query": query},
-                       _source=[src_field], size=200):
+                       _source=[src_field], size=200, scroll="120m"):
         text = (hit["_source"].get(src_field) or "").strip()
         if not text:
             skipped += 1

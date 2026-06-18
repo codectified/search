@@ -31,7 +31,7 @@ ES_PW   = os.environ.get("ELASTIC_PASSWORD", "docker123")
 ES_HOST = os.environ.get("ES_HOST", "localhost")
 K       = int(os.environ.get("K", 150))
 INDEX   = "arabic-research"
-OUT_DIR = "/code/reports/centroids"
+OUT_DIR = os.environ.get("OUT_DIR", "/code/reports/centroids")
 os.makedirs(OUT_DIR, exist_ok=True)
 
 es = Elasticsearch(f"http://{ES_HOST}:9200",

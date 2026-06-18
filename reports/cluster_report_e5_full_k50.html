@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>Cluster Report — vec_e5_full k=50</title>
+<style>
+body { font-family: -apple-system, Arial, sans-serif; max-width: 1100px;
+       margin: 0 auto; padding: 20px; background: #f8f8f6; color: #222; }
+h1 { color: #1a1a2e; border-bottom: 3px solid #c0392b; padding-bottom: 8px; }
+h2 { color: #2c3e50; margin-top: 40px; }
+h3 { color: #34495e; margin: 0 0 6px 0; }
+.island-section { background: #fff3cd; border: 2px solid #f39c12;
+                  border-radius: 8px; padding: 20px; margin-bottom: 30px; }
+.island-header { color: #c0392b; font-size: 1.3em; font-weight: bold;
+                 margin-bottom: 4px; }
+.cluster-card { background: white; border: 1px solid #ddd; border-radius: 6px;
+                padding: 16px; margin-bottom: 16px; }
+.cluster-meta { font-size: 0.85em; color: #666; margin-bottom: 10px; }
+.cluster-meta span { margin-right: 16px; }
+.hadith { background: #f9f9f9; border-right: 4px solid #3498db;
+          padding: 10px 14px; margin: 8px 0; border-radius: 4px;
+          direction: rtl; font-size: 1.05em; line-height: 1.7; }
+.hadith-ref { font-size: 0.78em; color: #888; direction: ltr;
+              margin-top: 4px; }
+.island .hadith { border-right-color: #e74c3c; background: #fff8f8; }
+.collections { font-size: 0.8em; color: #555; }
+.badge { display: inline-block; background: #3498db; color: white;
+         border-radius: 12px; padding: 2px 10px; font-size: 0.8em;
+         margin-right: 4px; margin-bottom: 4px; }
+.badge.island-badge { background: #c0392b; }
+.toc { background: white; border: 1px solid #ddd; border-radius: 6px;
+       padding: 16px; margin-bottom: 30px; columns: 2; }
+.toc a { text-decoration: none; color: #2980b9; font-size: 0.9em; }
+.toc li { margin-bottom: 3px; }
+</style>
+</head>
+<body dir="ltr">
+<h1>arabic-research · vec_e5_full · k=50 Cluster Report</h1>
+<p style="color:#666">Generated 2026-06-18 08:20 ·
+131,728 total docs ·
+50 clusters · mean cohesion 0.970</p>
+
+<h2>📍 Table of Contents</h2>
+<div class="toc"><ul><li><a href="#c49">#49 (7,951 docs, coh=0.978)</a></li>
+<li><a href="#c12">#12 (7,475 docs, coh=0.978)</a></li>
+<li><a href="#c10">#10 (5,827 docs, coh=0.974)</a></li>
+<li><a href="#c37">#37 (5,587 docs, coh=0.976)</a></li>
+<li><a href="#c8">#8 (5,499 docs, coh=0.972)</a></li>
+<li><a href="#c1">#1 (4,898 docs, coh=0.976)</a></li>
+<li><a href="#c26">#26 (4,773 docs, coh=0.975)</a></li>
+<li><a href="#c15">#15 (4,762 docs, coh=0.974)</a></li>
+<li><a href="#c23">#23 (4,646 docs, coh=0.976)</a></li>
+<li><a href="#c16">#16 (4,167 docs, coh=0.975)</a></li>
+<li><a href="#c33">#33 (3,932 docs, coh=0.972)</a></li>
+<li><a href="#c32">#32 (3,709 docs, coh=0.975)</a></li>
+<li><a href="#c24">#24 (3,594 docs, coh=0.967)</a></li>
+<li><a href="#c48">#48 (3,545 docs, coh=0.978)</a></li>
+<li><a href="#c9">#9 (3,497 docs, coh=0.968)</a></li>
+<li><a href="#c25">#25 (3,191 docs, coh=0.962)</a></li>
+<li><a href="#c31">#31 (3,089 docs, coh=0.969)</a></li>
+<li><a href="#c18">#18 (3,049 docs, coh=0.964)</a></li>
+<li><a href="#c6">#6 (2,860 docs, coh=0.955)</a></li>
+<li><a href="#c7">#7 (2,706 docs, coh=0.968)</a></li>
+<li><a href="#c44">#44 (2,651 docs, coh=0.955)</a></li>
+<li><a href="#c13">#13 (2,624 docs, coh=0.972)</a></li>
+<li><a href="#c17">#17 (2,318 docs, coh=0.974)</a></li>
+<li><a href="#c36">#36 (2,292 docs, coh=0.971)</a></li>
+<li><a href="#c29">#29 (2,290 docs, coh=0.967)</a></li>
+<li><a href="#c20">#20 (2,204 docs, coh=0.967)</a></li>
+<li><a href="#c0">#0 (2,171 docs, coh=0.960)</a></li>
+<li><a href="#c46">#46 (2,170 docs, coh=0.971)</a></li>
+<li><a href="#c39">#39 (1,964 docs, coh=0.966)</a></li>
+<li><a href="#c47">#47 (1,933 docs, coh=0.970)</a></li>
+<li><a href="#c42">#42 (1,868 docs, coh=0.976)</a></li>
+<li><a href="#c43">#43 (1,717 docs, coh=0.974)</a></li>
+<li><a href="#c30">#30 (1,656 docs, coh=0.979)</a></li>
+<li><a href="#c5">#5 (1,604 docs, coh=0.972)</a></li>
+<li><a href="#c41">⚑ Island: Left-strip (1,589 docs) · #41 (1,589 docs, coh=0.960)</a></li>
+<li><a href="#c3">#3 (1,544 docs, coh=0.977)</a></li>
+<li><a href="#c27">#27 (1,313 docs, coh=0.962)</a></li>
+<li><a href="#c38">#38 (1,309 docs, coh=0.967)</a></li>
+<li><a href="#c34">#34 (1,295 docs, coh=0.969)</a></li>
+<li><a href="#c22">#22 (1,252 docs, coh=0.963)</a></li>
+<li><a href="#c2">#2 (954 docs, coh=0.970)</a></li>
+<li><a href="#c14">#14 (928 docs, coh=0.951)</a></li>
+<li><a href="#c45">#45 (904 docs, coh=0.957)</a></li>
+<li><a href="#c19">#19 (746 docs, coh=0.969)</a></li>
+<li><a href="#c11">⚑ Island: Bottom-left (638 docs) · #11 (638 docs, coh=0.972)</a></li>
+<li><a href="#c21">#21 (435 docs, coh=0.968)</a></li>
+<li><a href="#c40">#40 (406 docs, coh=0.933)</a></li>
+<li><a href="#c4">#4 (194 docs, coh=0.967)</a></li>
+<li><a href="#c28">#28 (1 docs, coh=1.000)</a></li>
+<li><a href="#c35">#35 (1 docs, coh=1.000)</a></li></ul></div>
+
+<h2>🏝️ Isolated Islands</h2>
+<p style="color:#555">These two clusters appear as geometrically isolated sub-clouds
+in the UMAP projection, far from the main hadith mass. Both are pure Matn (no chain-refs).
+They likely represent highly specialised textual registers.</p>
+<div class="island-section">
+
+<div class="cluster-card island" id="c41">
+  <div class="island-header"><span class="badge island-badge">⚑ Left-strip (1,589 docs)</span> Island Cluster #41</div>
+  <div class="cluster-meta">
+    <span>📊 <b>1,589</b> docs</span>
+    <span>🎯 cohesion <b>0.960</b></span>
+    <span class="collections">📚 riyadussalihin (1500), ibnabishayba (53), hisn (11), virtues (9), mishkat (7)</span>
+  </div>
+  <div class="hadith island"><div>- وعنه قال‏:‏ قال رسول الله صلى الله عليه وسلم ، ‏:‏ ‏&quot;‏ثلاثة لا يكلمهم الله يوم القيامة ولا ينظر إليهم ولا يزكيهم ولهم عذاب أليم‏:‏ رجل على فضل ماء بالفلاة يمنعه من ابن السبيل، ورجل بايع رجلاً، سلعة، بعد العصر، فحلف بالله لأخذها بكذا وكذا، فصدقه وهو على غير ذلك، ورجل بايع إماماً لا يبايعه إلا لدنيا، فإن أعطاه منها وفى ، وإن لم يعطه منها لم يف‏&quot;‏ ‏(‏‏(‏متفق عليه‏)‏‏)‏‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1718230" target="_blank">riyadussalihin 1835</a> · Uncategorized</div></div>
+<div class="hadith island"><div>- وعنه عن النبي صلى الله عليه وسلم  قال‏:‏ ‏&quot;‏عجب الله عز وجل من قوم يدخلون الجنة في السلاسل‏&quot;‏ ‏(‏‏(‏رواهما البخاري‏)‏‏)‏‏.‏ معناه: يؤسرون ويقيدون ثم يسلمون فيدخلون الجنة.</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1718280" target="_blank">riyadussalihin 1840</a> · Uncategorized</div></div>
+<div class="hadith island"><div>- وعنه عن النبي صلى الله عليه وسلم  قال‏:‏ ‏&quot;‏أحب البلاد إلى الله مساجدها ، وأبغض البلاد إلى الله أسواقها‏&quot;‏ ‏(‏‏(‏رواه مسلم‏)‏‏)‏‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1718290" target="_blank">riyadussalihin 1841</a> · Uncategorized</div></div>
+<div class="hadith island"><div>- وعن سلمان الفارسي رضي الله عنه من قوله قال‏:‏ لا تكونن إن استطعت أول من يدخل السوق، ولا آخر من يخرج منها، فإنها معركة الشيطان، وبها ينصب رايته‏.‏ ‏(‏‏(‏رواه مسلم هكذا‏)‏‏)‏‏.‏ ورواه البرقاني في صحيحه عن سلمان قال‏:‏ قال رسول الله صلى الله عليه وسلم ‏:‏ ‏&quot;‏لا تكن أول من يدخل السوق، ولا آخر من يخرج منها، فيها باض الشيطان وفرخ‏&quot;‏‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1718300" target="_blank">riyadussalihin 1842</a> · Uncategorized</div></div>
+<div class="hadith island"><div>- وعن عاصم الأحول عن عبد الله بن سرجس رضي الله عنه قال‏:‏ قلت لرسول الله صلى الله عليه وسلم ‏:‏ يا رسول الله غفر الله لك، قال‏:‏ ‏&quot;‏ولك‏&quot;‏ قال عاصم‏:‏ فقلت له‏:‏ استغفر لك رضي الله عنه صلى الله عليه وسلم ‏؟‏ قال‏:‏ نعم ولك، ثم تلا هذه الآية‏:‏ ‏{‏واستغفر لذنبك، وللمؤمنين والمؤمنات‏}&lt;/a&gt;‏ ‏(‏‏(‏محمد‏:‏19‏)‏‏)‏‏.‏ ‏(‏‏(‏رواه مسلم‏)‏‏)‏‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1718310" target="_blank">riyadussalihin 1843</a> · Uncategorized</div></div>
+<div class="hadith island"><div>- وعن أبي مسعود الأنصاري رضي الله عنه قال‏:‏ قال النبي صلى الله عليه وسلم ‏:‏ ‏&quot;‏إن مما أدرك الناس من كلام النبوة الأولى‏:‏ إذا لم تستحي فاصنع ما شئت‏&quot;‏ ‏(‏‏(‏رواه البخاري‏)‏‏)‏‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1718320" target="_blank">riyadussalihin 1844</a> · Uncategorized</div></div>
+<div class="hadith island"><div>- وعن ابن مسعود رضي الله عنه قال‏:‏ قال النبي صلى الله عليه وسلم ‏:‏ ‏&quot;‏أول ما يقضى بين الناس يوم القيامة في الدماء‏&quot;‏ ‏(‏‏(‏متفق عليه‏)‏‏)‏‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1718330" target="_blank">riyadussalihin 1845</a> · Uncategorized</div></div>
+<div class="hadith island"><div>- وعن عائشة رضي الله عنها قالت‏:‏ قال رسول الله صلى الله عليه وسلم ‏:‏ ‏&quot;‏خلقت الملائكة من نور، وخلق الجان من مارج من نار، وخلق آدم مما وصف لكم‏&quot;‏ ‏(‏‏(‏رواه مسلم‏)‏‏)‏‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1718340" target="_blank">riyadussalihin 1846</a> · Uncategorized</div></div>
+<div class="hadith island"><div>- وعنها رضي الله عنها قالت‏:‏ ‏&quot;‏كان خلق نبي الله صلى الله عليه وسلم  القرآن‏&quot;‏ ‏(‏‏(‏رواه مسلم في جملة حديث طويل‏)‏‏)‏‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1718350" target="_blank">riyadussalihin 1847</a> · Uncategorized</div></div>
+<div class="hadith island"><div>- وعنها قالت ‏:‏ قال رسول الله صلى الله عليه وسلم  ‏:‏ ‏&quot;‏من أحب لقاء الله أحب الله لقاءه، ومن كره لقاء الله كره الله لقاءه‏&quot;‏ فقلت‏:‏ يا رسول الله ، أكراهية الموت‏؟‏ فكلنا نكره الموت‏!‏ قال‏:‏‏&quot;‏ليس كذلك، ولكن المؤمن إذا بشر برحمة الله ورضوانه وجنته أحب لقاء الله ، فأحب الله لقاءه، وإن الكافر إذا بشر بعذاب الله وسخطه، كره لقاء الله وكره الله لقاءه‏&quot;‏ ‏(‏‏(‏رواه مسلم‏)‏‏)‏‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1718360" target="_blank">riyadussalihin 1848</a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card island" id="c11">
+  <div class="island-header"><span class="badge island-badge">⚑ Bottom-left (638 docs)</span> Island Cluster #11</div>
+  <div class="cluster-meta">
+    <span>📊 <b>638</b> docs</span>
+    <span>🎯 cohesion <b>0.972</b></span>
+    <span class="collections">📚 tirmidhi (220), bukhari (179), ibnmajah (112), forty (30), muslim (28)</span>
+  </div>
+  <div class="hadith island"><div>ابْنُ مَاجَهْ النَّاسُ يَقُولُونَ عُبَيْدُ اللَّهِ بْنُ عَبْدِ اللَّهِ وَقَالَ أَبُو بَكْرِ بْنُ أَبِي شَيْبَةَ يَقُولُ النَّاسُ عَبْدُ اللَّهِ بْنُ عُبَيْدِ اللَّهِ‏‏.‏ 
+  &lt;br&gt;
+ حَدَّثَنَا مُحَمَّدُ بْنُ بَشَّارٍ، حَدَّثَنَا عَبْدُ الرَّحْمَنِ بْنُ مَهْدِيٍّ، وَصَفْوَانُ بْنُ عِيسَى، وَأَبُو دَاوُدَ قَالُوا حَدَّثَنَا دَاوُدُ بْنُ قَيْسٍ، عَنْ عُبَيْدِ اللَّهِ بْنِ عَبْدِ اللَّهِ بْنِ أَقْرَمَ، عَنْ أَبِيهِ، عَنِ النَّبِيِّ ـ صلى الله عليه وسلم ـ نَحْوَهُ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1309291" target="_blank">ibnmajah 881</a> · Sahih</div></div>
+<div class="hadith island"><div>‏&quot;‏ مَنْ صَلَّى قَائِمًا فَهُوَ أَفْضَلُ. وَمَنْ صَلَّى قَاعِدًا فَلَهُ نِصْفُ أَجْرِ الْقَائِمِ. وَمَنْ صَلَّى نَائِمًا فَلَهُ نِصْفُ أَجْرِ الْقَاعِدِ ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1312880" target="_blank">ibnmajah 1231</a> · Sahih</div></div>
+<div class="hadith island"><div>أَبُو عَبْدِ اللَّهِ هَذَا حَدِيثٌ غَرِيبٌ لَمْ يُحَدِّثْ بِهِ غَيْرُ نَصْرِ بْنِ عَلِيٍّ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1312910" target="_blank">ibnmajah 1234</a> · Sahih</div></div>
+<div class="hadith island"><div>ابْنُ عَبَّاسٍ فَأَخَذَ رَسُولُ اللَّهِ ـ صلى الله عليه وسلم ـ مِنَ الْقِرَاءَةِ مِنْ حَيْثُ كَانَ بَلَغَ أَبُو بَكْرٍ ‏.‏
+&lt;br&gt;
+ قَالَ وَكِيعٌ وَكَذَا السُّنَّةُ ‏.‏ قَالَ فَمَاتَ رَسُولُ اللَّهِ ـ صلى الله عليه وسلم ـ فِي مَرَضِهِ ذَلِكَ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1312920" target="_blank">ibnmajah 1235</a> · Uncategorized</div></div>
+<div class="hadith island"><div>‏&quot;‏ إِنَّمَا جُعِلَ الإِمَامُ لِيُؤْتَمَّ بِهِ. فَإِذَا رَكَعَ فَارْكَعُوا. وَإِذَا رَفَعَ فَارْفَعُوا. وَإِذَا صَلَّى جَالِسًا فَصَلُّوا جُلُوسًا ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1312940" target="_blank">ibnmajah 1237</a> · Sahih</div></div>
+<div class="hadith island"><div>‏&quot;‏ اللَّهُمَّ أَنْجِ الْوَلِيدَ بْنَ الْوَلِيدِ، وَسَلَمَةَ بْنَ هِشَامٍ، وَعَيَّاشَ بْنَ أَبِي رَبِيعَةَ، وَالْمُسْتَضْعَفِينَ بِمَكَّةَ. اللَّهُمَّ اشْدُدْ وَطْأَتَكَ عَلَى مُضَرَ، وَاجْعَلْهَا عَلَيْهِمْ سِنِينَ كَسِنِي يُوسُفَ ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1313010" target="_blank">ibnmajah 1244</a> · Sahih</div></div>
+<div class="hadith island"><div>‏&quot;‏ نَعَمْ. جَوْفُ اللَّيْلِ الأَوْسَطُ. فَصَلِّ مَا بَدَا لَكَ حَتَّى يَطْلُعَ الصُّبْحُ. ثُمَّ انْتَهِ حَتَّى تَطْلُعَ الشَّمْسُ، وَمَا دَامَتْ كَأَنَّهَا حَجَفَةٌ حَتَّى تَنْتَشِرَ. ثُمَّ صَلِّ مَا بَدَا لَكَ حَتَّى يَقُومَ الْعَمُودُ عَلَى ظِلِّهِ. ثُمَّ انْتَهِ حَتَّى تَزُولَ الشَّمْسُ فَإِنَّ جَهَنَّمَ تُسْجَرُ نِصْفَ النَّهَارِ. ثُمَّ صَلِّ مَا بَدَا لَكَ حَتَّى تُصَلِّيَ الْعَصْرَ. ثُمَّ انْتَهِ حَتَّى تَغْرُبَ الشَّمْسُ، فَإِنَّهَا تَغْرُبُ بَيْنَ قَرْنَىِ الشَّيْطَانِ وَتَطْلُعُ بَيْنَ قَرْنَىِ الشَّيْطَانِ ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1313080" target="_blank">ibnmajah 1251</a> · Uncategorized</div></div>
+<div class="hadith island"><div>يَا رَسُولَ اللَّهِ إِنِّي سَائِلُكَ عَنْ أَمْرٍ أَنْتَ بِهِ عَالِمٌ وَأَنَا بِهِ جَاهِلٌ ‏.‏ قَالَ ‏&quot;‏ وَمَا هُوَ ‏&quot;‏ ‏.‏ قَالَ هَلْ مِنْ سَاعَاتِ اللَّيْلِ وَالنَّهَارِ سَاعَةٌ تُكْرَهُ فِيهَا الصَّلاَةُ قَالَ ‏&quot;‏ نَعَمْ. إِذَا صَلَّيْتَ الصُّبْحَ، فَدَعِ الصَّلاَةَ حَتَّى تَطْلُعَ الشَّمْسُ. فَإِنَّهَا تَطْلُعُ بِقَرْنَىِ الشَّيْطَانِ. ثُمَّ صَلِّ فَالصَّلاَةُ مَحْضُورَةٌ مُتَقَبَّلَةٌ حَتَّى تَسْتَوِيَ الشَّمْسُ عَلَى رَأْسِكَ كَالرُّمْحِ. فَإِذَا كَانَتْ عَلَى رَأْسِكَ كَالرُّمْحِ فَدَعِ الصَّلاَةَ. فَإِنَّ تِلْكَ السَّاعَةَ تُسْجَرُ فِيهَا جَهَنَّمُ وَتُفْتَحُ فِيهَا أَبْوَابُهَا. حَتَّى تَزِيغَ الشَّمْسُ عَنْ حَاجِبِكَ الأَيْمَنِ. فَإِذَا زَالَتْ فَالصَّلاَةُ مَحْضُورَةٌ مُتَقَبَّلَةٌ حَتَّى تُصَلِّيَ الْعَصْرَ. ثُمَّ دَعِ الصَّلاَةَ حَتَّى تَغِيبَ الشَّمْسُ ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1313090" target="_blank">ibnmajah 1252</a> · Hasan</div></div>
+<div class="hadith island"><div>‏&quot;‏ إِنَّ الشَّمْسَ تَطْلُعُ بَيْنَ قَرْنَىِ الشَّيْطَانِ أَوْ قَالَ: يَطْلُعُ مَعَهَا قَرْنَا الشَّيْطَانِ فَإِذَا ارْتَفَعَتْ فَارَقَهَا. فَإِذَا كَانَتْ فِي وَسَطِ السَّمَاءِ قَارَنَهَا. فَإِذَا دَلَكَتْ أَوْ قَالَ: زَالَتْ فَارَقَهَا. فَإِذَا دَنَتْ لِلْغُرُوبِ قَارَنَهَا. فَإِذَا غَرَبَتْ فَارَقَهَا. فَلاَ تُصَلُّوا هَذِهِ السَّاعَاتِ الثَّلاَثَ ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1313100" target="_blank">ibnmajah 1253</a> · Sahih</div></div>
+<div class="hadith island"><div>ـ صلى الله عليه وسلم ـ ‏&quot;‏ لَعَلَّكُمْ سَتُدْرِكُونَ أَقْوَامًا يُصَلُّونَ الصَّلاَةَ لِغَيْرِ وَقْتِهَا. فَإِنْ أَدْرَكْتُمُوهُمْ فَصَلُّوا فِي بُيُوتِكُمْ لِلْوَقْتِ الَّذِي تَعْرِفُونَ. ثُمَّ صَلُّوا مَعَهُمْ وَاجْعَلُوهَا سُبْحَةً ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1313120" target="_blank">ibnmajah 1255</a> · Sahih</div></div>
+</div>
+</div>
+
+<h2>📚 All Clusters (by size)</h2>
+
+<div class="cluster-card" id="c49">
+  <h3>Cluster #49</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>7,951</b> docs</span>
+    <span>🎯 cohesion <b>0.978</b></span>
+    <span class="collections">📚 hakim (3387), ibnhibban (1834), daraqutni (946), ibnkhuzayma (821), nasai (256)</span>
+  </div>
+  <div class="hadith "><div>&quot; مَعَاذَ اللَّهِ ، أَنْ أَرُدَّ شَيْئًا نَفَّلَنِيهِ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ &quot; ، فَلَمْ يَرُدَّ إِلَيْهِمْ شَيْئًا</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6817250" target="_blank">hakim </a> · Uncategorized</div></div>
+<div class="hadith "><div>إِنَّ لَكَ كَنْزًا فِي الْجَنَّةِ ، وَإِنَّكَ ذُو قَرْنَيْهَا ، فَلا تُتْبِعَنَّ النَّظْرَةَ نَظْرَةً ، فَإِنَّ لَكَ الأُولَى وَلَيْسَتْ لَكَ الآخِرَةُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6845620" target="_blank">hakim </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; نَحْنُ بَنُو عَبْدِ الْمُطَّلِبِ سَادَةُ أَهْلِ الْجَنَّةِ : أَنَا وَعَلِيٌّ ، وَجَعْفَرٌ ، وَحَمْزَةُ ، وَالْحَسَنُ ، وَالْحُسَيْنُ ، وَالْمَهْدِيُّ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6848870" target="_blank">hakim </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; اللَّهُمَّ بَارِكْ لَنَا فِي صَاعِنَا ، وَبَارِكْ لَنَا فِي قَلِيلِنَا وَكَثِيرِنَا ، وَاجْعَلْ لَنَا مَعَ الْبَرَكَةِ بَرَكَتَيْنِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6633660" target="_blank">ibnhibban </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; مَا هَمَمْتُ بِقَبِيحٍ مِمَّا يَهُمُّ بِهِ أَهْلُ الْجَاهِلِيَّةِ إِِلا مَرَّتَيْنِ مِنَ الدَّهْرِ ، كِلْتَاهُمَا عَصَمَنِي اللَّهُ مِنْهُمَا ، قُلْتُ لَيْلَةً لِفَتًى كَانَ مَعِي مِنْ قُرَيْشٍ بِأَعْلَى مَكَّةَ فِي غَنَمٍ لأَهْلِنَا نَرْعَاهَا : أَبْصِرْ لِي غَنَمِي حَتَّى أَسْمُرَ هَذِهِ اللَّيْلَةَ بِمَكَّةَ كَمَا يَسْمُرُ الْفِتْيَانُ ، قَالَ : نَعَمْ ، فَخَرَجْتُ ، فَلَمَّا جِئْتُ أَدْنَى دَارٍ مِنْ دُورِ مَكَّةَ سَمِعْتُ غِنَاءً ، وَصَوْتَ دُفُوفٍ ، وَمَزَامِيرَ ، قُلْتُ : مَا هَذَا ؟ قَالُوا : فُلانٌ تَزَوَّجَ فُلانَةَ ، لِرَجُلٍ مِنْ قُرَيْشِ تَزَوَّجَ امْرَأَةً مِنْ قُرَيْشٍ ، فَلَهَوْتُ بِذَلِكَ الْغِنَاءِ ، وَبِذَلِكَ الصَّوْتِ حَتَّى غَلَبَتْنِي عَيْنِي ، فَنِمْتُ ، فَمَا أَيْقَظَنِي إِِلا مَسُّ الشَّمْسِ ، فَرَجَعْتُ إِِلَى صَاحِبِي ، فَقَالَ : مَا فَعَلْتَ ؟ فَأَخْبَرْتُهُ ، ثُمَّ فَعَلْتُ لَيْلَةً أُخْرَى مِثْلَ ذَلِكَ ، فَخَرَجْتُ ، فَسَمِعْتُ مِثْلَ ذَلِكَ ، فَقِيلَ لِي : مِثْلُ مَا قِيلَ لِي ، فَسَمِعْتُ كَمَا سَمِعْتُ ، حَتَّى غَلَبَتْنِي عَيْنِي ، فَمَا أَيْقَظَنِي إِِلا مَسُّ الشَّمْسِ ، ثُمَّ رَجَعْتُ إِِلَى صَاحِبِي ، فَقَالَ لِي : مَا فَعَلْتَ ؟ فَقُلْتُ : مَا فَعَلْتُ شَيْئًا &quot; ، قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ : &quot; فَوَاللَّهِ ، مَا هَمَمْتُ بَعْدَهُمَا بِسُوءٍ مِمَّا يَعْمَلُهُ أَهْلُ الْجَاهِلِيَّةِ ، حَتَّى أَكْرَمَنِي اللَّهُ بِنُبُوَّتِهِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6664070" target="_blank">ibnhibban </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c12">
+  <h3>Cluster #12</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>7,475</b> docs</span>
+    <span>🎯 cohesion <b>0.978</b></span>
+    <span class="collections">📚 muslim (1476), ibnmajah (1365), bukhari (1348), abudawud (1297), ahmad (515)</span>
+  </div>
+  <div class="hadith "><div>كَانَتْ لِلنَّبِيِّ صلى الله عليه وسلم سُكَّةٌ يَتَطَيَّبُ مِنْهَا ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/941650" target="_blank">abudawud 4162</a> · Sahih</div></div>
+<div class="hadith "><div>نَهَانِي رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ عَنْ خَاتَمِ الذَّهَبِ وَعَنْ الْمِيثَرَةِ وَعَنْ الْقَسِّيِّ وَعَنْ الْجِعَةِ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/5310470" target="_blank">ahmad 1102</a> · Hasan</div></div>
+<div class="hadith "><div>نَهَانِي رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ عَنْ خَاتَمِ الذَّهَبِ وَعَنْ لُبْسِ الْحَمْرَاءِ وَعَنْ الْقِرَاءَةِ فِي الرُّكُوعِ وَالسُّجُودِ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/5308950" target="_blank">ahmad 939</a> · Sahih</div></div>
+<div class="hadith "><div>أَمَرَنَا رَسُولُ اللَّهِ صلى الله عليه وسلم بِإِقْصَارِ الْخُطَبِ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/911090" target="_blank">abudawud 1106</a> · Sahih</div></div>
+<div class="hadith "><div>ـ صلى الله عليه وسلم ـ ‏&quot;‏ إِذَا مَسَّ أَحَدُكُمْ ذَكَرَهُ فَلْيَتَوَضَّأْ ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1305160" target="_blank">ibnmajah 479</a> · Hasan</div></div>
+</div>
+<div class="cluster-card" id="c10">
+  <h3>Cluster #10</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>5,827</b> docs</span>
+    <span>🎯 cohesion <b>0.974</b></span>
+    <span class="collections">📚 ibnhibban (1858), hakim (1250), ibnabishayba (673), abdurrazzaq (475), ibnkhuzayma (428)</span>
+  </div>
+  <div class="hadith "><div>اللَّهَ فَرَضَ عَلَيْكُمُ الْحَجَّ &quot; ، فَقَامَ رَجُلٌ ، فَقَالَ : أَوَفِي كُلِّ عَامٍ ؟ حَتَّى قَالَ ذَلِكَ ثَلاثَ مَرَّاتٍ ، وَرَسُولُ اللَّهِ يَعْرِضُ عَنْهُ ، ثُمَّ قَالَ : &quot; لَوْ قُلْتُ : نَعَمْ ، لَوَجَبَتْ ، وَلَوْ وَجَبَتْ لَمَا قُمْتُمْ بِهِ &quot; ، ثُمَّ قَالَ : &quot; ذَرُونِي مَا تَرَكْتُكُمْ ، فَإِنَّمَا هَلَكَ مَنْ كَانَ قَبْلَكُمْ بِسُؤَالِهِمْ ، وَاخْتِلافِهِمْ عَلَى أَنْبِيَائِهِمْ ، فَمَا أَمَرْتُكُمْ مِنْ شَيْءٍ ، فَأْتُوا مِنْهُ مَا اسْتَطَعْتُمْ ، وَمَا نَهَيْتُكُمْ مِنْ شَيْءٍ فَاجْتَنِبُوهُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6637880" target="_blank">ibnhibban </a> · Uncategorized</div></div>
+<div class="hadith "><div>اسْتَأْذَنْتُ فِي الاسْتِغْفَارِ لأُمِّي ، فَلَمْ يَأْذَنْ لِي ، فَدَمَعَتْ عَيْنِي رَحْمَةً لَهَا مِنَ النَّارِ ، وَإِنِّي كُنْتُ نَهَيْتُكُمْ عَنْ ثَلاثٍ : عَنْ زِيَارَةِ الْقُبُورِ ، فَزُورُوهَا ، وَلْتَزِدْكُمْ زِيَارَتُهَا خَيْرًا ، وَإِنِّي كُنْتُ نَهَيْتُكُمْ عَنْ لُحُومِ الأَضَاحِي بَعْدَ ثَلاثٍ ، فَكُلُوا وَأَمْسِكُوا مَا شِئْتُمْ ، وَإِنِّي كُنْتُ نَهَيْتُكُمْ عَنِ الأَشْرِبَةِ فِي الأَوْعِيَةِ ، فَاشْرَبُوا فِي أَيِّ وِعَاءٍ شِئْتُمْ ، وَلا تَشْرَبُوا مُسْكِرًا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6655050" target="_blank">ibnhibban </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; هَلْ لَكَ أَنْ أُرِيَكَ آيَةً &quot; ، وَعِنْدَهُ نَخْلٌ وَشَجَرٌ ، فَدَعَا رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ عِذْقًا مِنْهَا ، فَأَقْبَلَ إِِلَيْهِ وَهُوَ يَسْجُدُ ، وَيَرْفَعُ رَأْسَهُ وَيَسْجُدُ ، وَيَرْفَعُ رَأْسَهُ حَتَّى انْتَهَى إِِلَيْهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ ، فَقَامَ بَيْنَ يَدَيْهِ ، ثُمَّ قَالَ لَهُ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ : ارْجِعْ إِِلَى مَكَانِكَ ، فَقَالَ الْعَامِرِيُّ : وَاللَّهِ لا أُكَذِّبُكَ بِشَيْءٍ تَقُولُهُ أَبَدًا ، ثُمَّ قَالَ : يَا آلَ عَامِرِ بْنِ صَعْصَعَةَ ، وَاللَّهِ لا أُكَذِّبُهُ بِشَيْءٍ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6666620" target="_blank">ibnhibban </a> · Uncategorized</div></div>
+<div class="hadith "><div>مَا الإِيمَانُ ؟ قَالَ : &quot; إِذَا سَرَّتْكَ حَسَنَتُكَ وَسَاءَتْكَ سَيِّئَتُكَ فَأَنْتَ مُؤْمِنٌ &quot; , فَقَالَ : يَا رَسُولَ اللَّهِ , مَا الإِثْمُ ؟ , قَالَ : &quot; إِذَا حَاكَ فِي صَدْرِكَ شَيْءٌ فَدَعْهُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6800310" target="_blank">hakim </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; هَلْ لَكَ بَنُونَ سِوَاهُ ؟ &quot; قَالَ : نَعَمْ ، قَالَ : فَكُلُّهُمْ أَعْطَيْتَهُمْ مِثْلَ مَا أَعْطَيْتَ هَذَا ؟ &quot; قَالَ : لا ، قَالَ : &quot; فَلا تُشْهِدْنِي عَلَى جَوْرٍ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6652130" target="_blank">ibnhibban </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c37">
+  <h3>Cluster #37</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>5,587</b> docs</span>
+    <span>🎯 cohesion <b>0.976</b></span>
+    <span class="collections">📚 tirmidhi (1100), hakim (1043), muslim (868), abudawud (565), bukhari (406)</span>
+  </div>
+  <div class="hadith "><div>&quot; يُنَفِّلُ الثُّلُثَ بَعْدَ الْخُمُسِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6825270" target="_blank">hakim </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; عَنْ عَسْبِ الْفَحْلِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6822190" target="_blank">hakim </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; خَيْرُ الضَّحِيَّةِ الْكَبْشُ الأَقْرَنُ ، وَخَيْرُ الْكَفَنِ الْحُلَّةُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6876140" target="_blank">hakim </a> · Uncategorized</div></div>
+<div class="hadith "><div>‏&quot;‏ لِيُبَلِّغِ الشَّاهِدُ الْغَائِبَ فَإِنَّهُ رُبَّ مُبَلَّغٍ يُبَلَّغُهُ أَوْعَى لَهُ مِنْ سَامِعٍ ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1302380" target="_blank">ibnmajah 233</a> · Sahih</div></div>
+<div class="hadith "><div>صلى الله عليه وسلم ‏&quot;‏ مَنْ كَانَتْ لَهُ حَمُولَةٌ تَأْوِي إِلَى شِبَعٍ فَلْيَصُمْ رَمَضَانَ حَيْثُ أَدْرَكَهُ ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/924130" target="_blank">abudawud 2410</a> · Da&#x27;if</div></div>
+</div>
+<div class="cluster-card" id="c8">
+  <h3>Cluster #8</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>5,499</b> docs</span>
+    <span>🎯 cohesion <b>0.972</b></span>
+    <span class="collections">📚 tirmidhi (1014), bukhari (983), muslim (868), abudawud (682), ibnabishayba (346)</span>
+  </div>
+  <div class="hadith "><div>فَرِيضَةَ اللَّهِ عَلَى عِبَادِهِ أَدْرَكَتْ أَبِي شَيْخًا كَبِيرًا لاَ يَسْتَطِيعُ أَنْ يَسْتَوِيَ عَلَى الرَّاحِلَةِ، فَهَلْ يَقْضِي أَنْ أَحُجَّ عَنْهُ قَالَ ‏&quot;‏ نَعَمْ ‏&quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/140290" target="_blank">bukhari 4399</a> · Sahih</div></div>
+<div class="hadith "><div>يَا رَسُولَ اللَّهِ لَقَدْ جِئْتُكَ مِنْ عِنْدِ قَوْمٍ مَا يَتَزَوَّدُ لَهُمْ رَاعٍ وَلاَ يَخْطِرُ لَهُمْ فَحْلٌ ‏.‏ فَصَعِدَ الْمِنْبَرَ فَحَمِدَ اللَّهَ ثُمَّ قَالَ ‏&quot;‏ اللَّهُمَّ اسْقِنَا غَيْثًا مُغِيثًا مَرِيئًا طَبَقًا مَرِيعًا غَدَقًا عَاجِلاً غَيْرَ رَائِثٍ ‏&quot;‏ ‏.‏ ثُمَّ نَزَلَ فَمَا يَأْتِيهِ أَحَدٌ مِنْ وَجْهٍ مِنَ الْوُجُوهِ إِلاَّ قَالُوا قَدْ أُحْيِينَا ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1313280" target="_blank">ibnmajah 1270</a> · Uncategorized</div></div>
+<div class="hadith "><div>‏&quot;‏ فَيَجْهَدُ أَنْ يُوَسِّعَهَا فَلاَ يَسْتَطِيعُ ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/324070" target="_blank">muslim 1021 c</a> · Sahih</div></div>
+<div class="hadith "><div>صلى الله عليه وسلم ‏&quot;‏ لَهَا الصَّدَاقُ بِمَا اسْتَحْلَلْتَ مِنْ فَرْجِهَا وَالْوَلَدُ عَبْدٌ لَكَ فَإِذَا وَلَدَتْ ‏&quot;‏ ‏.‏ قَالَ الْحَسَنُ ‏&quot;‏ فَاجْلِدْهَا ‏&quot;‏ ‏.‏ وَقَالَ ابْنُ أَبِي السَّرِيِّ ‏&quot;‏ فَاجْلِدُوهَا ‏&quot;‏ ‏.‏ أَوْ قَالَ ‏&quot;‏ فَحُدُّوهَا ‏&quot;‏ ‏.‏ قَالَ أَبُو دَاوُدَ رَوَى هَذَا الْحَدِيثَ قَتَادَةُ عَنْ سَعِيدِ بْنِ يَزِيدَ عَنِ ابْنِ الْمُسَيَّبِ وَرَوَاهُ يَحْيَى بْنُ أَبِي كَثِيرٍ عَنْ يَزِيدَ بْنِ نُعَيْمٍ عَنْ سَعِيدِ بْنِ الْمُسَيَّبِ وَعَطَاءٌ الْخُرَاسَانِيُّ عَنْ سَعِيدِ بْنِ الْمُسَيَّبِ أَرْسَلُوهُ كُلُّهُمْ ‏.‏ وَفِي حَدِيثِ يَحْيَى بْنِ أَبِي كَثِيرٍ أَنَّ بَصْرَةَ بْنَ أَكْثَمَ نَكَحَ امْرَأَةً وَكُلُّهُمْ قَالَ فِي حَدِيثِهِ جَعَلَ الْوَلَدَ عَبْدًا لَهُ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/921340" target="_blank">abudawud 2131</a> · Da&#x27;if</div></div>
+<div class="hadith "><div>&quot;‏ هَلْ وَجَدْتُمْ مَا وَعَدَكُمْ رَبُّكُمْ حَقًّا ‏&quot;‏‏.‏ قَالَ [narrator id=&quot;7756&quot; role=&quot;chain&quot; tooltip=&quot;موسى بن عقبة القرشي&quot;]مُوسَى[/narrator] قَالَ [narrator id=&quot;7863&quot; role=&quot;chain&quot; tooltip=&quot;نافع مولى ابن عمر&quot;]نَافِعٌ[/narrator] قَالَ [narrator id=&quot;4967&quot; role=&quot;sahabi&quot; tooltip=&quot;عبد الله بن عمر العدوي&quot;]عَبْدُ اللَّهِ[/narrator] قَالَ نَاسٌ مِنْ أَصْحَابِهِ يَا رَسُولَ اللَّهِ تُنَادِي نَاسًا أَمْوَاتًا قَالَ رَسُولُ اللَّهِ صلى الله عليه وسلم ‏&quot;‏ مَا أَنْتُمْ بِأَسْمَعَ لِمَا قُلْتُ مِنْهُمْ ‏&quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/136630" target="_blank">bukhari 4026</a> · Sahih</div></div>
+</div>
+<div class="cluster-card" id="c1">
+  <h3>Cluster #1</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>4,898</b> docs</span>
+    <span>🎯 cohesion <b>0.976</b></span>
+    <span class="collections">📚 ibnhibban (2372), darimi (824), hakim (691), nasai (544), abdurrazzaq (166)</span>
+  </div>
+  <div class="hadith "><div>&quot; الْعُمْرَى لِمَنْ أَُعْمِرَهَا ، وَالرُّقْبَى لَمْ أَُرْقِيَهَا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6652380" target="_blank">ibnhibban </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; اللَّهُ وَرَسُولُهُ مَوْلَى مَنْ لا مَوْلَى لَهُ ، وَالْخَالُ وَارِثُ مَنْ لا وَارِثَ لَهُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6880770" target="_blank">hakim </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; صَلَّى لَنَا رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6622980" target="_blank">ibnhibban </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; طَلَّقَ حَفْصَةُ ، ثُمَّ رَاجَعَهَا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6643650" target="_blank">ibnhibban </a> · Uncategorized</div></div>
+<div class="hadith "><div>عَمْرٌو إِنَّ رَسُولَ اللَّهِ صلى الله عليه وسلم - كَانَ طَلَّقَ حَفْصَةَ ثُمَّ رَاجَعَهَا ‏.‏ وَاللَّهُ أَعْلَمُ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1135730" target="_blank">nasai 3560</a> · Sahih</div></div>
+</div>
+<div class="cluster-card" id="c26">
+  <h3>Cluster #26</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>4,773</b> docs</span>
+    <span>🎯 cohesion <b>0.975</b></span>
+    <span class="collections">📚 ibnabishayba (2799), daraqutni (469), hakim (445), darimi (263), ibnhibban (217)</span>
+  </div>
+  <div class="hadith "><div>عَنْ ضَرْبِ الْمُصَلِّينَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7815420" target="_blank">daraqutni </a> · Uncategorized</div></div>
+<div class="hadith "><div>نُصَلِّي مَعَ رَسُولِ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ ، الْجُمُعَةَ ، ثُمَّ نَرْجِعُ ، فَنَقِيلُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6628790" target="_blank">ibnhibban </a> · Uncategorized</div></div>
+<div class="hadith "><div>اتَّقُوا النَّارَ وَلَوْ بِشِقِّ تَمْرَةٍ , فَإِنَّهَا تَشُدُّ مِنَ الْجَائِعِ مَا تَشُدُّ مِنَ الشَّبْعَانِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7817790" target="_blank">daraqutni </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; الشَّيْخُ وَالشَّيْخَةُ إِذَا زَنَيَا فَارْجُمُوهُمَا الْبَتَّةَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6881420" target="_blank">hakim </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; لَقِّنُوا مَوْتَاكُمْ لَا إلَهَ إلَّا اللَّهُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7453185" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c15">
+  <h3>Cluster #15</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>4,762</b> docs</span>
+    <span>🎯 cohesion <b>0.974</b></span>
+    <span class="collections">📚 bukhari (667), muslim (520), nasai (506), abudawud (411), ahmad (371)</span>
+  </div>
+  <div class="hadith "><div>فَلَمَّا دَخَلَ النَّبِيُّ صَلَّى اللَّهُ عَلَيْهِ وَآَلِهِ وَسَلَّمَ قَبْرَهَا ، خَرَجَ مُلْتَمِعَ اللَّوْنِ ، وَسَأَلْنَاهُ عَنْ ذَلِكَ ، فَقَالَ : &quot; إِنَّهَا كَانَتِ امْرَأَةً مِسْقَامَةً ، فَذَكَرْتُ شِدَّةَ الْمَوْتِ وَضَمَّةَ الْقَبْرِ ، فَدَعَوْتُ اللَّهَ أَنْ يُخَفِّفَ عَنْهَا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6868980" target="_blank">hakim </a> · Uncategorized</div></div>
+<div class="hadith "><div>‏&quot;‏ وَالَّذِي نَفْسِي بِيَدِهِ ‏&quot;‏ ‏.‏ ثَلاَثَ مَرَّاتٍ ثُمَّ أَكَبَّ فَأَكَبَّ كُلُّ رَجُلٍ مِنَّا يَبْكِي لاَ نَدْرِي عَلَى مَاذَا حَلَفَ ثُمَّ رَفَعَ رَأْسَهُ فِي وَجْهِهِ الْبُشْرَى فَكَانَتْ أَحَبَّ إِلَيْنَا مِنْ حُمْرِ النَّعَمِ ثُمَّ قَالَ ‏&quot;‏ مَا مِنْ عَبْدٍ يُصَلِّي الصَّلَوَاتِ الْخَمْسَ وَيَصُومُ رَمَضَانَ وَيُخْرِجُ الزَّكَاةَ وَيَجْتَنِبُ الْكَبَائِرَ السَّبْعَ إِلاَّ فُتِّحَتْ لَهُ أَبْوَابُ الْجَنَّةِ فَقِيلَ لَهُ ادْخُلْ بِسَلاَمٍ ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1124470" target="_blank">nasai 2438</a> · Hasan</div></div>
+<div class="hadith "><div>صلى الله عليه وسلم ‏&quot;‏ فَلِلَّهِ الْحَمْدُ فَذَلِكَ أَثْبَتُ ‏&quot;‏ ‏.‏ قَالَ وَفِي الْبَابِ عَنِ ابْنِ عُمَرَ ‏.‏ قَالَ أَبُو عِيسَى حَدِيثُ عَبْدِ اللَّهِ بْنِ زَيْدٍ حَدِيثٌ حَسَنٌ صَحِيحٌ ‏.‏ وَقَدْ رَوَى هَذَا الْحَدِيثَ إِبْرَاهِيمُ بْنُ سَعْدٍ عَنْ مُحَمَّدِ بْنِ إِسْحَاقَ أَتَمَّ مِنْ هَذَا الْحَدِيثِ وَأَطْوَلَ وَذَكَرَ فِيهِ قِصَّةَ الأَذَانِ مَثْنَى مَثْنَى وَالإِقَامَةِ مَرَّةً مَرَّةً ‏.‏ وَعَبْدُ اللَّهِ بْنُ زَيْدٍ هُوَ ابْنُ عَبْدِ رَبِّهِ وَيُقَالُ ابْنُ عَبْدِ رَبٍّ وَلاَ نَعْرِفُ لَهُ عَنِ النَّبِيِّ صلى الله عليه وسلم شَيْئًا يَصِحُّ إِلاَّ هَذَا الْحَدِيثَ الْوَاحِدَ فِي الأَذَانِ ‏.‏ وَعَبْدُ اللَّهِ بْنُ زَيْدِ بْنِ عَاصِمٍ الْمَازِنِيُّ لَهُ أَحَادِيثُ عَنِ النَّبِيِّ صلى الله عليه وسلم وَهُوَ عَمُّ عَبَّادِ بْنِ تَمِيمٍ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/701890" target="_blank">tirmidhi 189</a> · Hasan</div></div>
+<div class="hadith "><div>أَبُو دَاوُدَ أَبُو عَبْدِ الرَّحْمَنِ الْفِهْرِيُّ لَيْسَ لَهُ إِلاَّ هَذَا الْحَدِيثُ وَهُوَ حَدِيثٌ نَبِيلٌ جَاءَ بِهِ حَمَّادُ بْنُ سَلَمَةَ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/952360" target="_blank">abudawud 5233</a> · Hasan</div></div>
+<div class="hadith "><div>فَقَامَ عَلَيْهَا لِلصَّلاَةِ وَسَطَهَا ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/322800" target="_blank">muslim 964 c</a> · Sahih</div></div>
+</div>
+<div class="cluster-card" id="c23">
+  <h3>Cluster #23</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>4,646</b> docs</span>
+    <span>🎯 cohesion <b>0.976</b></span>
+    <span class="collections">📚 nasai (2103), muslim (881), bukhari (588), abudawud (298), ibnmajah (269)</span>
+  </div>
+  <div class="hadith "><div>كَانَ النَّبِيذُ الَّذِي يَشْرَبُهُ عُمَرُ بْنُ الْخَطَّابِ قَدْ خُلِّلَ ‏.‏ وَمِمَّا يَدُلُّ عَلَى صِحَّةِ هَذَا حَدِيثُ السَّائِبِ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1156930" target="_blank">nasai 5707</a> · Da&#x27;if</div></div>
+<div class="hadith "><div>‏&quot;‏ مَا كَانَ عَلَى أَهْلِ هَذِهِ الشَّاةِ لَوِ انْتَفَعُوا بِإِهَابِهَا ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1142760" target="_blank">nasai 4261</a> · Uncategorized</div></div>
+<div class="hadith "><div>نَهَانِي رَسُولُ اللَّهِ صلى الله عليه وسلم عَنِ الْقِرَاءَةِ وَأَنَا رَاكِعٌ وَعَنْ لُبْسِ الذَّهَبِ وَالْمُعَصْفَرِ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1151590" target="_blank">nasai 5174</a> · Sahih</div></div>
+<div class="hadith "><div>مَا زِلْنَا أَعِزَّةً مُنْذُ أَسْلَمَ عُمَرُ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/134980" target="_blank">bukhari 3863</a> · Sahih</div></div>
+<div class="hadith "><div>أَبُو عِيسَى هَذَا حَدِيثٌ حَسَنٌ صَحِيحٌ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/716210" target="_blank">tirmidhi 1540</a> · Sahih</div></div>
+</div>
+<div class="cluster-card" id="c16">
+  <h3>Cluster #16</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>4,167</b> docs</span>
+    <span>🎯 cohesion <b>0.975</b></span>
+    <span class="collections">📚 bukhari (902), muslim (811), ibnmajah (777), abudawud (714), nasai (374)</span>
+  </div>
+  <div class="hadith "><div>‏&quot;‏ إِنَّ الْمُسْلِمَ إِذَا أَنْفَقَ عَلَى أَهْلِهِ نَفَقَةً وَهُوَ يَحْتَسِبُهَا كَانَتْ لَهُ صَدَقَةً ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/323680" target="_blank">muslim 1002 a</a> · Sahih</div></div>
+<div class="hadith "><div>ـ صلى الله عليه وسلم ـ ‏&quot;‏ مَا مِنْ قَوْمٍ يُعْمَلُ فِيهِمْ بِالْمَعَاصِي هُمْ أَعَزُّ مِنْهُمْ وَأَمْنَعُ لاَ يُغَيِّرُونَ إِلاَّ عَمَّهُمُ اللَّهُ بِعِقَابٍ ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1341440" target="_blank">ibnmajah 4009</a> · Hasan</div></div>
+<div class="hadith "><div>صلى الله عليه
+ وسلم ‏&quot;‏ يُحْشَرُ النَّاسُ يَوْمَ الْقِيَامَةِ عَلَى أَرْضٍ بَيْضَاءَ عَفْرَاءَ كَقُرْصَةِ النَّقِيِّ لَيْسَ فِيهَا
+ عَلَمٌ لأَحَدٍ ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/372710" target="_blank">muslim 2790</a> · Sahih</div></div>
+<div class="hadith "><div>‏&quot;‏ الْمُسْتَبَّانِ مَا قَالاَ فَعَلَى الْبَادِي مِنْهُمَا مَا لَمْ يَعْتَدِ الْمَظْلُومُ ‏&quot;‏ ‏.‏ وَفِي الْبَابِ عَنْ سَعْدٍ وَابْنِ مَسْعُودٍ وَعَبْدِ اللَّهِ بْنِ مُغَفَّلٍ ‏.‏ قَالَ أَبُو عِيسَى هَذَا حَدِيثٌ حَسَنٌ صَحِيحٌ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/721040" target="_blank">tirmidhi 1981</a> · Sahih</div></div>
+<div class="hadith "><div>ـ صلى الله عليه وسلم ـ ‏&quot;‏ لاَ يَؤُمُّ عَبْدٌ فَيَخُصَّ نَفْسَهُ بِدَعْوَةٍ دُونَهُمْ فَإِنْ فَعَلَ فَقَدْ خَانَهُمْ ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1309750" target="_blank">ibnmajah 923</a> · Hasan</div></div>
+</div>
+<div class="cluster-card" id="c33">
+  <h3>Cluster #33</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>3,932</b> docs</span>
+    <span>🎯 cohesion <b>0.972</b></span>
+    <span class="collections">📚 bukhari (581), nasai (471), muslim (449), ibnabishayba (371), abudawud (307)</span>
+  </div>
+  <div class="hadith "><div>مَنْ حَلَفَ يَمِينَ صَبْرٍ لِيَقْتَطِعَ بِهَا مَالَ امْرِئٍ مُسْلِمٍ، لَقِيَ اللَّهَ وَهْوَ عَلَيْهِ غَضْبَانُ ‏&quot;‏‏.‏ فَأَنْزَلَ اللَّهُ تَصْدِيقَ ذَلِكَ ‏[quran sura=&quot;3&quot; aya_start=&quot;77&quot; aya_end=&quot;77&quot;]{‏إِنَّ الَّذِينَ يَشْتَرُونَ بِعَهْدِ اللَّهِ وَأَيْمَانِهِمْ ثَمَنًا قَلِيلاً أُولَئِكَ لاَ خَلاَقَ لَهُمْ فِي الآخِرَةِ‏}[/quran]‏ إِلَى آخِرِ الآيَةِ‏.‏       قَالَ فَدَخَلَ [narrator id=&quot;583&quot; role=&quot;sahabi&quot; tooltip=&quot;أشعث بن قيس الكندي&quot;]الأَشْعَثُ بْنُ قَيْسٍ[/narrator] وَقَالَ مَا يُحَدِّثُكُمْ أَبُو عَبْدِ الرَّحْمَنِ قُلْنَا كَذَا وَكَذَا‏.‏ قَالَ فِيَّ أُنْزِلَتْ كَانَتْ لِي بِئْرٌ فِي أَرْضِ ابْنِ عَمٍّ لِي قَالَ النَّبِيُّ صلى الله عليه وسلم ‏&quot;‏ بَيِّنَتُكَ أَوْ يَمِينُهُ ‏&quot;‏ فَقُلْتُ إِذًا يَحْلِفَ يَا رَسُولَ اللَّهِ‏.‏ فَقَالَ النَّبِيُّ صلى الله عليه وسلم ‏&quot;‏ مَنْ حَلَفَ عَلَى يَمِينِ صَبْرٍ يَقْتَطِعُ بِهَا مَالَ امْرِئٍ مُسْلِمٍ وَهْوَ فِيهَا فَاجِرٌ، لَقِيَ اللَّهَ وَهْوَ عَلَيْهِ غَضْبَانٌ ‏&quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/178781" target="_blank">bukhari 4549, 4550</a> · Sahih</div></div>
+<div class="hadith "><div>أُبَايِعُكُمْ عَلَى أَنْ لاَ تُشْرِكُوا بِاللَّهِ شَيْئًا، وَلاَ تَسْرِقُوا، وَلاَ تَزْنُوا، وَلاَ تَقْتُلُوا أَوْلاَدَكُمْ، وَلاَ تَأْتُوا بِبُهْتَانٍ تَفْتَرُونَهُ بَيْنَ أَيْدِيكُمْ وَأَرْجُلِكُمْ وَلاَ تَعْصُونِي فِي مَعْرُوفٍ، فَمَنْ وَفَى مِنْكُمْ فَأَجْرُهُ عَلَى اللَّهِ، وَمَنْ أَصَابَ مِنْ ذَلِكَ شَيْئًا فَأُخِذَ بِهِ فِي الدُّنْيَا فَهْوَ لَهُ كَفَّارَةٌ وَطَهُورٌ، وَمَنْ سَتَرَهُ اللَّهُ فَذَلِكَ إِلَى اللَّهِ إِنْ شَاءَ عَذَّبَهُ وَإِنْ شَاءَ غَفَرَ لَهُ ‏&quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/176450" target="_blank">bukhari 7468</a> · Sahih</div></div>
+<div class="hadith "><div>&quot; لَيُدْرِكَنَّ الدَّجَّالُ قَوْمًا مِثْلَكُمْ أَوْ خَيْرًا مِنْكُمْ ، ثَلاثَ مَرَّاتٍ ، وَلَنْ يَخْزِيَ اللَّهُ أُمَّةً ، أَنَا أَوَّلُهَا ، وَعِيسَى بْنُ مَرْيَمَ آخِرُهَا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6842860" target="_blank">hakim </a> · Uncategorized</div></div>
+<div class="hadith "><div>كُفَّ جَلَدَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ أَرْبَعِينَ وَأَبُو بَكْرٍ أَرْبَعِينَ وَكَمَّلَهَا عُمَرُ ثَمَانِينَ وَكُلٌّ سُنَّةٌ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/5305900" target="_blank">ahmad 624</a> · Sahih</div></div>
+<div class="hadith "><div>رَسُولُ اللَّهِ صلى الله عليه وسلم ‏&quot;‏ يَعْمِدُ أَحَدُكُمْ إِلَى أَخِيهِ فَيَعَضُّهُ كَعِضَاضِ الْفَحْلِ ثُمَّ يَأْتِي يَلْتَمِسُ الْعَقْلَ لاَ عَقْلَ لَهَا ‏&quot;‏ ‏.‏ قَالَ فَأَبْطَلَهَا رَسُولُ اللَّهِ صلى الله عليه وسلم ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1327580" target="_blank">ibnmajah 2656</a> · Hasan</div></div>
+</div>
+<div class="cluster-card" id="c32">
+  <h3>Cluster #32</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>3,709</b> docs</span>
+    <span>🎯 cohesion <b>0.975</b></span>
+    <span class="collections">📚 ibnabishayba (3512), ibnmajah (60), muslim (44), daraqutni (30), hakim (11)</span>
+  </div>
+  <div class="hadith "><div>هُوَ أَحَقُّ بِهَا مَا لَمْ يَرْضَ مِنْهَا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7505520" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; هُوَ لِمَوْلَاهُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7504700" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>كَرِهَ نَهَّابَ السُّكْرِ عَلَى الصِّبْيَانِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7502640" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; إِذَا كَانَ يَوْمُ الْغَيْمِ فَعَجِّلُوا الْعَصْرَ وَأَخِّرُوا الظُّهْرَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7430670" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; لَا بَأْسَ بِبَيْعِ الْعَصِيرِ مَا لَمْ يَغْلِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7507700" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c24">
+  <h3>Cluster #24</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>3,594</b> docs</span>
+    <span>🎯 cohesion <b>0.967</b></span>
+    <span class="collections">📚 ibnabishayba (2755), darimi (156), bukhari (103), abdurrazzaq (87), adab (62)</span>
+  </div>
+  <div class="hadith "><div>&quot; لَا تَزَالُ هَذِهِ الْأُمَّةُ بِخَيْرٍ مَا عَجَّلُوا الْفِطْرَ فَإِذَا كَانَ يَوْمُ صَوْمِ أَحَدِكُمْ فَمَضْمَضَ فَاهُ ، فَلَا يَمُجَّهُ وَلَكِنْ لِيَشْرَبْهُ فَإِنَّ خَيْرَهُ أَوَّلُهُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7444985" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>أَمْسِكْ بِنِصَالِهَا ‏&quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/104510" target="_blank">bukhari 451</a> · Sahih</div></div>
+<div class="hadith "><div>الْمُؤْمِنَ لَا يَنْجُسُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7408830" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; إذَا أَفْلَسَ الرَّجُلُ فَوَجَدَ سِلْعَتَهُ قَائِمَةً بِعَيْنِهَا فَهُوَ أَحَقُّ بِهَا مِنَ الْغُرَمَاءِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7497510" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; أَخَّرَ الْحَجَّاجُ الصَّلَاةَ بِعَرَفَةَ ، فَصَلَّى ابْنُ عُمَرَ فِي رَحْلِهِ ، وَثَمَّ نَاسٌ وُقُفٌ ، قَالَ : فَأَمَرَ بِهِ الْحَجَّاجُ فَنَخََسَ بِهِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7437130" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c48">
+  <h3>Cluster #48</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>3,545</b> docs</span>
+    <span>🎯 cohesion <b>0.978</b></span>
+    <span class="collections">📚 ibnabishayba (3184), hakim (88), muslim (62), ibnmajah (44), daraqutni (44)</span>
+  </div>
+  <div class="hadith "><div>&quot; نَهَى رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ عَنِ الْمُعَصْفَرِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7520715" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>زَجَرَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ رَجُلا شَرِبَ قَائِمًا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7517600" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>النَّبِيُّ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ إذَا خَطَبَ اسْتَقْبَلَهُ أَصْحَابُهُ بِوُجُوهِهِمْ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7425445" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; رَخَّصَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ فِي الرُّقْيَةِ مِنَ الْعَيْنِ وَالْحُمَةِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7514640" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; نَهَى رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ أَنْ يُوَطِّنَ الرَّجُلُ الْمَكَانَ يُصَلِّي فِيهِ كَمَا يُوَطِّنُ الْبَعِيرُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7424215" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c9">
+  <h3>Cluster #9</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>3,497</b> docs</span>
+    <span>🎯 cohesion <b>0.968</b></span>
+    <span class="collections">📚 abdurrazzaq (1141), ibnabishayba (1057), hakim (280), ibnhibban (169), daraqutni (149)</span>
+  </div>
+  <div class="hadith "><div>&quot; أَرَى الْقُرْآنَ قَدْ ظَهَرَ فِي النَّاسِ &quot; ، فَقُلْتُ : مَا أُحِبُّ ذَاكَ يَا أَمِيرَ الْمُؤْمِنِينَ ، قَالَ : فَاجْتَذَبَ يَدَهُ مِنْ يَدَي ، وَقَالَ : &quot; لِمَ قُلْتَ ؟ لأَنَّهُمْ مَتَى يَقْرَءُوا يَتَقَرُّوا ، وَمَتَى مَا يَتَقَرُّوا اخْتَلَفُوا ، وَمَتَى مَا يَخْتَلِفُوا يَضْرِبُ بَعْضُهُمْ رِقَابَ بَعْضٍ &quot; ، فَقَالَ : فَجَلَسَ عَنِّي وَتَرَكَنِي ، فَظَلَلْتُ عَنْهُ يَوْمَ لا يَعْلَمُهُ إِلا اللَّهُ ، ثُمَّ أَتَانِي رَسُولُهُ الظُّهْرَ ، فَقَالَ : أَجِبْ أَمِيرَ الْمُؤْمِنِينَ فَأَتَيْتُهُ ، فَقَالَ : كَيْفَ قُلْتَ ؟ فَأَعَدْتُ مَقَالَتِي ، قَالَ عُمَرُ رَضِيَ اللَّهُ عَنْهُ : &quot; إِنْ كُنْتُ لأَكْتُمُهَا النَّاسَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6863190" target="_blank">hakim </a> · Uncategorized</div></div>
+<div class="hadith "><div>ذُو الْكِفْلِ مِنْ بَنِي إِسْرَائِيلَ لا يَتَوَرَّعُ مِنْ شَيْءٍ ، فَهَوِيَ امْرَأَةً ، فَرَاوَدَهَا عَلَى نَفْسِهَا ، وَأَعْطَاهَا سِتِّينَ دِينَارًا ، فَلَمَّا جَلَسَ مِنْهَا ، بَكَتْ وَأُرْعِدَتْ ، فقَالَ لَهَا : مَا لَكِ ؟ فَقَالَتْ : إِنِّي وَاللَّهِ لَمْ أَعْمَلْ هَذَا الْعَمَلَ قَطُّ ، وَمَا عَمِلْتُهُ إِلا مِنْ حَاجَةٍ ، قَالَ : فَنَدِمَ ذُو الْكِفْلِ ، وَقَامَ مِنْ غَيْرِ أَنْ يَكُونَ مِنْهُ شَيْءٌ ، فَأَدْرَكَهُ الْمَوْتُ مِنْ لَيْلَتِهِ ، فَلَمَّا أَصْبَحَ ، وَجَدُوا عَلَى بَابِهِ مَكْتُوبًا : إِنَّ اللَّهَ قَدْ غَفَرَ لَكَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6603920" target="_blank">ibnhibban </a> · Uncategorized</div></div>
+<div class="hadith "><div>نِسْوَةً كُنَّ بِالشَّامِ فَأَشِرْنَ وَبَطَرْنَ وَلَعِبْنَ الْحُزَّقَةِ فَرَكِبَتْ وَاحِدَةٌ الْأُخْرَى وَنَخَسَتِ الْأُخْرَى فَأَذْهَبَتْ عُذْرَتَهَا ، فَرُفِعَ ذَلِكَ إلَى عَبْدِ الْمَلِكِ بْنِ مَرْوَانَ فَسَأَلَ عَنْ ذَلِكَ [narrator id=&quot;6418&quot; role=&quot;sahabi&quot; tooltip=&quot;فضالة بن عبيد الأنصاري&quot;]فَضَالَةَ بْنَ عُبَيْدٍ[/narrator] ، [narrator role=&quot;chain&quot;]وَقَبِيصَةَ بْنَ ذُؤَيْبٍ[/narrator] ؟ فَقَالَا : &quot; عَلَيْهِنَّ الدِّيَةُ وَتَرْفَعُ نَصِيبَ وَاحِدَةٍ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7466640" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>لَوْ كَانَتْ عندَ رَجُلٍ أُخْتُهُ مَمْلُوكَةٌ كَانَ يَجُوزُ لَهُ أَنْ يَطَأَهَا , فَقَالَ : أَمَا وَاللَّهِ إنَّمَا رَدَدْتنِي أَدْرِكْ فَقُلْ لَهُمُ اجْتَنِبُوا ذَلِكَ فَإِنَّهُ لَا يَنْبَغِي لَهُمْ , قَالَ : قُلْتُ : إنَّمَا هِيَ الرَّحِمُ مِنَ الْعَتَاقَةِ وَغَيْرِهَا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7461120" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; مَا مِنْ مُسْلِمٍ يَمُوتُ فَيَقُومُ عَلَى جَنَازَتِهِ أَرْبَعُونَ رَجُلا لا يُشْرِكُونَ بِاللَّهِ شَيْئًا إِلا شَفَّعَهُمُ اللَّهُ فِيهِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6631600" target="_blank">ibnhibban </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c25">
+  <h3>Cluster #25</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>3,191</b> docs</span>
+    <span>🎯 cohesion <b>0.962</b></span>
+    <span class="collections">📚 abdurrazzaq (3070), malik (33), ibnabishayba (27), mishkat (15), bulugh (12)</span>
+  </div>
+  <div class="hadith "><div>تُسْتَحْلَفُ بِأَنَّهُ مَا تَرَكْتُهُ بِطِيبِ نَفْسِهَا ، ثُمَّ يَرُدُّ إِلَيْهَا مَا تَرَكَتْ لَهُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7115020" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>لا بَأْسَ بِهِ إِذَا لَمْ يَأْمُرْ بِهِ الزَّوْجُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7105210" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>عَمْدُ الصَّبِيِّ وَالْمَجْنُونِ خَطَأٌ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7177880" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>يَسْتَعِيذُ قَبْلَ أَنْ يَقْرَأَ أُمَّ الْقُرْآنِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7024990" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>يَفْرِضُ لِلصَّبِيِّ إِذَا اسْتَهَلَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7064360" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c31">
+  <h3>Cluster #31</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>3,089</b> docs</span>
+    <span>🎯 cohesion <b>0.969</b></span>
+    <span class="collections">📚 daraqutni (927), hakim (430), abdurrazzaq (426), ibnkhuzayma (338), ibnabishayba (258)</span>
+  </div>
+  <div class="hadith "><div>ثَمَنُ الْمِجَنِّ يُقَوَّمُ عَلَى عَهْدِ رَسُولِ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ ، عَشَرَةَ دَرَاهِمَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7829970" target="_blank">daraqutni </a> · Uncategorized</div></div>
+<div class="hadith "><div>لا يُقَادُ الأَبُ مِنَ ابْنِهِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7828770" target="_blank">daraqutni </a> · Uncategorized</div></div>
+<div class="hadith "><div>فَهَلا قَبْلَ أَنْ تَأْتِيَنَا بِهِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7830360" target="_blank">daraqutni </a> · Uncategorized</div></div>
+<div class="hadith "><div>رَدَّ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ ابْنَتَهُ زَيْنَبَ عَلَى أَبِي الْعَاصِ بْنِ الرَّبِيعِ بِالنِّكَاحِ الأَوَّلِ لَمْ يُحْدِثْ شَيْئًا بَيْنَهُمَا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7831760" target="_blank">daraqutni </a> · Uncategorized</div></div>
+<div class="hadith "><div>ضَرَبَ لِي رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ يَوْمَ خَيْبَرَ بِسَهْمٍ ، وَلِفَرَسِي بِسَهْمَيْنِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7836590" target="_blank">daraqutni </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c18">
+  <h3>Cluster #18</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>3,049</b> docs</span>
+    <span>🎯 cohesion <b>0.964</b></span>
+    <span class="collections">📚 abdurrazzaq (2051), mishkat (591), ibnkhuzayma (75), hakim (60), bulugh (49)</span>
+  </div>
+  <div class="hadith "><div>اسْتَسْقَى ، فَاسْتَقْبَلَ الْقِبْلَةَ وَحَوَّلَ رِدَاءَهُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7047440" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>يَنْهَى عَنْ صِيَامِ يَوْمِ الْجُمُعَةِ ، إِلا أَنْ يَصِلَهُ بِصِيَامٍ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7075890" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>مَا أَدْرَكْتُمْ فَصَلُّوا , وَمَا فَاتَكُمْ فَاقْضُوا , وَلَمْ يَذْكُرْ سُجُودًا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7032890" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>وَلِيَ غُسْلَ النَّبِيِّ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ ، وَدَفْنَهُ ، وَإِجْنَانَهُ دُونَ النَّاسِ أَرْبَعَةٌ : عَلِيٌّ ، وَالْعَبَّاسُ ، وَالْفَضْلُ ، وَصَالِحٌ شُقْرَانَ مَوْلَى النَّبِيِّ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ وَلَحَدُوا لَهُ ، وَنَصَبُوا عَلَيْهِ اللَّبِنَ نَصْبًا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7062130" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>بِوَضْعِ الْكَفَّيْنِ وَنَصْبِ الْقَدَمَيْنِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7028600" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c6">
+  <h3>Cluster #6</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>2,860</b> docs</span>
+    <span>🎯 cohesion <b>0.955</b></span>
+    <span class="collections">📚 abdurrazzaq (2842), malik (6), mishkat (3), bulugh (3), hakim (3)</span>
+  </div>
+  <div class="hadith "><div>رَجُلا قَالَ لِرَجُلٍ : &quot; يَا ابْنَ أَبِي كِرَانَةَ ، قَالَ : يُضْرَبُ الْحَدَّ إِلا أَنْ يُقِيمَ الْبَيِّنَةَ أَنَّهُ لَقَبٌ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7133210" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>لَقَدْ هَمَمْتُ أَنْ لا أَقْبَلَ هِبَةً &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7160320" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>مَتَّعَ [narrator id=&quot;1281&quot; role=&quot;sahabi&quot; tooltip=&quot;الحسن بن علي الهاشمي&quot;]الْحَسَنُ بْنُ عَلِيٍّ[/narrator] امْرَأَتَيْنِ بِعِشْرِينَ أَلْفٍ وَزِقَاقٍ مِنْ عَسَلٍ ، فَقَالَتْ إِحْدَاهُمَا : فَأُرَاهَا جُعْفِيَّةً ، مَتَاعٌ قَلِيلٌ مِنْ حَبِيبٍ مُفَارِقٍ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7119140" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>رَجُلا طَعَنَ رَجُلا بِقَرْنٍ فِي رِجْلِهِ ، فَجَاءَ النَّبِيَّ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ ، فَقَالَ : &quot; أَقِدْنِي &quot; ، قَالَ : لا حَتَّى تَبْرَأَ ، قَالَ : &quot; أَقِدْنِي , فَأَقَادَهُ &quot; , ثُمَّ عَرَجَ , فَجَاءَ الْمُسْتَقِيدُ ، فَقَالَ : حَقِّي ، فَقَالَ النَّبِيُّ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ : &quot; لا شَيْءَ لَكَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7174080" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>أُمِّي كَانَتْ لَهَا جَارِيَةٌ ، وَإِنَّهَا أَحَلَّتْهَا لِي أَطُوفُ عَلَيْهَا ، فَقَالَ : لا تَحِلُّ لَكَ إِلا بِإِحْدَى ثَلاثٍ : إِمَّا أَنْ تَزَوَّجَهَا ، وَإِمَا أَنْ تَشْتَرِيَهَا ، أَوْ تَهِبَهَا لَكَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7124880" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c7">
+  <h3>Cluster #7</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>2,706</b> docs</span>
+    <span>🎯 cohesion <b>0.968</b></span>
+    <span class="collections">📚 ibnabishayba (2001), darimi (161), bukhari (104), daraqutni (86), abudawud (75)</span>
+  </div>
+  <div class="hadith "><div>إِذَا وَجَدَ نَرْدًا فِي بَيْتٍ كَسَّرَهَا ، وَضَرَبَ مَنْ لَعِبَ بِهَا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7527825" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; آيِبُونَ تَائِبُونَ عَابِدُونَ لِرَبِّنَا حَامِدُونَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7564640" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; لَا تَغُرَّنَّكُمْ هَذِهِ الْآيَةُ [quran sura=&quot;4&quot; aya_start=&quot;24&quot; aya_end=&quot;24&quot;] إِلا مَا مَلَكَتْ أَيْمَانُكُمْ [/quran] إنَّمَا عَنَى بِهَا الْإِمَاءَ ، وَلَمْ يَعْنِ بِهَا الْعَبِيدَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7465695" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; لَوْ لَمْ أَعِشْ أَوَلَمْ أَكُنْ فِي الدُّنْيَا إلَّا عَشْرًا لَأَحْبَبْتُ أَنْ يَكُونَ عندِي فِيهِنَّ امْرَأَةٌ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7459545" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>فِتَنٌ قَدْ أَظَلَّتْ كَجِبَاهِ الْبَقَرِ ، يَهْلِكُ فِيهَا أَكْثَرُ النَّاسِ إِلَّا مَنْ كَانَ يَعْرِفُهَا قَبْلَ ذَلِكَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7582470" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c44">
+  <h3>Cluster #44</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>2,651</b> docs</span>
+    <span>🎯 cohesion <b>0.955</b></span>
+    <span class="collections">📚 mishkat (2537), abdurrazzaq (38), bulugh (18), malik (11), hakim (10)</span>
+  </div>
+  <div class="hadith "><div>وَعَنْ عَبْدِ اللَّهِ بْنِ عُمَرَ قَالَ: سَمِعْتُ النَّبِيَّ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ يَقُولُ: «إِذَا مَاتَ أَحَدُكُمْ فَلَا تَحْبِسُوهُ وَأَسْرِعُوا بِهِ إِلَى قَبْرِهِ وَلْيُقْرَأْ عِنْدَ رَأْسِهِ فَاتِحَةُ الْبَقَرَةِ وَعِنْدَ رِجْلَيْهِ بِخَاتِمَةِ الْبَقَرَةِ» . رَوَاهُ الْبَيْهَقِيُّ فِي شُعَبِ الْإِيمَان. وَقَالَ: وَالصَّحِيح أَنه مَوْقُوف عَلَيْهِ</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/5617170" target="_blank">mishkat 1717</a> · Uncategorized</div></div>
+<div class="hadith "><div>وَعَنْ أَبِي هُرَيْرَةَ رَضِيَ اللَّهُ عَنْهُ قَالَ: قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ: «لَا يَتَمَنَّى أَحَدُكُمُ الْمَوْتَ وَلَا يَدْعُ بِهِ مِنْ قَبْلِ أَنْ يَأْتِيَهُ إِنَّهُ إِذَا مَاتَ انْقَطَعَ أَمَلُهُ وَإِنَّهُ لَا يَزِيدُ الْمُؤْمِنَ عُمْرُهُ إِلَّا خيرا» . رَوَاهُ مُسلم</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/5615990" target="_blank">mishkat 1599</a> · Uncategorized</div></div>
+<div class="hadith "><div>وَعَنِ ابْنِ عَبَّاسٍ قَالَ: قَدَّمَنَا رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ لَيْلَةً الْمُزْدَلِفَةِ أُغَيْلِمَةَ بَنِي عَبْدِ الْمُطَّلِبِ عَلَى حُمُرَاتٍ فَجَعَلَ يَلْطَحُ أَفْخَاذَنَا وَيَقُولُ: «أُبَيْنِيَّ لَا تَرْمُوا الْجَمْرَةَ حَتَّى تَطْلُعَ الشَّمْسُ» . رَوَاهُ أَبُو دَاوُدَ وَالنَّسَائِيُّ وَابْنُ مَاجَه</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/5626130" target="_blank">mishkat 2613</a> · Uncategorized</div></div>
+<div class="hadith "><div>وَعَنْ أَبِي هُرَيْرَةَ قَالَ: قَالَ سَعْدُ بْنُ عُبَادَةَ: لَوْ وَجَدْتُ مَعَ أَهْلِي رَجُلًا لَمْ أَمَسَّهُ حَتَّى آتِيَ بِأَرْبَعَةِ شُهَدَاءَ؟ قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ: «نَعَمْ» قَالَ: كَلَّا وَالَّذِي بَعَثَكَ بِالْحَقِّ إِنْ كُنْتُ لَأُعَاجِلُهُ بِالسَّيْفِ قَبْلَ ذَلِكَ قَالَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ: «اسْمَعُوا إِلَى مَا يَقُولُ سَيِّدُكُمْ إِنَّهُ لَغَيُورٌ وَأَنَا أَغْيَرُ مِنْهُ وَالله أغير مني» . رَوَاهُ مُسلم</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/5633080" target="_blank">mishkat 3308</a> · Uncategorized</div></div>
+<div class="hadith "><div>وَعَنْهَا أَنَّ النَّبِيَّ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ خَرَجَ فِي غَزَاةٍ فَأَخَذَتْ نَمَطًا فَسَتَرَتْهُ عَلَى الْبَابِ فَلَمَّا قَدِمَ فَرَأَى النَّمَطَ فَجَذَبَهُ حَتَّى هَتَكَهُ ثُمَّ قَالَ: «إِنَّ اللَّهَ لَمْ يَأْمُرْنَا أَنْ نَكْسُوَ الْحِجَارَةَ وَالطِّينَ»</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/5644940" target="_blank">mishkat 4494</a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c13">
+  <h3>Cluster #13</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>2,624</b> docs</span>
+    <span>🎯 cohesion <b>0.972</b></span>
+    <span class="collections">📚 ibnabishayba (1579), nasai (166), bukhari (150), abudawud (120), daraqutni (111)</span>
+  </div>
+  <div class="hadith "><div>&quot; لَا تُجْزِئُ صَلَاةٌ لَا يُقِيمُ الرَّجُلُ فِيهَا صُلْبَهُ فِي الرُّكُوعِ وَالسُّجُودِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7414370" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>كَانَ آخِرُ كَلاَمِ النَّبِيِّ صلى الله عليه وسلم ‏&quot;‏ الصَّلاَةَ وَمَا مَلَكَتْ أَيْمَانُكُمْ ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1328030" target="_blank">ibnmajah 2698</a> · Da&#x27;if</div></div>
+<div class="hadith "><div>يُصَلِّيَ الرَّجُلُ مُخْتَصِرًا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6113980" target="_blank">darimi </a> · Uncategorized</div></div>
+<div class="hadith "><div>يُصَلِّي حَافِيًا وَمُنْتَعِلًا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7438440" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>يُصَلِّي رَكْعَتَيْنِ ، ثُمَّ يُسَلِّمُ ، ثُمَّ يَقُومُ ، فَيُوتِرُ بِرَكْعَةٍ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7437815" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c17">
+  <h3>Cluster #17</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>2,318</b> docs</span>
+    <span>🎯 cohesion <b>0.974</b></span>
+    <span class="collections">📚 ibnabishayba (561), daraqutni (257), ibnhibban (249), ibnkhuzayma (197), hakim (161)</span>
+  </div>
+  <div class="hadith "><div>أُصَلِّي مَعَ النَّبِيِّ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ الْعَصْرَ وَالشَّمْسُ بَيْضَاءُ مُحَلِّقَةٌ &quot; , فَآتِي عَشِيرَتِي وَهُمْ جُلُوسٌ , فَأَقُولُ : مَا يُجْلِسُكُمْ صَلُّوا , فَقَدْ صَلَّى رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7808630" target="_blank">daraqutni </a> · Uncategorized</div></div>
+<div class="hadith "><div>قَالَ : [quran sura=&quot;1&quot; aya_start=&quot;7&quot; aya_end=&quot;7&quot;] وَلا الضَّالِّينَ [/quran] , قَالَ : &quot; آمِينَ &quot; , مَدَّ بِهَا صَوْتَهُ</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7811030" target="_blank">daraqutni </a> · Uncategorized</div></div>
+<div class="hadith "><div>‏&quot;‏ وَقَدْ أَحْسَنْتَ كَذَلِكَ فَافْعَلْ ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1312930" target="_blank">ibnmajah 1236</a> · Sahih</div></div>
+<div class="hadith "><div>نَهَى النَّبِيُّ صلى الله عليه وسلم عَنِ الْمُلاَمَسَةِ، وَالْمُنَابَذَةِ، وَعَنْ صَلاَتَيْنِ بَعْدَ الْفَجْرِ حَتَّى تَرْتَفِعَ الشَّمْسُ، وَبَعْدَ الْعَصْرِ حَتَّى تَغِيبَ، وَأَنْ يَحْتَبِيَ بِالثَّوْبِ الْوَاحِدِ، لَيْسَ عَلَى فَرْجِهِ مِنْهُ شَىْءٌ بَيْنَهُ وَبَيْنَ السَّمَاءِ، وَأَنْ يَشْتَمِلَ الصَّمَّاءَ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/150250" target="_blank">bukhari 5819</a> · Sahih</div></div>
+<div class="hadith "><div>طَلَّقَ حَفْصَةَ تَطْلِيقَةً ، فَأَتَاهُ [name role=&quot;angel&quot;] جِبْرِيلُ [/name] عَلَيْهِ الصَّلاَةُ وَالسَّلامُ ، فَقَالَ : يَا مُحَمَّدُ ، طَلَّقْتَ حَفْصَةَ ، وَهِيَ صَوَّامَةٌ قَوَّامَةٌ ، وَهِيَ زَوْجَتُكَ فِي الْجَنَّةِ ، فَرَاجِعْهَا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6867900" target="_blank">hakim </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c36">
+  <h3>Cluster #36</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>2,292</b> docs</span>
+    <span>🎯 cohesion <b>0.971</b></span>
+    <span class="collections">📚 ibnabishayba (1362), muslim (138), bukhari (137), darimi (133), abudawud (88)</span>
+  </div>
+  <div class="hadith "><div>&quot; لِكُلِّ أَهْلِ عَمَلٍ بَابٌ مِنْ أَبْوَابِ الْجَنَّةِ يُدْعَوْنَ مِنْهُ بِذَلِكَ الْعَمَلِ ، وَلِأَهْلِ الصِّيَامِ بَابٌ يُقَالَ لَهُ الرَّيَّانُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7443510" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>أَمَرَهُ بِالتَّيَمُّمِ بِالْوَجْهِ وَالْكَفَّيْنِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7806110" target="_blank">daraqutni </a> · Uncategorized</div></div>
+<div class="hadith "><div>مَا هُوَ بِمُؤْمِنٍ مَنْ لَمْ يَأْمَنْ جَارُهُ بَوَائِقَهُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7524180" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; فَرَّقَ بَيْنَهُمَا ، وَقَضَى أَنْ لَا قُوتَ لَهَا عَلَيْهِ وَلَا نَفَقَةَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7466145" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; مَنْ قَالَ : لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ , لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ ، بِيَدِهِ الْخَيْرُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ ، عَشْرَ مَرَّاتٍ كُنَّ لَهُ كَعِدْلِ عَشْرِ رِقَابٍ أَوْ كَعِدْلِ رَقَبَةٍ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7571895" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c29">
+  <h3>Cluster #29</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>2,290</b> docs</span>
+    <span>🎯 cohesion <b>0.967</b></span>
+    <span class="collections">📚 bulugh (878), malik (777), abdurrazzaq (347), mishkat (71), bukhari (59)</span>
+  </div>
+  <div class="hadith "><div>وَعَنِ اِبْنِ عَبَّاسٍ ‏- رَضِيَ اَللَّهُ عَنْهُمَا‏- , عَنْ اَلنَّبِيِّ ‏- صلى الله عليه وسلم ‏-قَالَ : { إِنَّ اَللَّهَ تَعَالَى وَضَعَ عَنْ أُمَّتِي اَلْخَطَأَ , وَالنِّسْيَانَ , وَمَا اسْتُكْرِهُوا عَلَيْهِ }  رَوَاهُ اِبْنُ مَاجَهْ , وَالْحَاكِمُ , وَقَالَ أَبُو حَاتِمٍ : لَا يَثْبُتُ  &lt;sup&gt;1&lt;/sup&gt;‏ .‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/2113410" target="_blank">bulugh </a> · Uncategorized</div></div>
+<div class="hadith "><div>يَوْمَ الْقِيَامَةِ أَيْنَ الْمُتَحَابُّونَ لِجَلاَلِي الْيَوْمَ أُظِلُّهُمْ فِي ظِلِّي يَوْمَ لاَ ظِلَّ إِلاَّ ظِلِّي ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/517250" target="_blank">malik </a> · Uncategorized</div></div>
+<div class="hadith "><div>وَعَنْ أَبِي أُمَامَةَ بْنِ سَهْلٍ قَالَ : { كَتَبَ مَعِي عُمَرُ إِلَى أَبِي عُبَيْدَةَ ‏- رَضِيَ اَللَّهُ عَنْهُمْ‏- ; أَنَّ رَسُولَ اَللَّهِ ‏- صلى الله عليه وسلم ‏-قَالَ : &quot; اَللَّهُ وَرَسُولُهُ مَوْلَى مَنْ لَا مَوْلَى لَهُ , وَالْخَالُ وَارِثُ مَنْ لَا وَارِثَ لَهُ }  رَوَاهُ أَحْمَدُ , وَالْأَرْبَعَةُ سِوَى أَبِي دَاوُدَ , وَحَسَّنَهُ اَلتِّرْمِذِيُّ , وَصَحَّحَهُ اِبْنُ حِبَّانَ  &lt;sup&gt;1&lt;/sup&gt;‏ .‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/2111730" target="_blank">bulugh </a> · Uncategorized</div></div>
+<div class="hadith "><div>وَعَنْ اَلْمِقْدَامِ بْنِ مَعْدِي كَرِبَ ‏- رضى الله عنه ‏- قَالَ : قَالَ رَسُولُ اَللَّهِ ‏- صلى الله عليه وسلم ‏-{ اَلْخَالُ وَارِثُ مَنْ لَا وَارِثَ لَهُ }  أَخْرَجَهُ أَحْمَدُ , وَالْأَرْبَعَةُ سِوَى اَلتِّرْمِذِيِّ , وَحَسَّنَهُ أَبُو زُرْعَةَ اَلرَّازِيُّ , وَصَحَّحَهُ اِبْنُ حِبَّانَ , وَالْحَاكِمُ  &lt;sup&gt;1&lt;/sup&gt;‏ .‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/2111720" target="_blank">bulugh </a> · Uncategorized</div></div>
+<div class="hadith "><div>لَهُ رَسُولُ اللَّهِ صلى الله عليه وسلم ‏&quot;‏ تَوَضَّأْ وَاغْسِلْ ذَكَرَكَ ثُمَّ نَمْ ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/307300" target="_blank">muslim 306 c</a> · Sahih</div></div>
+</div>
+<div class="cluster-card" id="c20">
+  <h3>Cluster #20</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>2,204</b> docs</span>
+    <span>🎯 cohesion <b>0.967</b></span>
+    <span class="collections">📚 ibnabishayba (1985), abdurrazzaq (99), darimi (61), abudawud (10), bukhari (9)</span>
+  </div>
+  <div class="hadith "><div>&quot; يُجْزِئُهُ أَنْ لَا يُعِيدَ عَلَى رَأْسِهِ الْغُسْلَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7403775" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; سَأَلْتُ ابْنَ مَسْعُودٍ عَنْ أَشْيَاءَ مَا أَحَدٌ يَسْأَلُنِي عَنْهَا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7529155" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; أَسْلَمَ عُمَرُ بْنُ الْخَطَّابِ بَعْدَ أَرْبَعِينَ رَجُلًا وَإِحْدَى عَشْرَةَ امْرَأَةً &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7565880" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>نَهَى رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ أَنْ يُقْعَدَ عَلَيْهَا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7457705" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; لَوْ أَدْرَكَ ابْنُ عَبَّاسٍ أَسْنَانَنَا مَا عَاشَرَهُ مِنَّا رَجُلٌ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7557690" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c0">
+  <h3>Cluster #0</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>2,171</b> docs</span>
+    <span>🎯 cohesion <b>0.960</b></span>
+    <span class="collections">📚 abdurrazzaq (1906), ibnabishayba (97), darimi (43), bulugh (29), mishkat (24)</span>
+  </div>
+  <div class="hadith "><div>يُقِرَآنِ : [quran sura=&quot;2&quot; aya_start=&quot;184&quot; aya_end=&quot;184&quot;] وَعَلَى الَّذِينَ يُطِيقُونَهُ [/quran] يُكَلَّفُونَهُ وَلا يُطِيقُونَهُ ، فَهُمُ الَّذِينَ لا يُطِيقُونَ ، وَيُفْطِرُونَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7073640" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>شَيْخٌ يَسْأَلُهُ عَنِ الْقُبْلَةِ وَهُوَ صَائِمٌ ، فَرَخَّصَ لَهُ ، فَجَاءَهُ شَابٌّ ، فَنَهَاهُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7072190" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>أَرْبَعَةٍ شَهِدُوا عَلَى رَجُلٍ بِالزِّنَا , فَرُجِمَ ، ثُمَّ رَجَعَ أَحَدُهُمْ , قَالَ : عَلَيْهِ رُبْعُ الدِّيَةِ , وَيُعْتِقُ رَقَبَةً &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7177160" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>تَصَدَّقَ بِبَعْضِ أَرْضِهِ جَعَلَهَا صَدَقَةً بَعْدَ مَوْتِهِ ، وَأَعْتَقَ رَقِيقًا مِنْ رَقِيقِهِ ، وَشَرَطَ عَلَيْهِمْ أَنَّكُمْ تَقُولُونَ فِي هَذَا الْمَالِ خَمْسَ سِنِينَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7151630" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>الْمُسْلِمُ يَرِثَانِهِ ويَرِثُهُمَا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7096680" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c46">
+  <h3>Cluster #46</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>2,170</b> docs</span>
+    <span>🎯 cohesion <b>0.971</b></span>
+    <span class="collections">📚 ibnabishayba (1985), darimi (71), abdurrazzaq (54), abudawud (14), muslim (12)</span>
+  </div>
+  <div class="hadith "><div>كَرِهَ التَّرَوُّحَ فِي الصَّلَاةِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7432015" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; يُكَفَّنُ السِّقْطُ فِي خِرْقَةٍ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7454390" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; يَمْسَحُ مَا حَوْلَهُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7406980" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; كَرِهَ الْإِقْعَاءَ وَالتَّوَرُّكَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7414275" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; يُعَشِّرُ الْخَمْرَ وَيُضَاعِفُ عَلَيْهِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7452860" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c39">
+  <h3>Cluster #39</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>1,964</b> docs</span>
+    <span>🎯 cohesion <b>0.966</b></span>
+    <span class="collections">📚 abdurrazzaq (1826), ibnabishayba (36), mishkat (23), ibnkhuzayma (16), hakim (12)</span>
+  </div>
+  <div class="hadith "><div>مَنْ أَدْرَكَهُ الصُّبْحُ جُنُبًا فَلْيُفْطِرْ</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7072020" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>لا قَطْعَ فِي ثَمَرٍ وَلا كَثْرٍ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7183020" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>أَبَا الْعَاصِ بْنِ الرَّبِيعِ بْنِ عَبْدِ الْعُزَّى بْنِ عَبْدِ شَمْسِ بْنِ عَبْدِ مَنَافٍ وَكَانَ زَوْجًا لِبِنْتِ خَدِيجَةَ ، فَجِيءَ بِهِ النَّبِيُّ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ فِي قِدٍّ ، فَحَلَّتْهُ زَيْنَبُ بِنْتُ النَّبِيِّ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7092140" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>الثَّيِّبُ مَالِكَةٌ لأَمْرِهَا ، وتُسْتَأْمَرُ الْبِكْرُ فِي نَفْسِهَا ، فَسُكُوتُهَا إِقْرَارُهَا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7100390" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>يُشِيرُ بِإِصْبَعِهِ إِذَا دَعَا لا يُحَرِّكُهَا , وَتَحَامَلَ النَّبِيُّ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ بِيَدِهِ الْيُسْرَى عَلَى رِجْلِهِ الْيُسْرَى , وَذَلِكَ مَثْنَى &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7031390" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c47">
+  <h3>Cluster #47</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>1,933</b> docs</span>
+    <span>🎯 cohesion <b>0.970</b></span>
+    <span class="collections">📚 ibnabishayba (1788), adab (43), darimi (25), daraqutni (21), ibnmajah (9)</span>
+  </div>
+  <div class="hadith "><div>رَجُلٍ طَلَّقَ امْرَأَتَهُ حِمْلَ بَعِيرٍ ؟ ، قَالَ : &quot; لَا تَحِلُّ لَهُ حَتَّى تَنْكِحَ زَوْجًا غَيْرَهُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7472410" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; مَا نَجِدُ فِي السَّبِيلِ الْعَامِرَةِ مِنَ اللُّقَطَةِ ؟ &quot; ، فَقَالَ : &quot; عَرِّفْهَا حَوْلًا , فَإِنْ جَاءَ صَاحِبُهَا ، وَإِلَّا فَهِيَ لَكَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7505150" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>إنَّ أُخْتِي مَاتَتْ وَلَمْ تَحُجَّ أَفَأَحُجُّ عَنْهَا ؟ قَالَ : &quot; أَرَأَيْتَ لَوْ كَانَ عَلَيْهَا دَيْنٌ فَقَضَيْتُهُ ؟ وَاللَّهُ أَحَقُّ بِالْوَفَاءِ وَالْقَضَاءِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7487795" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; أَتُصَلِّي الْمُسْتَحَاضَةُ ؟ قَالَ : نَعَمْ , وَتَحُجُّ الْبَيْتَ وَإِنْ سَالَ عَلَى عَقِبَيْهَا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7486815" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>ضَالَّةً وَجَدْتهَا &quot; , فَقَالَ : &quot; أَصْلِحْ إلَيْهَا وَانْشُدْ &quot; , فَقَالَ : &quot; هَلْ عَلَيَّ إنْ شَرِبْتُ مِنْ لَبَنِهَا ؟ &quot; ، قَالَ ابْنُ عُمَرَ : &quot; مَا أَرَى عَلَيْكَ فِي ذَلِكَ شَيْئًا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7513190" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c42">
+  <h3>Cluster #42</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>1,868</b> docs</span>
+    <span>🎯 cohesion <b>0.976</b></span>
+    <span class="collections">📚 ibnabishayba (1846), ibnmajah (7), muslim (5), darimi (3), adab (2)</span>
+  </div>
+  <div class="hadith "><div>التَّرْقُوَةِ بَعِيرَانِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7531925" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>حَدَّثَنَا أَبُو بَكْرٍ ، قَالَ : حَدَّثَنَا وكِيعٌ ، عَنْ سُفْيَانَ ، عَنْ مُغِيرَةَ ، عَنْ إبْرَاهِيمَ ، قَالَ : &quot; شَوَّالُ , وَذُو الْقِعْدَةِ , وَعَشْرُ ذِي الْحِجَّةِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7482270" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>أَجَازَ شَهَادَةَ الْأَعْمَى &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7501770" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>كَاتِبِ عَلِيٍّ أَخْبَرَهُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7526450" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>[narrator role=&quot;chain&quot;]لِعَلِيِّ بْنِ حُسَيْنٍ[/narrator] سَبَنْجُونَةُ ثَعَالِبَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7522035" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c43">
+  <h3>Cluster #43</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>1,717</b> docs</span>
+    <span>🎯 cohesion <b>0.974</b></span>
+    <span class="collections">📚 ibnabishayba (1642), darimi (18), bukhari (11), abudawud (10), adab (8)</span>
+  </div>
+  <div class="hadith "><div>وَنَهَى عَنْ ضَرْبِ رَأْسِ رَجُلٍ افْتَرَى عَلَى رَجُلٍ وَهُوَ يُجْلَدُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7542315" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>ظُفْرِ رَجُلٍ أَصَابَهُ رَجُلٌ فَاغْوَرَّ بِعُشْرِ دِيَةِ الْأُصْبُعِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7532775" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; رَجُلًا كَانَ لَهُ عَسِيفٌ , فَوَجَدَ مَعَ امْرَأَتِهِ رَجُلًا فِي لِحَافٍ ، فَضَرَبَهُ أَرْبَعِينَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7538830" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>أَيَتَقَبَّلُ الرَّجُلُ الْأَرْضَ فِهي الْعُلُوجُ وَالثِّمَارُ وَالْبُيُوتُ &quot; , فَقَالَ : &quot; لَا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7512140" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>رَجُلًا أَصَابَ عَبْدًا آبِقًا بِعَيْنِ التَّمْرِ , فَجَاءَ بِهِ , فَجَعَلَ [narrator id=&quot;5079&quot; role=&quot;sahabi&quot; tooltip=&quot;عبد الله بن مسعود&quot;]ابْنُ مَسْعُودٍ[/narrator] فِيهِ أَرْبَعِينَ دِرْهَمًا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7506730" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c30">
+  <h3>Cluster #30</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>1,656</b> docs</span>
+    <span>🎯 cohesion <b>0.979</b></span>
+    <span class="collections">📚 ibnabishayba (1641), muslim (10), bulugh (1), mishkat (1), hakim (1)</span>
+  </div>
+  <div class="hadith "><div>&quot; لَا يُشْفَعُ فِي حَدٍّ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7537540" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; فِيهِ الدِّيَةُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7531820" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>كَرِهَهُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7513405" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>الْحَشَفَةِ الدِّيَةُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7532660" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; أَقَادَ مِنْ لَطْمَةٍ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7537205" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c5">
+  <h3>Cluster #5</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>1,604</b> docs</span>
+    <span>🎯 cohesion <b>0.972</b></span>
+    <span class="collections">📚 ibnabishayba (1347), abdurrazzaq (156), muslim (29), malik (12), nasai (10)</span>
+  </div>
+  <div class="hadith "><div>يُشِيرُ بِإِصْبَعِهِ فِي الصَّلَاةِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7545520" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>يُشِيرُ بِإِصْبَعِهِ فِي الصَّلَاةِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7441220" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>كَرِهَ النَّفْخَ فِي الصَّلَاةِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7431955" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>يُصَلِّي بَعْدَهَا أَرْبَعًا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7429050" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>لَا يَرَى بَأْسًا بِالصَّلَاةِ فِي السَّفِينَةِ جَالِسًا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7432035" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c3">
+  <h3>Cluster #3</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>1,544</b> docs</span>
+    <span>🎯 cohesion <b>0.977</b></span>
+    <span class="collections">📚 muslim (590), abudawud (260), bukhari (242), nasai (135), ibnabishayba (120)</span>
+  </div>
+  <div class="hadith "><div>صلى الله عليه وسلم ‏&quot;‏ ابْنُ أُخْتِ الْقَوْمِ مِنْهُمْ ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/951250" target="_blank">abudawud 5122</a> · Sahih</div></div>
+<div class="hadith "><div>بَيْنَمَا رَسُولُ اللَّهِ صلى الله عليه وسلم فَذَكَرَ نَحْوَهُ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/370780" target="_blank">muslim 2704 d</a> · Sahih</div></div>
+<div class="hadith "><div>وَحَدَّثَنَا عُبَيْدُ اللَّهِ بْنُ مُعَاذٍ، حَدَّثَنَا أَبِي، حَدَّثَنَا شُعْبَةُ، عَنْ وَاقِدِ بْنِ مُحَمَّدٍ، عَنْ أَبِيهِ، عَنِ ابْنِ عُمَرَ، عَنِ النَّبِيِّ صلى الله عليه وسلم بِمِثْلِهِ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/302330" target="_blank">muslim 66 a</a> · Sahih</div></div>
+<div class="hadith "><div>قَبَّلْنَا يَدَ النَّبِيِّ ـ صلى الله عليه وسلم ـ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1338350" target="_blank">ibnmajah 3704</a> · Da&#x27;if</div></div>
+<div class="hadith "><div>صلى الله عليه وسلم نَحْوَهُ[/postmatn]‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/160110" target="_blank">bukhari 6895b</a> · Sahih</div></div>
+</div>
+<div class="cluster-card" id="c27">
+  <h3>Cluster #27</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>1,313</b> docs</span>
+    <span>🎯 cohesion <b>0.962</b></span>
+    <span class="collections">📚 abdurrazzaq (771), ibnabishayba (280), mishkat (70), darimi (55), malik (27)</span>
+  </div>
+  <div class="hadith "><div>رَجُلٍ كَانَتْ تَحْتَهُ امْرَأَةٌ فَطَلَّقَهَا فَبَانَتْ مِنْهُ ، ثُمَّ تَزَوَّجَ أُخْتَهَا فِي عِدَّتِهَا , قَالَ : يُفَرَّقُ بَيْنَهُمَا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7103180" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>النِّسَاءُ يُؤْمَرْنَ أَنْ يَتَرَبَّعْنَ إِذَا جَلَسْنَ فِي الصَّلَاةِ وَلَا يَجْلِسْنَ جُلُوسَ الرِّجَالِ عَلَى أَوْرَاكِهِنَّ يَتَّقِي ذَلِكَ عَلَى الْمَرْأَةِ مَخَافَةَ أَنْ يَكُونَ مِنْهَا الشَّيْءُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7413535" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>إِذَا خَيَّرَ الرَّجُلُ امْرَأَتَهُ ، أَوْ مَلَّكَهَا ، وافْتَرَقَا مِنْ ذَلِكَ الْمَجْلِسِ ، ولَمْ يَحْلِفْ شَيْئًا ، فَأَمْرُهَا إِلَى زَوْجِهَا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7116040" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; مَا تَرَكْتُ بَعْدِي عَلَى أُمَّتِي فِتْنَةً أَضَرَّ عَلَى الرِّجَالِ مِنَ النِّسَاءِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7467450" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>امْرَأَةٌ تَزَوَّجَهَا رَجُلٌ ، وشَرَطَ لَهَا دَارَهَا ، فَقَالَ عُمَرُ : أَوْفِ لَهَا بِشَرْطِهَا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7103590" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c38">
+  <h3>Cluster #38</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>1,309</b> docs</span>
+    <span>🎯 cohesion <b>0.967</b></span>
+    <span class="collections">📚 ibnabishayba (477), abdurrazzaq (237), mishkat (109), darimi (93), nasai (55)</span>
+  </div>
+  <div class="hadith "><div>ثَلاثٌ هُنَّ عَلَيَّ فَرَائِضُ , وَهُنَّ لَكُمْ تَطَوُّعٌ : النَّحْرُ , وَالْوِتْرُ , وَرَكْعَتَا الْفَجْرِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7814260" target="_blank">daraqutni </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; تَوَضَّأَ ثَلَاثًا ثَلَاثًا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7400310" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>‏&quot;‏ ثَلاَثَةٌ لاَ يُكَلِّمُهُمُ اللَّهُ يَوْمَ الْقِيَامَةِ الْمَنَّانُ الَّذِي لاَ يُعْطِي شَيْئًا إِلاَّ مَنَّهُ وَالْمُنَفِّقُ سِلْعَتَهُ بِالْحَلِفِ الْفَاجِرِ وَالْمُسْبِلُ إِزَارَهُ ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/303070" target="_blank">muslim 106 b</a> · Sahih</div></div>
+<div class="hadith "><div>&quot; الْحَيْضُ إِلَى ثَلَاثَ عَشْرَةَ، فَمَا زَادَ فَهِيَ مُسْتَحَاضَةٌ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6108250" target="_blank">darimi </a> · Uncategorized</div></div>
+<div class="hadith "><div>يُعْجِبُهُ أَنْ يَدْعُوَ ثَلاثًا ، وَيَسْتَغْفِرَ ثَلاثًا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/6609310" target="_blank">ibnhibban </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c34">
+  <h3>Cluster #34</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>1,295</b> docs</span>
+    <span>🎯 cohesion <b>0.969</b></span>
+    <span class="collections">📚 ibnabishayba (982), abdurrazzaq (267), darimi (19), bulugh (6), mishkat (4)</span>
+  </div>
+  <div class="hadith "><div>يَؤُمَّ الْعَبْدُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7429770" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; الْأَعْمَى لَا يَؤُمُّ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7429630" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; مَا دُونَ الْجِمَاعِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7408530" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; نُصِيبُهَا مِنْ نَفْسِهِ وَمِنْ مَالِهِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7466495" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>لَا يُزَادُ هَكَذَا &quot; وَأَشَارَ بِإِصْبَعِهِ .</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7441245" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c22">
+  <h3>Cluster #22</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>1,252</b> docs</span>
+    <span>🎯 cohesion <b>0.963</b></span>
+    <span class="collections">📚 abdurrazzaq (1233), ibnabishayba (14), daraqutni (2), bulugh (1), darimi (1)</span>
+  </div>
+  <div class="hadith "><div>أَرَأَيْتَ إِنْ مَكَثَ قَلِيلا لا أَرُدُّ عَلَى الإِمَامِ حَتَّى أَفْرُغَ مِنْ حَاجَتِي أَعَلَيَّ بَأْسٌ ؟ , قَالَ : &quot; لا &quot; , قُلْتُ : رَأَيْتُكَ تَفْعَلُهُ , قَالَ : &quot; أَجَلْ , مَا أَرُدُّ عَلَيْهِ حَتَّى يَكُونَ مَعَ التَّسْلِيمِ الانْصِرَافُ &quot; , قَالَ : &quot; لا يَضُرُّكَ أَيُّ ذَلِكَ فَعَلْتَ سَوَاءٌ ذَلِكَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7030570" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>لا يَضُرُّكَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7023340" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>يَشْتَكِي رِجْلَهُ الْيُسْرَى , فَكَانَ يُخْرِجُ الْيُمْنَى وَشِمَالُهُ مَقْبُوضَةٌ , فَيَقْبِضُهَا قَائِمَةً , فَقُلْتُ : أَلا تَتَرَبَّعُ ؟ , قَالَ : &quot; أَكْرَهُ ذَلِكَ &quot; , قُلْتُ : أَرَأَيْتَ لَوْ تَرَبَّعْتُ أَوْ بَسَطْتُ رِجْلِي أَمَامِي فِي الصَّلاةِ ؟ , قَالَ : &quot; اسْجُدْ سَجْدَتَيِ السَّهْوِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7029670" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>أَرَادَ طَلاقَ امْرَأَتِهِ فَاسْتَوْهَبَهَا مِنْ بَعْضِ صَدَاقِهَا ، فَفَعَلَتْ طَيِّبَةً نَفْسُهَا ، ثُمَّ طَلَّقَهَا , قَالَ : قُلْتُ لَهُ ولِمَ ؟ وقَدْ قَالَ اللَّهُ تَعَالَى : [quran sura=&quot;4&quot; aya_start=&quot;4&quot; aya_end=&quot;4&quot;] فَإِنْ طِبْنَ لَكُمْ عَنْ شَيْءٍ مِنْهُ [/quran] ، فَتَلا : [quran sura=&quot;4&quot; aya_start=&quot;20&quot; aya_end=&quot;20&quot;] وَإِنْ أَرَدْتُمُ اسْتِبْدَالَ زَوْجٍ مَكَانَ زَوْجٍ [/quran] &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7114980" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>إِذَا حَلَفَ ثُمَّ اسْتَثْنَى عَلَى أَثَرِ ذَلِكَ مَعَ ذَلِكَ عِنْدَ ذَلِكَ ، كَأَنَّهُ يَقُولُ : مَا لَمْ يَقْطَعِ الْيَمِينَ وَيَتْرُكْهُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7156520" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c2">
+  <h3>Cluster #2</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>954</b> docs</span>
+    <span>🎯 cohesion <b>0.970</b></span>
+    <span class="collections">📚 ibnabishayba (863), darimi (33), abdurrazzaq (21), abudawud (7), bukhari (7)</span>
+  </div>
+  <div class="hadith "><div>دَعَاهُمْ فِي عُرْسِهِ فَسَقَاهُمْ نَبِيذَ جَرٍّ أَخْضَرَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7516570" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>رَجُلٍ أَعْتَقَهُ قَوْمٌ ، وَأَعْتَقَ أَبَاهُ آخَرُونَ , قَالَ : &quot; يَتَوَارَثَانِ بِالْأَرْحَامِ , وَجِنَايَتُهُمَا عَلَى عَاقِلَةِ مَوَالِيهِمَا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7535095" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>غُلَامٍ كَانَ يُطَيِّرُ حَمَامًا فَوْقَ بَيْتٍ , وَرَجُلٌ فَوْقَ بَيْتٍ , فَوَقَعَ الْغُلَامُ &quot; , فَقَالَ إبْرَاهِيمُ : لَعَلَّهُمْ يَقُولُونَ : لَعَلَّهُ أَمَرَهُ بِشَيْءٍ</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7536980" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>إِذَا سَلَّمَ أَقْبَلَ عَلَيْنَا بِوَجْهِهِ ، وَهُوَ يُهَلِّلُ يَقُولُ : &quot; لَا إِلَهَ إِلَّا اللَّهُ ، وَحْدَهُ لَا شَرِيكَ لَهُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7442220" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>الْعَصِيرِ &quot; ، فَقَالَ : &quot; اشْرَبْهُ مَا لَمْ يَتَغَيَّرْ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7516260" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c14">
+  <h3>Cluster #14</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>928</b> docs</span>
+    <span>🎯 cohesion <b>0.951</b></span>
+    <span class="collections">📚 mishkat (832), hisn (35), abdurrazzaq (28), bulugh (6), hakim (6)</span>
+  </div>
+  <div class="hadith "><div>وَعَنْ عَبْدِ الرَّحْمَنِ بْنِ عَوْفٍ قَالَ: عَمَّمَنِي رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ فَسَدَلَهَا بَيْنَ يَدَيَّ وَمِنْ خَلْفِي. رَوَاهُ أَبُو دَاوُدَ</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/5643390" target="_blank">mishkat 4339</a> · Uncategorized</div></div>
+<div class="hadith "><div>عَنْ أَبِي سَعِيدٍ الْخُدْرِيِّ قَالَ: لَعَنَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ النَّائِحَةَ وَالْمُسْتَمِعَةَ. رَوَاهُ أَبُو دَاوُد</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/5617320" target="_blank">mishkat 1732</a> · Uncategorized</div></div>
+<div class="hadith "><div>وَعَنِ ابْنِ عَبَّاسٍ قَالَ: جَعَلَ رَسُولُ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ أَصَابِعَ الْيَدَيْنِ وَالرِّجْلَيْنِ سَوَاء. رَوَاهُ أَبُو دَاوُد وَالتِّرْمِذِيّ</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/5634940" target="_blank">mishkat 3494</a> · Uncategorized</div></div>
+<div class="hadith "><div>عَنْ عَبْدِ اللَّهِ بْنِ جَعْفَرٍ قَالَ: كَانَ النَّبِيُّ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ يَتَخَتَّمُ فِي يَمِينه. رَوَاهُ ابْن مَاجَه
+
+وَرَوَاهُ أَبُو دَاوُد وَالنَّسَائِيّ عَن عَليّ</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/5643911" target="_blank">mishkat 4391, 4392</a> · Uncategorized</div></div>
+<div class="hadith "><div>عَنِ ابْنِ عُمَرَ: أَنَّ رَسُولَ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ حَلَقَ رَأْسَهُ فِي حَجَّةِ الْوَدَاعِ وَأُنَاسٌ مِنْ أَصْحَابِهِ وَقَصَّرَ بَعْضُهُمْ</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/5626460" target="_blank">mishkat 2646</a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c45">
+  <h3>Cluster #45</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>904</b> docs</span>
+    <span>🎯 cohesion <b>0.957</b></span>
+    <span class="collections">📚 bulugh (454), hisn (131), malik (78), abdurrazzaq (67), mishkat (49)</span>
+  </div>
+  <div class="hadith "><div>وَعَنْ عَلَيٍّ ‏- رضى الله عنه ‏- قَالَ : { نَهَى رَسُولُ اَللَّهِ ‏- صلى الله عليه وسلم ‏-عَنْ اَلْمُتْعَةِ عَامَ خَيْبَرَ }  مُتَّفَقٌ عَلَيْهِ  &lt;sup&gt;1&lt;/sup&gt;‏ .‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/2112400" target="_blank">bulugh </a> · Uncategorized</div></div>
+<div class="hadith "><div>عَنْ اِبْنِ عُمَرَ رَضِيَ اَللَّهُ عَنْهُمَا قَالَ: { مَا أَهَلَّ رَسُولُ اَللَّهِ ‏- صلى الله عليه وسلم ‏-إِلَّا مِنْ عِنْدِ اَلْمَسْجِدِ }  مُتَّفَقٌ عَلَيْهِ  &lt;sup&gt;1&lt;/sup&gt;‏ .‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/2108770" target="_blank">bulugh 728</a> · Uncategorized</div></div>
+<div class="hadith "><div>وَعَنْ أَبِي هُرَيْرَةَ ‏- رضى الله عنه ‏- قَالَ: قَالَ رَسُولُ اَللَّهِ ‏- صلى الله عليه وسلم ‏-{ إِذَا قَاتَلَ أَحَدُكُمْ, فَلْيَتَجَنَّبِ اَلْوَجْهَ }  مُتَّفَقٌ عَلَيْهِ.‏  &lt;sup&gt;1&lt;/sup&gt;‏ .‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/2118010" target="_blank">bulugh </a> · Uncategorized</div></div>
+<div class="hadith "><div>وَعَنِ اِبْنِ عُمَرَ ‏-رَضِيَ اَللَّهُ عَنْهُمَا‏- قَالَ: { نَهَى رَسُولُ اَللَّهِ ‏- صلى الله عليه وسلم ‏-عَنْ عَسْبِ اَلْفَحْلِ }  رَوَاهُ اَلْبُخَارِيُّ  &lt;sup&gt;1&lt;/sup&gt;‏ .‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/2109610" target="_blank">bulugh </a> · Uncategorized</div></div>
+<div class="hadith "><div>وَعَنْ أَبِي سَعِيدٍ الْخُدْرِيِّ ‏- رضى الله عنه ‏- قَالَ : { لَعَنَ رَسُولُ اللَّهِ ‏- صلى الله عليه وسلم ‏-اَلنَّائِحَةَ , وَالْمُسْتَمِعَةَ }  أَخْرَجَهُ أَبُو دَاوُدَ .‏  &lt;sup&gt;1&lt;/sup&gt;‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/2107140" target="_blank">bulugh 587</a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c19">
+  <h3>Cluster #19</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>746</b> docs</span>
+    <span>🎯 cohesion <b>0.969</b></span>
+    <span class="collections">📚 abdurrazzaq (349), ibnmajah (103), bukhari (91), bulugh (83), tirmidhi (20)</span>
+  </div>
+  <div class="hadith "><div>نُصِرْتُ بِالصَّبَا، وَأُهْلِكَتْ عَادٌ بِالدَّبُورِ ‏&quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/171240" target="_blank">bukhari 3343</a> · Sahih</div></div>
+<div class="hadith "><div>أَنْفَقَتِ الْمَرْأَةُ مِنْ كَسْبِ زَوْجِهَا عَنْ غَيْرِ أَمْرِهِ فَلَهُ نِصْفُ أَجْرِهِ ‏&quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/145610" target="_blank">bukhari 5360</a> · Sahih</div></div>
+<div class="hadith "><div>لَقَدْ رَدَّ ذَلِكَ ـ يَعْنِي النَّبِيَّ صلى الله عليه وسلم ـ عَلَى عُثْمَانَ، وَلَوْ أَجَازَ لَهُ التَّبَتُّلَ لاَخْتَصَيْنَا‏.‏ [/postmatn]</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/142770" target="_blank">bukhari 5074</a> · Sahih</div></div>
+<div class="hadith "><div>هُوَ عَبْدٌ مَا بَقِيَ عَلَيْهِ دِرْهَمَانِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7152610" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>بَيْنَ مُسْلِمٍ وَكَافِرٍ قَرَابَةٌ قَرِيبَةٌ فَلْيَعُدْهُ &quot; ، وَقَالَهُ عَمْرُو بْنُ دِينَارٍ , قَالَ عَطَاءٌ : &quot; فَإِنْ لَمْ تَكُنْ بَيْنَهُمَا قَرَابَةٌ فَلا يَعُدْهُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7185810" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c21">
+  <h3>Cluster #21</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>435</b> docs</span>
+    <span>🎯 cohesion <b>0.968</b></span>
+    <span class="collections">📚 ibnabishayba (177), abdurrazzaq (149), malik (20), bulugh (17), abudawud (12)</span>
+  </div>
+  <div class="hadith "><div>&quot; يُكَفَّنُ مِنَ الثُّلُثِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7506470" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>الْآمَّةِ ثُلُثُ الدِّيَةِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7531090" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>&quot; فِيهَا ثُلُثُ الدِّيَةِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7532440" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>الْجَائِفَةِ ثُلُثُ الدِّيَةِ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7532560" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+<div class="hadith "><div>يَعْتِقُ ثُلُثَهُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7505820" target="_blank">ibnabishayba </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c40">
+  <h3>Cluster #40</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>406</b> docs</span>
+    <span>🎯 cohesion <b>0.933</b></span>
+    <span class="collections">📚 riyadussalihin (384), shamail (7), ibnabishayba (5), mishkat (3), hisn (3)</span>
+  </div>
+  <div class="hadith "><div>- وعن أبي هريرة رضي الله عنه قال‏:‏ قال رسول الله صلى الله عليه وسلم‏:‏ ‏&quot;‏تضمن الله لمن خرج في سبيله لا يخرجه إلا جهاد في سبيلي، وإيمان بي وتصديق برسلي فهو علي ضامن أن أدخله الجنة، أو أرجعه إلى منزله الذي خرج منه بما نال من أجر، أو غنيمة، والذي نفس محمد بيده ما من كلم يكلم في سبيل الله إلا جاء يوم القيامة كهيئته يوم كلم، لونه لون دم، وريحه ريح مسك، والذي نفس محمد بيده لولا أن يشق على المسلمين ما قعدت خلاف سرية تغزو في سبيل الله أبدا، ولكن لا أجد سعة فأحملهم ولا يجدون سعة عليهم أن يتخلفوا عني، والذي نفس محمد بيده لوددت أن أغزو في سبيل الله فأقتل، ثم أغزو فأقتل ثم أغزو فأقتل‏&quot;‏ ‏(‏‏(‏رواه مسلم وروى البخاري بعضه‏)‏‏)‏‏.‏ 
+
+‏(‏‏(‏‏&quot;‏الكلم‏&quot;‏ الجرح‏.‏‏)‏‏)‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1712840" target="_blank">riyadussalihin 1294</a> · Uncategorized</div></div>
+<div class="hadith "><div>- وعن حذيفة رضي الله عنه قال‏:‏ أتي الله تعالى بعبد من عباده آتاه الله مالا فقال له ماذا عملت في الدنيا‏؟‏ قال‏:‏ ولا يكتمون الله حديثا- قال‏:‏ يا رب آتيتني مالك فكنت أبايع الناس، وكان من خلقي الجواز فكنت أتيسر على الموسر وأنظر المعسر فقال الله تعالى‏:‏ “‏&quot;‏أنا أحق بذا منك، تجاوزوا عن عبدي‏&quot;‏ فقال عقبة بن عامر، وأبو مسعود الأنصاري رضي الله عنهما هكذا سمعناه من في رسول الله صلى الله عليه وسلم‏.‏ ‏(‏‏(‏رواه مسلم‏)‏‏)‏‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1713620" target="_blank">riyadussalihin 1372</a> · Uncategorized</div></div>
+<div class="hadith "><div>- وعن أبي ذر رضي الله عنه ، قال كنت أمشى مع النبي صلى الله عليه وسلم في حرة بالمدينة ، فاستقبلنا أحد فقال‏:‏ ‏&quot;‏يا أبا ذر‏&quot;‏ قلت‏:‏ لبيك يا رسول الله‏.‏ فقال‏:‏ ‏&quot;‏ما يسرني أن عندي مثل أحد هذا ذهبا تمضى علي ثلاثة أيام وعندي منه دينار، إلا شئ أرصده لدين، إلا أن أقول له به في عباد الله هكذا، وهكذا وهكذا‏&quot;‏ عن يمينه وعن شماله ومن خلفه، ثم سار فقال‏:‏ ‏&quot;‏إن الأكثرين هم الأقلون يوم القيامة إلا من قال بالمال هكذا وهكذا وهكذا‏&quot;‏ عن يمينه وعن شماله ومن خلفه‏&quot;‏ وقليل ما هم‏&quot;‏ ثم قال لى ‏&quot;‏مكانك لا تبرح حتى آتيك‏&quot;‏ ثم انطلق في سواد الليل حتى توارى، فسمعت صوتا قد ارتفع ، فتخوفت أن يكون أحد عرض للنبى، صلى الله عليه وسلم، فأردت أن آتيه فذكرت قوله‏:‏ ‏&quot;‏لا تبرح حتى آتيك‏&quot;‏ فلم أبرح حتى أتانى، فقلت ‏:‏ لقد سمعت صوتاً تخوفت منه، فذكرت له، فقال‏:‏ ‏&quot;‏وهل سمعته‏؟‏‏&quot;‏ قلت‏:‏ نعم، قال‏:‏ ‏&quot;‏ذاك جبريل أتانى فقال‏:‏ من مات من أمتك لا يشرك بالله شيئاً دخل الجنة، قلت‏:‏ وإن زنى وإن سرق‏؟‏ قال‏:‏ وإن زنى وإن سرق‏&quot;‏ ‏(‏‏(‏متفق عليه وهذا لفظ البخاري‏)‏‏)‏‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1704600" target="_blank">riyadussalihin 464</a> · Uncategorized</div></div>
+<div class="hadith "><div>- وعن جابر، رضي الله عنه ، كان رسول الله، صلى الله عليه وسلم، إذا خطب احمرت عيناه، وعلا صوته، واشتد غضبه، حتى كأنه منذر جيش يقول‏:‏ ‏&quot;‏صبحكم ومساكم‏&quot;‏ ويقول‏:‏ ‏&quot;‏بعثت أنا والساعة كهاتين‏&quot;‏ ويقرن بين أصبعيه؛ السبابة والوسطى، ويقول‏:‏ ‏&quot;‏أما بعد؛ فإن خير الحديث كتاب الله وخير الهدى هدى محمد، صلى الله عليه وسلم، وشر الأمور محدثاتها، وكل بدعة ضلالة‏&quot;‏ ثم يقول‏:‏ ‏&quot;‏أنا أولى بكل مؤمن من نفسه‏.‏ من ترك مالاً فلأهله، ومن ترك ديناً أو ضياعاً فإلي وعلى‏&quot;‏ ‏(‏‏(‏رواه مسلم‏)‏‏)‏‏.‏ 
+
+وعن العرباض بن سارية، رضي الله عنه ، حديثة السابق في باب المحافظة على السنة‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1701690" target="_blank">riyadussalihin 170</a> · Uncategorized</div></div>
+<div class="hadith "><div>- وعن أبي زيد أسامة بن زيد بن حارثة مولى رسول الله صلى الله عليه وسلم وحبه وابن حبه، رضي الله عنهما، قال‏:‏ أرسلت بنت النبي صلى الله عليه وسلم ‏:‏ إن ابني قد احتضر فاشهدنا، فأرسل يقرئ السلام ويقول‏:‏ ‏&quot;‏إن لله ما أخذ، وله ما أعطى، وكل شيء عنده بأجل مسمى، فلتصبر ولتحتسب‏&quot;‏ فأرسلت إليه تقسم عليه ليأتينها‏.‏ فقام ومعه سعد بن عبادة، ومعاذ بن جبل، وأبي بن كعب، وزيد بن ثابت، ورجال رضي الله عنهم، فرفع إلى رسول الله صلى الله عليه وسلم الصبي فأقعده في حجره ونفسه تقعقع، ففاضت عيناه، فقال سعد‏:‏ يا رسول الله ماهذا‏؟‏ فقال‏:‏ ‏&quot;‏هذه رحمة جعلها الله تعالى في قلوب عباده‏&quot;‏ وفى رواية ‏:‏ ‏&quot;‏في قلوب من شاء من عباده وإنما يرحم الله من عباده الرحماء‏&quot;‏ ‏(‏‏(‏متفق عليه‏)‏‏)‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/1700290" target="_blank">riyadussalihin 29</a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c4">
+  <h3>Cluster #4</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>194</b> docs</span>
+    <span>🎯 cohesion <b>0.967</b></span>
+    <span class="collections">📚 abdurrazzaq (193), bulugh (1)</span>
+  </div>
+  <div class="hadith "><div>إِنْ كُسِرَتْ فَأَرْبَعُونَ دِينَارًا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7170250" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>رَجُلٍ قَامَ إِلَى رَجُلٍ بِحَجَرٍ , فَكَسَرَ أَسْنَانَهُ , وَفَقَأَ عَيْنَهُ , قَالَ : &quot; يُقَادُ مِنْهُ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7166690" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>رَجُلٍ افْتَرَى عَلَى جَمَاعَةٍ ، قَالَ : حَدٌّ وَاحِدٌ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7133750" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>أَرْبَعٍ مِنْ بَنَانِهَا تُصَابُ جَمِيعًا نَمِرَهُ , قَالَ : &quot; فِيها عِشْرُونَ &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7171890" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+<div class="hadith "><div>إِنْ قَالَ : &quot; اخْتَارِي إِنْ شِئْتِ ، فَقَالَتْ : قَدِ اخْتَرْتُ نَفْسِي ، فَهِيَ وَاحِدَةٌ ، وَهِيَ أَمْلَكُ بِنَفْسِهَا &quot;</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/7116640" target="_blank">abdurrazzaq </a> · Uncategorized</div></div>
+</div>
+<div class="cluster-card" id="c28">
+  <h3>Cluster #28</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>1</b> docs</span>
+    <span>🎯 cohesion <b>1.000</b></span>
+    <span class="collections">📚 muslim (1)</span>
+  </div>
+  <div class="hadith "><div>وا السَّامُ عَلَيْكَ يَا أَبَا الْقَاسِمِ ‏.‏ فَقَالَ ‏&quot;‏
+ وَعَلَيْكُمْ ‏&quot;‏ ‏.‏ فَقَالَتْ عَائِشَةُ وَغَضِبَتْ أَلَمْ تَسْمَعْ مَا قَالُوا قَالَ ‏&quot;‏ بَلَى قَدْ سَمِعْتُ فَرَدَدْتُ
+ عَلَيْهِمْ وَإِنَّا نُجَابُ عَلَيْهِمْ وَلاَ يُجَابُونَ عَلَيْنَا ‏&quot;‏ ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/358250" target="_blank">muslim 2166</a> · Sahih</div></div>
+</div>
+<div class="cluster-card" id="c35">
+  <h3>Cluster #35</h3>
+  <div class="cluster-meta">
+    <span>📊 <b>1</b> docs</span>
+    <span>🎯 cohesion <b>1.000</b></span>
+    <span class="collections">📚 bukhari (1)</span>
+  </div>
+  <div class="hadith "><div>بَايَعَ النَّبِيَّ صلى الله عليه وسلم تَحْتَ الشَّجَرَةِ‏.‏</div><div class="hadith-ref"><a href="https://sunnah.com/hadith/138090" target="_blank">bukhari 4171</a> · Sahih</div></div>
+</div>
+
+</body></html>

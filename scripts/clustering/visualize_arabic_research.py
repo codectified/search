@@ -22,7 +22,6 @@ Env vars:
 import os, sys, time
 import numpy as np
 
-sys.path.insert(0, "/tmp/stpkg")
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -60,7 +59,7 @@ FIELD_LABEL = {
     "vec_e5_full":         "E5 multilingual (full text) 1024d",
 }
 
-BASE = "/code/reports/viz"
+BASE = os.environ.get("VIZ_DIR", "/code/reports/viz")
 for d in ["umap", "sizes", "cohesion"]:
     os.makedirs(f"{BASE}/{d}", exist_ok=True)
 
