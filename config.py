@@ -167,7 +167,7 @@ _ENABLED_MODELS = EMBEDDING_MODELS if SEMANTIC_ENABLED else {}
 # silently change the default. Validated against the catalog so a typo fails
 # fast at startup instead of KeyError-ing on the first semantic search.
 DEFAULT_SEMANTIC_MODEL = os.environ.get(
-    "DEFAULT_SEMANTIC_MODEL", "embeddinggemma-q8"
+    "DEFAULT_SEMANTIC_MODEL", "mxbai"
 )
 if DEFAULT_SEMANTIC_MODEL not in EMBEDDING_MODELS:
     raise ValueError(
