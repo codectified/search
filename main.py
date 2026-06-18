@@ -821,13 +821,14 @@ def _highlight(highlight_query=None):
 
 def get_filter_from_args(args):
     filters = []
+    grade_filter = None
     if collection := args.getlist("collection"):
         filters.append({"terms": {"collection": collection}})
     if gradeNorm := args.getlist("gradeNorm"):
-        filters.append({"terms": {"gradeNorm": gradeNorm}})
+        grade_filter = {"terms": {"gradeNorm": gradeNorm}}
     elif grade := args.getlist("grade"):
-        filters.append({"terms": {"grade": grade}})
-    return filters
+        grade_filter = {"terms": {"grade": grade}}
+    return filters, grade_filter
 
 
 def _resolve_mode(args):
@@ -887,7 +888,7 @@ def search(language):
         access_log.info("spam_rejected", extra={"query": query})
         return jsonify({"error": "invalid query"}), 400
 
-    filters = get_filter_from_args(request.args)
+    filters, grade_filter = get_filter_from_args(request.args)
     mode = _resolve_mode(request.args)
 
     # The query router is observational for now: it does not change the served
@@ -911,14 +912,15 @@ def search(language):
                 "query": query,
             },
         )
-        return _semantic_search(model, query, filters)
+        return _semantic_search(model, query, filters, grade_filter=grade_filter)
 
     # ── Lexical path ─────────────────────────────────────────────────────────
 
     lexical_start = time.perf_counter()
     try:
         result = _execute_lexical_search(
-            query, filters, request.args.get("from", 0), request.args.get("size", 10)
+            query, filters, request.args.get("from", 0), request.args.get("size", 10),
+            grade_filter=grade_filter,
         )
     except BadRequestError as e:
         return malformed_query_response(e)
@@ -937,7 +939,7 @@ def search(language):
     return jsonify(result.body)
 
 
-def _execute_lexical_search(query, filters, from_, size):
+def _execute_lexical_search(query, filters, from_, size, grade_filter=None):
     """Lexical BM25 query, falling back to simple_query_string on syntax the strict
     parser rejects. Shared by the lexical route and the semantic fallback path; a
     BadRequestError from the fallback propagates for callers to map."""
@@ -951,6 +953,8 @@ def _execute_lexical_search(query, filters, from_, size):
         "highlight": _highlight(),
         "suggest": get_suggest_block(query),
     }
+    if grade_filter:
+        kwargs["post_filter"] = grade_filter
     try:
         return es_client.search(
             query=build_lexical_query(query, "query_string", all_filters), **kwargs
@@ -961,12 +965,12 @@ def _execute_lexical_search(query, filters, from_, size):
         )
 
 
-def _execute_semantic_search(model, query, filters, from_, size):
+def _execute_semantic_search(model, query, filters, from_, size, grade_filter=None):
     """Semantic ES query, shared by the request route and the shadow sampler. The
     model's query prompt is applied only to the embedded text; the raw query still
     feeds get_suggest_block so suggestions aren't built from the instruction prefix.
     Highlights use a literal-term highlight_query so semantic hits carry them too."""
-    return es_client.options(request_timeout=130).search(
+    kwargs = dict(
         index=model["index"],
         from_=int(from_),
         size=int(size),
@@ -976,9 +980,12 @@ def _execute_semantic_search(model, query, filters, from_, size):
         suggest=get_suggest_block(query),
         highlight=_highlight(_lexical_inner(query, "simple_query_string")),
     )
+    if grade_filter:
+        kwargs["post_filter"] = grade_filter
+    return es_client.options(request_timeout=130).search(**kwargs)
 
 
-def _semantic_search(model, query, filters):
+def _semantic_search(model, query, filters, grade_filter=None):
     from_ = request.args.get("from", 0)
     size = int(request.args.get("size", 10))
     dedup = not _is_truthy(request.args.get("show_dupes", "0"))
@@ -986,12 +993,12 @@ def _semantic_search(model, query, filters):
     fetch_size = size * 3 if dedup else size
     route = "semantic"
     try:
-        result = _execute_semantic_search(model, query, all_filters, from_, fetch_size)
+        result = _execute_semantic_search(model, query, all_filters, from_, fetch_size, grade_filter=grade_filter)
     except Exception:
         # Degrade gracefully: any semantic failure falls back to lexical.
         access_log.exception("semantic_search_failed", extra={"query": query})
         try:
-            result = _execute_lexical_search(query, filters, from_, size)
+            result = _execute_lexical_search(query, filters, from_, size, grade_filter=grade_filter)
         except BadRequestError as e:
             return malformed_query_response(e)
         route = "lexical_fallback"
