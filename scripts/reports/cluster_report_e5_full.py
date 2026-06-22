@@ -126,7 +126,9 @@ def fetch_reps_from_es(cluster_field, cluster_id, n=10):
             "gradeNorm":    s.get("gradeNorm", ""),
             "arabicURN":    s.get("arabicURN", 0),
             "dupGroup":     s.get("dupGroup", 0),
-            "text":         (s.get("arabicMatn") or s.get("arabicTextClean") or "").strip(),
+            # Prefer full clean text; fall back to matn only
+            "fullText":     (s.get("arabicTextClean") or "").strip(),
+            "matn":         (s.get("arabicMatn") or "").strip(),
         })
     seen, deduped = set(), []
     for r in results:
@@ -141,6 +143,14 @@ def fetch_reps_from_es(cluster_field, cluster_id, n=10):
     return deduped
 
 
+def es_available():
+    try:
+        get_es().info()
+        return True
+    except Exception:
+        return False
+
+
 # ── Markdown helpers ──────────────────────────────────────────────────────────
 
 def img(rel_path, alt=""):
@@ -148,17 +158,28 @@ def img(rel_path, alt=""):
 
 
 def hadith_md(r):
-    text = r.get("text", "").strip()
-    ref  = f"{r['collection']} {r['hadithNumber']}"
-    urn  = r.get("arabicURN", 0)
-    grade = r.get("gradeNorm", "")
-    grade_str = f" · {grade}" if grade else ""
-    ref_str = f"[{ref}](https://sunnah.com/hadith/{urn}){grade_str}" if urn else f"{ref}{grade_str}"
-    # Use HTML block for RTL Arabic; GitHub renders this
-    return (f'<div dir="rtl" style="border-right:4px solid #3498db;'
-            f'padding:8px 12px;margin:6px 0;background:#f9f9f9;">\n\n'
-            f'{text}\n\n'
-            f'<small>{ref_str}</small>\n\n'
+    # Full clean text preferred; matn as fallback for offline centroid-JSON reps
+    full_text = r.get("fullText", "").strip()
+    matn      = r.get("matn", r.get("text", "")).strip()
+    display   = full_text or matn
+
+    coll      = r.get("collection", "")
+    num       = r.get("hadithNumber", "")
+    urn       = r.get("arabicURN", 0)
+    grade     = r.get("gradeNorm", "")
+
+    ref_label = f"{coll} {num}".strip()
+    ref_link  = (f"[{ref_label}](https://sunnah.com/hadith/{urn})"
+                 if urn else ref_label)
+    grade_str = f" · *{grade}*" if grade else ""
+
+    # Bold ref line above the Arabic block, grade after
+    header = f"**{ref_link}**{grade_str}"
+
+    return (f'{header}\n\n'
+            f'<div dir="rtl" style="border-right:4px solid #3498db;'
+            f'padding:8px 12px;margin:4px 0 12px 0;background:#f9f9f9;">\n\n'
+            f'{display}\n\n'
             f'</div>\n')
 
 
@@ -190,18 +211,25 @@ def generate_report(k, centroids, island_ids, island_labels):
 
     print(f"\n── Building k={k} Markdown report ──")
 
-    # Use reps from centroid JSON (avoids ES round-trip when offline)
-    island_reps = {}
-    for cid in island_ids:
-        island_reps[cid] = [
-            {"collection":   h["collection"],
-             "hadithNumber": h["hadithNumber"],
-             "gradeNorm":    h.get("gradeNorm", ""),
-             "arabicURN":    h.get("arabicURN", 0),
-             "dupGroup":     h.get("dupGroup", 0),
-             "text":         h.get("text", "")}
-            for h in centroids[cid].get("representative_hadiths", [])
-        ]
+    use_es = es_available()
+    print(f"  ES available: {use_es} — {'fetching full text' if use_es else 'using centroid JSON reps (matn only)'}")
+
+    def get_reps(cid, n=5):
+        if use_es:
+            return fetch_reps_from_es(cluster_field, cid, n=n)
+        # Offline: convert centroid JSON reps (matn stored as "text")
+        return [{"collection":   h["collection"],
+                 "hadithNumber": h["hadithNumber"],
+                 "gradeNorm":    h.get("gradeNorm", ""),
+                 "arabicURN":    h.get("arabicURN", 0),
+                 "dupGroup":     h.get("dupGroup", 0),
+                 "fullText":     "",
+                 "matn":         h.get("text", "")}
+                for h in centroids[cid].get("representative_hadiths", [])]
+
+    # Fetch reps for islands (more reps when online)
+    island_reps = {cid: get_reps(cid, n=10 if use_es else 5)
+                   for cid in island_ids}
 
     sorted_clusters = sorted(centroids.items(), key=lambda x: -x[1]["size"])
     mean_coh = np.mean([v.get("cohesion", 0) for v in centroids.values()])
@@ -234,13 +262,17 @@ def generate_report(k, centroids, island_ids, island_labels):
     for cid, info in sorted_clusters:
         if cid in island_ids:
             continue
-        reps = [{"collection":   h["collection"],
-                 "hadithNumber": h["hadithNumber"],
-                 "gradeNorm":    h.get("gradeNorm", ""),
-                 "arabicURN":    h.get("arabicURN", 0),
-                 "dupGroup":     h.get("dupGroup", 0),
-                 "text":         h.get("text", "")}
-                for h in info.get("representative_hadiths", [])]
+        if use_es:
+            reps = get_reps(cid, n=5)
+        else:
+            reps = [{"collection":   h["collection"],
+                     "hadithNumber": h["hadithNumber"],
+                     "gradeNorm":    h.get("gradeNorm", ""),
+                     "arabicURN":    h.get("arabicURN", 0),
+                     "dupGroup":     h.get("dupGroup", 0),
+                     "fullText":     "",
+                     "matn":         h.get("text", "")}
+                    for h in info.get("representative_hadiths", [])]
         all_sections.append(cluster_section_md(cid, info, reps))
     all_block = "\n".join(all_sections)
 
