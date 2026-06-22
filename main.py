@@ -157,6 +157,45 @@ _GRADE_NORM_MAP = {
 }
 _BUKHARI_MUSLIM = {"bukhari", "muslim"}
 
+# Ordered by specificity/reliability — checked in sequence, first match wins.
+# موضوع (fabricated) is intentionally omitted: it has too many innocent meanings
+# in Arabic prose ("placed", "laid down", "kept") and produces false positives.
+_TEXT_GRADE_PATTERNS = [
+    ("متفق عليه",      "Sahih"),   # Bukhari + Muslim — highest authority
+    ("رواه البخاري",   "Sahih"),   # cited from Bukhari's collection
+    ("رواه مسلم",      "Sahih"),   # cited from Muslim's collection
+    ("حديث حسن صحيح", "Hasan"),   # before plain حديث حسن — Tirmidhi's standard phrase
+    ("حديث صحيح",      "Sahih"),
+    ("إسناده صحيح",   "Sahih"),
+    ("صحيح الإسناد",  "Sahih"),
+    ("حديث حسن",      "Hasan"),
+    ("إسناده حسن",    "Hasan"),
+    ("حسن الإسناد",   "Hasan"),
+    ("إسناده ضعيف",   "Da'if"),
+    ("حديث ضعيف",     "Da'if"),
+    ("ضعيف الإسناد",  "Da'if"),
+]
+
+
+def _normalize_arabic_for_match(text):
+    """Strip diacritics (Mn) and invisible format chars (Cf, e.g. RTL marks) for matching."""
+    return "".join(c for c in text if unicodedata.category(c) not in ("Mn", "Cf"))
+
+
+def _grade_from_text(arabic_text):
+    """Scan hadith matn for embedded scholar grade attributions.
+
+    Returns a canonical grade label or None. Only called when grade1
+    normalization yields 'Uncategorized' — never overrides an explicit grade.
+    """
+    if not arabic_text:
+        return None
+    normalized = _normalize_arabic_for_match(arabic_text)
+    for pattern, grade in _TEXT_GRADE_PATTERNS:
+        if pattern in normalized:
+            return grade
+    return None
+
 
 def _normalize_grade(raw, collection=""):
     if collection in _BUKHARI_MUSLIM:
@@ -549,6 +588,9 @@ def index():
     arabicByMatchingEnglish = {}
     for hadith in arabicRows:
         ar_obj = dict(hadith)
+        _grade_norm = _normalize_grade(hadith["grade1"], hadith["collection"])
+        if _grade_norm == "Uncategorized":
+            _grade_norm = _grade_from_text(hadith["hadithText"]) or "Uncategorized"
         doc = {
             "lang": "ar",
             "urn": hadith["arabicURN"],
@@ -556,7 +598,7 @@ def index():
             "hadithNumber": hadith["hadithNumber"],
             "arabicText": hadith["hadithText"],
             "grade": hadith["grade1"],
-            "gradeNorm": _normalize_grade(hadith["grade1"], hadith["collection"]),
+            "gradeNorm": _grade_norm,
             "ar": ar_obj,
         }
         arabicHadiths.append(doc)
@@ -576,13 +618,14 @@ def index():
 
     englishHadiths = []
     for hadith in englishRows:
+        _grade_norm = _normalize_grade(hadith["grade1"], hadith["collection"])
         doc = {
             "lang": "en",
             "urn": hadith["englishURN"],
             "collection": hadith["collection"],
             "hadithText": hadith["hadithText"],
             "grade": hadith["grade1"],
-            "gradeNorm": _normalize_grade(hadith["grade1"], hadith["collection"]),
+            "gradeNorm": _grade_norm,
             "en": dict(hadith),
         }
         # Fold in the matching Arabic side → one bilingual doc. Arabic
@@ -592,6 +635,10 @@ def index():
             doc["arabicText"] = ar_obj["hadithText"]
             doc["hadithNumber"] = ar_obj["hadithNumber"]
             doc["ar"] = ar_obj
+        # Text-grade fallback: if grade1 didn't resolve, scan the Arabic matn
+        # for embedded scholar attributions (e.g. رواه مسلم, حديث حسن صحيح).
+        if doc["gradeNorm"] == "Uncategorized":
+            doc["gradeNorm"] = _grade_from_text(doc.get("arabicText")) or "Uncategorized"
         englishHadiths.append(doc)
 
     connection.close()
