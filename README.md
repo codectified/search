@@ -44,7 +44,7 @@ To offload index-time embedding to a HuggingFace Dedicated Inference Endpoint (r
 
 ### 2. Serve the model
 
-Pull whichever embedding model is configured in `EMBEDDING_MODELS` in `main.py`:
+Pull whichever embedding model is configured in `EMBEDDING_MODELS` in `config.py`:
 
 ```bash
 infinity_emb v2 --model-id mixedbread-ai/mxbai-embed-xsmall-v1 --port 7997
@@ -151,12 +151,31 @@ The prod stack is exposed on **port 7650**. Builds both lexical and semantic by 
 http://<server>:7650/index?password=<INDEXING_PASSWORD>
 ```
 
-Add `&targets=lexical` or `&targets=<model-key>` to build a subset.
+Add `&targets=lexical` or `&targets=<model-key>` to build a subset. Add `&rebuild=true`
+to force a full rebuild instead of incremental (see note below).
 
 Check index status:
 ```
 http://<server>:7650/index/status
 ```
+
+#### Incremental vs full rebuild
+
+By default, `/index` runs **incrementally** — it diffs against the live index by
+content hash and only re-indexes docs that changed. This is fast but has a limitation:
+derived fields like `gradeNorm` are computed at index time from the raw source and are
+**not** included in the content hash. If indexing logic changes (e.g. a new grade
+normalization rule), the hashes of unchanged hadiths won't differ, so incremental will
+silently skip them with stale derived values.
+
+**Always use `&rebuild=true` after changes to:**
+- `_normalize_grade` / `_grade_from_text` (grade normalization rules)
+- `_GRADE_NORM_MAP` or `_TEXT_GRADE_PATTERNS`
+- Any field derived at index time rather than copied verbatim from the DB
+
+A lexical-only rebuild (`&targets=lexical&rebuild=true`) takes ~40 seconds and serves
+traffic uninterrupted — the old index remains live while the new one builds, and the
+alias flips atomically at the end.
 
 ### Query-router audit logging
 
@@ -180,7 +199,7 @@ Per-run tuning via env vars: `HF_DEDICATED_CONCURRENCY` (default 4), `HF_DEDICAT
 
 ### Adding a model
 
-1. Add an entry to `EMBEDDING_MODELS` in `main.py` — copy the mxbai entry as a template (~10 lines).
+1. Add an entry to `EMBEDDING_MODELS` in `config.py` — copy the mxbai entry as a template (~10 lines).
 2. Serve the model on the Infinity host: `infinity_emb v2 --model-id your-model-name`.
 3. Hit `/index?password=...&targets=newkey` to build its index. (`/index` with no `targets=` will pick it up too, alongside lexical and the other semantic models.)
 4. Add the alias name to `SEMANTIC_INDEXES` in `tests/batch_search.py`.
