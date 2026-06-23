@@ -73,7 +73,12 @@ raw grade1 string
    cleaned.startswith(key) → value
       │
       ▼
-8. No match → "Uncategorized"
+8. No match → pass to text-grade fallback (see §5)
+      │
+      ▼
+9. Scan arabicText for embedded scholar attributions
+   e.g. "رواه مسلم", "حديث حسن صحيح", "إسناده ضعيف"
+   → grade label, or "Uncategorized" if no pattern matches
 ```
 
 **Canonical output values:**
@@ -205,8 +210,11 @@ second pass over the Arabic text to rescue these.
 
 ### Scale
 
-Of ~10,000 uncategorized hadiths in the current index, approximately **2,783**
-contain at least one recognizable Arabic grade pattern. The top collections:
+Of 13,277 uncategorized hadiths in the current index (out of 48,703 total English documents), approximately **2,783**
+were identified as containing recognizable Arabic grade patterns in pre-index analysis. After deploying the
+fallback and reindexing, **4,079 hadiths were rescued** (Uncategorized dropped from 13,277 → 9,198). The
+difference from the pre-index estimate reflects overlapping patterns (a hadith matching both `رواه مسلم` and
+`متفق عليه` is counted under both in the pattern-by-pattern query but rescued only once). The top collections:
 
 | Collection | Uncategorized total |
 |---|---|
