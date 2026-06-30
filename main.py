@@ -554,14 +554,39 @@ def index():
 
     # One doc per Arabic hadith; index the `ar` payload by matching English URN
     # so the English pass can fold paired hadiths into one bilingual doc.
+    ar_grade_stats = {
+        "total": 0,
+        "collection_override": 0,
+        "no_grade": 0,
+        "grade1_resolved": 0,
+        "grade1_unresolved": 0,
+        "text_rescued": 0,
+        "still_uncategorized": 0,
+    }
     arabicHadiths = []
     arabicOnlyHadiths = []
     arabicByMatchingEnglish = {}
     for hadith in arabicRows:
         ar_obj = dict(hadith)
-        _grade_norm = _normalize_grade(hadith["grade1"], hadith["collection"])
+        ar_grade_stats["total"] += 1
+        _g1, _col = hadith["grade1"], hadith["collection"]
+        if _col in _BUKHARI_MUSLIM:
+            ar_grade_stats["collection_override"] += 1
+        elif not _g1:
+            ar_grade_stats["no_grade"] += 1
+        _grade_norm = _normalize_grade(_g1, _col)
+        if _col not in _BUKHARI_MUSLIM and _g1:
+            if _grade_norm != "Uncategorized":
+                ar_grade_stats["grade1_resolved"] += 1
+            else:
+                ar_grade_stats["grade1_unresolved"] += 1
         if _grade_norm == "Uncategorized":
-            _grade_norm = _grade_from_text(hadith["hadithText"]) or "Uncategorized"
+            _rescued = _grade_from_text(hadith["hadithText"])
+            if _rescued:
+                _grade_norm = _rescued
+                ar_grade_stats["text_rescued"] += 1
+            else:
+                ar_grade_stats["still_uncategorized"] += 1
         doc = {
             "lang": "ar",
             "urn": hadith["arabicURN"],
@@ -587,9 +612,29 @@ def index():
     )
     englishRows = cursor.fetchall()
 
+    en_grade_stats = {
+        "total": 0,
+        "collection_override": 0,
+        "no_grade": 0,
+        "grade1_resolved": 0,
+        "grade1_unresolved": 0,
+        "text_rescued": 0,
+        "still_uncategorized": 0,
+    }
     englishHadiths = []
     for hadith in englishRows:
-        _grade_norm = _normalize_grade(hadith["grade1"], hadith["collection"])
+        en_grade_stats["total"] += 1
+        _g1, _col = hadith["grade1"], hadith["collection"]
+        if _col in _BUKHARI_MUSLIM:
+            en_grade_stats["collection_override"] += 1
+        elif not _g1:
+            en_grade_stats["no_grade"] += 1
+        _grade_norm = _normalize_grade(_g1, _col)
+        if _col not in _BUKHARI_MUSLIM and _g1:
+            if _grade_norm != "Uncategorized":
+                en_grade_stats["grade1_resolved"] += 1
+            else:
+                en_grade_stats["grade1_unresolved"] += 1
         doc = {
             "lang": "en",
             "urn": hadith["englishURN"],
@@ -609,7 +654,12 @@ def index():
         # Text-grade fallback: if grade1 didn't resolve, scan the Arabic matn
         # for embedded scholar attributions (e.g. رواه مسلم, حديث حسن صحيح).
         if doc["gradeNorm"] == "Uncategorized":
-            doc["gradeNorm"] = _grade_from_text(doc.get("arabicText")) or "Uncategorized"
+            _rescued = _grade_from_text(doc.get("arabicText"))
+            if _rescued:
+                doc["gradeNorm"] = _rescued
+                en_grade_stats["text_rescued"] += 1
+            else:
+                en_grade_stats["still_uncategorized"] += 1
         englishHadiths.append(doc)
 
     connection.close()
@@ -661,6 +711,10 @@ def index():
         results["lexical"]["failed"] = json.dumps(results["lexical"].pop("errors"))
 
     results["arabic_only_count"] = len(arabicOnlyHadiths)
+    results["grade_stats"] = {
+        "english": en_grade_stats,
+        "arabic_all": ar_grade_stats,
+    }
     results["timeInSeconds"] = round(time.time() - start, 1)
     return jsonify(results)
 

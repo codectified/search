@@ -8,3 +8,7 @@ data/
 english_matn_map.json
 # Test reports and comparison output — generated files, not source
 test results & reports/
+# Large generated research data — not source, not committed
+reports/archive/
+reports/centroids/
+reports/clusters/
