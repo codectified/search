@@ -162,16 +162,29 @@ http://<server>:7650/index/status
 #### Incremental vs full rebuild
 
 By default, `/index` runs **incrementally** — it diffs against the live index by
-content hash and only re-indexes docs that changed. This is fast but has a limitation:
-derived fields like `gradeNorm` are computed at index time from the raw source and are
-**not** included in the content hash. If indexing logic changes (e.g. a new grade
-normalization rule), the hashes of unchanged hadiths won't differ, so incremental will
-silently skip them with stale derived values.
+content hash and only re-indexes docs whose hash changed. Derived fields like
+`gradeNorm` *are* part of the content hash (`_content_hash` hashes the whole doc except
+`_id`, `contentHash`, and the semantic field), so a value change on an existing field
+is picked up incrementally. Incremental is not the hazard; **the index mapping is.**
 
-**Always use `&rebuild=true` after changes to:**
-- `_normalize_grade` / `_grade_from_text` (grade normalization rules)
-- `_GRADE_NORM_MAP` or `_TEXT_GRADE_PATTERNS`
-- Any field derived at index time rather than copied verbatim from the DB
+The real reason to force a rebuild is that a field's **explicit mapping is only applied
+when the index is created** — `_make_mappings` (which declares `gradeNorm` as
+`keyword`) runs inside `_rebuild_index`, never on the incremental path. If you
+introduce a new field (or a new type) and only run incrementally, ES **dynamically**
+maps it — a string becomes `text` + a `.keyword` sub-field. Aggregations and exact
+filters target the **bare** field name (`_FACET_AGGS` and the `?gradeNorm=` filter both
+use `gradeNorm`, not `gradeNorm.keyword`), and a `terms` agg on a `text` field fails
+("fielddata is disabled on text fields by default"), while an exact filter matches
+analyzed tokens instead of the raw grade. Facets break.
+
+**Use `&rebuild=true` when introducing or retyping an index-time field**, e.g.:
+- The **first** rollout of `gradeNorm` / facets to an index that predates the field —
+  required, so the `keyword` mapping is created from the start.
+- Changes to `_normalize_grade` / `_grade_from_text` / `_GRADE_NORM_MAP` /
+  `_TEXT_GRADE_PATTERNS` — incremental would catch these (the values are hashed), but a
+  rebuild is the safe default and costs little.
+- Any change to the embedding prompt / semantic field — this field *is* excluded from
+  the content hash, so incremental genuinely misses it (see `_attach_semantic_field`).
 
 A lexical-only rebuild (`&targets=lexical&rebuild=true`) takes ~40 seconds and serves
 traffic uninterrupted — the old index remains live while the new one builds, and the

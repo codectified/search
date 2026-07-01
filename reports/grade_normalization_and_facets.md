@@ -306,3 +306,66 @@ the raw `grade` field. Query time is unchanged.
   is for ranking quality, not facet behavior.
 - The PHP website also supports filtering by the raw `grade` field (`?grade=...`)
   as a legacy fallback, though the UI only exposes `gradeNorm`.
+
+## 7. Deploying to Production
+
+Grade normalization and facets are **new to production** — `main` / `upstream/main`
+have no `gradeNorm` field, no `_FACET_AGGS` block, and no `_normalize_grade` /
+`_grade_from_text`. This is a first-time rollout of a new index-time field, not a change
+to an existing one, which affects how it must be deployed.
+
+### The change has two layers
+
+| Layer | What it is | Goes live when |
+|---|---|---|
+| **Query-time** | `_FACET_AGGS` aggregations, `post_filter`, the `?gradeNorm=` filter | Immediately on code deploy + Flask restart — reads whatever is in the index |
+| **Index-time** | The `gradeNorm` *value* on each document, and the `keyword` mapping for it | Only when the indexer re-runs |
+
+Deploying the code alone does **not** populate `gradeNorm` on documents, and a Flask
+restart does **not** trigger indexing. Indexing happens only when `/index` is hit.
+
+### The first rollout must be a full rebuild (`&rebuild=true`)
+
+This is the important, easy-to-miss part. `gradeNorm` is declared as an explicit
+`keyword` field in `_make_mappings` (`main.py` — `props["gradeNorm"] = {"type": "keyword"}`),
+**but `_make_mappings` only runs on the rebuild path (`_rebuild_index`)**. The
+incremental path never creates or alters mappings.
+
+If the field is introduced via an **incremental** index instead, ES falls back to
+**dynamic mapping**: the string `gradeNorm` is auto-mapped as `text` with a
+`gradeNorm.keyword` sub-field. Our facet aggregation and exact filter both target the
+**bare** `gradeNorm` (not `gradeNorm.keyword`):
+
+- a `terms` aggregation on a `text` field fails outright — *"Fielddata is disabled on
+  text fields by default … use a keyword field instead"* — so the **facets break**;
+- the `?gradeNorm=` filter (`terms` query) matches *analyzed tokens* rather than the
+  exact grade string, giving silently wrong results.
+
+An existing field's type **cannot be changed in place**, so the only clean way to get
+the `keyword` mapping is to build a fresh index. Hence the first deploy must rebuild.
+
+### Rollout procedure
+
+1. Merge `feature/facets` into the prod branch and deploy; restart Flask. The
+   query-time facet code (aggs, `post_filter`, `?gradeNorm=`) is now live but operates
+   on an index that has no `gradeNorm` yet.
+2. Run a **full lexical rebuild** — ~40s, zero-downtime (the old index stays live and
+   the alias flips atomically at the end):
+   ```
+   http://<server>:7650/index?password=<INDEXING_PASSWORD>&targets=lexical&rebuild=true
+   ```
+3. Verify:
+   - `http://<server>:7650/index/status`
+   - confirm the mapping took: `GET <lexical-index>/_mapping/field/gradeNorm` should
+     report `"type": "keyword"` (not `text`);
+   - run a query with facets on and confirm non-empty `gradeNorm` buckets.
+
+### After the first rollout
+
+Once the live index carries the `keyword` mapping, later changes to the grade *rules*
+(`_normalize_grade`, `_grade_from_text`, the maps/patterns) do **not** strictly require
+a rebuild — `gradeNorm` is part of the content hash (`_content_hash` hashes the whole
+doc except `_id`, `contentHash`, and the semantic field), so incremental picks up any
+hadith whose normalized grade actually changed. A rebuild is still the safe default and
+only costs ~40s. (The one field genuinely invisible to incremental is the embedding
+prompt / semantic field, which *is* excluded from the hash — that always needs a rebuild.)
