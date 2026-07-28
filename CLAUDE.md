@@ -1,10 +1,21 @@
 # CLAUDE.md
 
 *(This file didn't exist before 2026-07-27. HQ's ceo/ role added the
-section below under a narrow, explicit exception — see
+sections below under a narrow, explicit exception — see
 `C:\dev\hq\ceo\CLAUDE.md`'s infrastructure-pattern exception. Nothing else
 in this file was written by that role; add your own project conventions
 above this line as normal.)*
+
+## Session Start
+
+No `HANDOFF.md` exists in this repo as of 2026-07-27 — check again in case
+one's been added since. Read `README.md` first, then `DESIGN_DECISIONS.md`,
+`GRAPH_SCHEMA.md`, and `TODO.md` (all present per the HQ registry). Note:
+this repo's `feature/semantic-graph` branch may have upstream activity not
+yet pulled locally — see this project's entry in
+`C:\dev\hq\registry\projects.yaml` before assuming main/local state is
+current. The shared ChatGPT-export knowledge base below is a secondary
+resource, not a first step.
 
 ## Shared HQ infrastructure: ChatGPT-export knowledge base
 
