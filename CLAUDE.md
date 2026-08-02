@@ -9,8 +9,11 @@ above this line as normal.)*
 ## Session Start
 
 No `HANDOFF.md` exists in this repo as of 2026-07-27 — check again in case
-one's been added since. Read `README.md` first, then `DESIGN_DECISIONS.md`,
-`GRAPH_SCHEMA.md`, and `TODO.md` (all present per the HQ registry). Note:
+one's been added since. Read `PROJECT_INDEX.md` first (added 2026-08-02 —
+current status, priority, and the four active work items: faceted search,
+query router, semantic graph, narrator graph), then `README.md`,
+`DESIGN_DECISIONS.md`, `GRAPH_SCHEMA.md`, and `TODO.md` (all present per
+the HQ registry). Note:
 this repo's `feature/semantic-graph` branch may have upstream activity not
 yet pulled locally — see this project's entry in
 `C:\dev\hq\registry\projects.yaml` before assuming main/local state is
